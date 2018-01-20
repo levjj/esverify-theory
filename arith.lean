@@ -54,48 +54,18 @@ def step : exp → option exp
   | _ :=
       none
 
-def typee : exp → option typ
-  | (value (boolv _)) := some boolt
-  | (value (numv _)) := some numt
-  | (add e1 e2) :=
-      do e1typ: typ ← typee e1,
-         e2typ: typ ← typee e2,
-         match (e1typ, e2typ) with
-           | (numt, numt) := some numt
-           | _ := none
-         end
-  | (ite e1 e2 e3) :=
-      do e1typ: typ ← typee e1,
-         e2typ: typ ← typee e2,
-         e3typ: typ ← typee e3,
-         guard $ e1typ = boolt,
-         guard $ e2typ = e3typ,
-         some e2typ
-  | (eq e1 e2) :=
-      do e1typ: typ ← typee e1,
-         e2typ: typ ← typee e2,
-         match (e1typ, e2typ) with
-           | (numt, numt) := some boolt
-           | (boolt, boolt) := some boolt
-           | _ := none
-         end
+reserve infixl `:::`:50
 
--- lemma add_is_numt(e1 e2: exp): typee (add e1 e2) = none ∨ typee (add e1 e2) = some numt :=
---   by_cases
-  -- let t_or_none := typee (add e1 e2) in
-  -- option.cases_on t_or_none (
-  --   have is_none: typee (add e1 e2) = none, from sorry,
-  --   show t_or_none = none ∨ typee (add e1 e2) = some numt, from or.inl is_none
-  -- ) (
-  --   assume t: typ,
-  --   have is_num: typee (add e1 e2) = some numt, from sorry,
-  --   show t_or_none = none ∨ t_or_none = some numt, from or.inr is_num
-  -- )
+inductive typed : exp → typ → Prop
+  | t_num (n: ℕ) : typed (value (numv n)) numt
+  | t_bool (b: bool) : typed (value (boolv b)) boolt
+  | t_add (e1 e2: exp) : typed e1 numt → typed e2 numt → typed (add e1 e2) numt
+  | t_ite (e1 e2 e3: exp) {t: typ} : typed e1 boolt → typed e2 t → typed e3 t → typed (ite e1 e2 e3) t
+  | t_eq (e1 e2: exp) {t: typ} : typed e1 t → typed e2 t → typed (eq e1 e2) boolt
 
-def typee_add_inv(e1 e2: exp) (add_is_typed: typee (add e1 e2) ≠ none): typee e1 ≠ none :=
-  sorry
+infixl `:::` := typed
 
-theorem progress(e: exp) (t: typ) (is_typed: some t = typee e): is_val e ∨ step e ≠ none :=
+theorem progress(e: exp) (t: typ) (is_typed: typed e t): is_val e ∨ step e ≠ none :=
   exp.rec_on e
     (
       assume v: val,
