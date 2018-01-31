@@ -6,6 +6,8 @@ inductive typ : Type
   | num : typ
   | bool : typ
 
+instance : decidable_eq typ := by tactic.mk_dec_eq_instance
+
 inductive exp : Type
   | num : ℕ → exp
   | bool : bool → exp
@@ -57,32 +59,22 @@ inductive typed : exp → typ → Prop
 
 notation e1 `:::` e2:100 := typed e1 e2
 
-lemma of_not_not{α: Prop} (p: ¬ ¬ α) : α :=
-  or.elim (classical.em α) id (flip absurd p)
-
-lemma typ_cases {p: Prop} (t: typ)
-    (num_case: t = typ.num → p)
-    (bool_case: t = typ.bool → p): p :=
-  begin
-    induction t,
-    case typ.num {
-      apply num_case rfl
-    },
-    case typ.bool {
-      apply bool_case rfl
-    }
-  end
+lemma typ_cases {p: Prop}: ∀(t: typ),
+    (t = typ.num → p) →
+    (t = typ.bool → p) → p
+  | typ.num num_case _ := num_case rfl
+  | typ.bool _ bool_case := bool_case rfl
 
 lemma is_value_cases {p: Prop} {e: exp} (e_is_value: is_value e)
     (num_case: ∀ (n: ℕ), e = exp.num n → p)
     (bool_case: ∀ (b: bool), e = exp.bool b → p): p :=
   begin
-    induction e_is_value,
+    cases e_is_value,
     case is_value.num n {
-      apply num_case n rfl
+      show p, from num_case n rfl
     },
     case is_value.bool b {
-      apply bool_case b rfl
+      show p, from bool_case b rfl
     }
   end
 
@@ -100,34 +92,34 @@ lemma step_cases {p: Prop} {e e': exp} (e_steps: e ⟶ e')
   begin
     induction e_steps,
     case step.add n1 n2 {
-      apply add_case n1 n2 rfl rfl
+      exact add_case n1 n2 rfl rfl
     },
     case step.add_right e1 e2 e2' e1_is_value e2_steps {
-      apply add_right_case e1 e2 e2' e1_is_value e2_steps rfl rfl
+      exact add_right_case e1 e2 e2' e1_is_value e2_steps rfl rfl
     },
     case step.add_left e1 e1' e2 e1_steps {
-      apply add_left_case e1 e1' e2 e1_steps rfl rfl
+      exact add_left_case e1 e1' e2 e1_steps rfl rfl
     },
     case step.ite_true e2 e3 {
-      apply ite_true_case e2 e3 rfl rfl
+      exact ite_true_case e2 e3 rfl rfl
     },
     case step.ite_false e2 e3 {
-      apply ite_false_case e2 e3 rfl rfl
+      exact ite_false_case e2 e3 rfl rfl
     },
     case step.ite e1 e1' e2 e3 e1_steps {
-      apply ite_case e1 e1' e2 e3 e1_steps rfl rfl
+      exact ite_case e1 e1' e2 e3 e1_steps rfl rfl
     },
     case step.eq_num n1 n2 {
-      apply eq_num_case n1 n2 rfl rfl
+      exact eq_num_case n1 n2 rfl rfl
     },
     case step.eq_bool b1 b2 {
-      apply eq_bool_case b1 b2 rfl rfl
+      exact eq_bool_case b1 b2 rfl rfl
     },
     case step.eq_right e1 e2 e2' e1_is_value e2_steps {
-      apply eq_right_case e1 e2 e2' e1_is_value e2_steps rfl rfl
+      exact eq_right_case e1 e2 e2' e1_is_value e2_steps rfl rfl
     },
     case step.eq_left e1 e1' e2 e1_steps {
-      apply eq_left_case e1 e1' e2 e1_steps rfl rfl
+      exact eq_left_case e1 e1' e2 e1_steps rfl rfl
     }
   end
 
@@ -140,68 +132,62 @@ lemma typed_cases {p: Prop} {e: exp} {t: typ} (e_typed_t: e ::: t)
   begin
     induction e_typed_t,
     case typed.num n {
-      apply num_case n rfl rfl
+      exact num_case n rfl rfl
     },
     case typed.bool b {
-      apply bool_case b rfl rfl
+      exact bool_case b rfl rfl
     },
     case typed.add e1 e2 e1_typed_num e2_typed_num {
-      apply add_case e1 e2 e1_typed_num e2_typed_num rfl rfl
+      exact add_case e1 e2 e1_typed_num e2_typed_num rfl rfl
     },
     case typed.ite e1 e2 e3 t1 e1_typed_bool e2_typed_t e3_typed_t {
-      apply ite_case e1 e2 e3 e1_typed_bool e2_typed_t e3_typed_t rfl
+      exact ite_case e1 e2 e3 e1_typed_bool e2_typed_t e3_typed_t rfl
     },
     case typed.eq e1 e2 t1 e1_typed_t1 e2_typed_t1 {
-      apply eq_case e1 e2 t1 e1_typed_t1 e2_typed_t1 rfl rfl
-    },
+      exact eq_case e1 e2 t1 e1_typed_t1 e2_typed_t1 rfl rfl
+    }
   end
 
 lemma add_is_not_value {e1 e2: exp} : ¬ is_value (exp.add e1 e2) :=
-  classical.by_contradiction (
-    assume add_is_value: ¬¬ is_value (exp.add e1 e2),
-    is_value_cases (of_not_not add_is_value)
-    (  -- is value num
-      assume n: ℕ,
-      assume add_is_num: exp.add e1 e2 = exp.num n,
-      show false, from exp.no_confusion add_is_num
-    )
-    (  -- is value bool
-      assume b: bool,
-      assume add_is_bool: exp.add e1 e2 = exp.bool b,
-      show false, from exp.no_confusion add_is_bool
-    )
+  assume add_is_value: is_value (exp.add e1 e2),
+  is_value_cases add_is_value
+  (  -- is value num
+    assume n: ℕ,
+    assume add_is_num: exp.add e1 e2 = exp.num n,
+    show false, from exp.no_confusion add_is_num
+  )
+  (  -- is value bool
+    assume b: bool,
+    assume add_is_bool: exp.add e1 e2 = exp.bool b,
+    show false, from exp.no_confusion add_is_bool
   )
 
 lemma ite_is_not_value {e1 e2 e3: exp} : ¬ is_value (exp.ite e1 e2 e3) :=
-  classical.by_contradiction (
-    assume ite_is_value: ¬¬ is_value (exp.ite e1 e2 e3),
-    is_value_cases (of_not_not ite_is_value)
-    (  -- is value num
-      assume n: ℕ,
-      assume add_is_num: exp.ite e1 e2 e3 = exp.num n,
-      show false, from exp.no_confusion add_is_num
-    )
-    (  -- is value bool
-      assume b: bool,
-      assume add_is_bool: exp.ite e1 e2 e3 = exp.bool b,
-      show false, from exp.no_confusion add_is_bool
-    )
+  assume ite_is_value: is_value (exp.ite e1 e2 e3),
+  is_value_cases ite_is_value
+  (  -- is value num
+    assume n: ℕ,
+    assume add_is_num: exp.ite e1 e2 e3 = exp.num n,
+    show false, from exp.no_confusion add_is_num
+  )
+  (  -- is value bool
+    assume b: bool,
+    assume add_is_bool: exp.ite e1 e2 e3 = exp.bool b,
+    show false, from exp.no_confusion add_is_bool
   )
 
 lemma eq_is_not_value {e1 e2: exp} : ¬ is_value (exp.eq e1 e2) :=
-  classical.by_contradiction (
-    assume eq_is_value: ¬¬ is_value (exp.eq e1 e2),
-    is_value_cases (of_not_not eq_is_value)
-    (  -- is value num
-      assume n: ℕ,
-      assume add_is_num: exp.eq e1 e2 = exp.num n,
-      show false, from exp.no_confusion add_is_num
-    )
-    (  -- is value bool
-      assume b: bool,
-      assume add_is_bool: exp.eq e1 e2 = exp.bool b,
-      show false, from exp.no_confusion add_is_bool
-    )
+  assume eq_is_value: is_value (exp.eq e1 e2),
+  is_value_cases eq_is_value
+  (  -- is value num
+    assume n: ℕ,
+    assume add_is_num: exp.eq e1 e2 = exp.num n,
+    show false, from exp.no_confusion add_is_num
+  )
+  (  -- is value bool
+    assume b: bool,
+    assume add_is_bool: exp.eq e1 e2 = exp.bool b,
+    show false, from exp.no_confusion add_is_bool
   )
 
 lemma value_typed_num_is_num {e: exp} (e_typed_num: e ::: typ.num) (e_is_value: is_value e): ∃n: ℕ, e = exp.num n :=
@@ -222,14 +208,14 @@ lemma value_typed_num_is_num {e: exp} (e_typed_num: e ::: typ.num) (e_is_value: 
     assume _ _,
     assume e_is_add: e = exp.add e1 e2,
     assume _,
-    have add_is_value: is_value (exp.add e1 e2), by { rw[e_is_add] at e_is_value, assumption },
+    have add_is_value: is_value (exp.add e1 e2), from e_is_add ▸ e_is_value,
     show ∃n: ℕ, e = exp.num n, from absurd add_is_value add_is_not_value
   )
   ( -- ite
     assume e1 e2 e3: exp,
     assume _ _ _,
     assume e_is_ite: e = exp.ite e1 e2 e3,
-    have ite_is_value: is_value (exp.ite e1 e2 e3), by { rw[e_is_ite] at e_is_value, assumption },
+    have ite_is_value: is_value (exp.ite e1 e2 e3), from eq.subst e_is_ite e_is_value,
     show ∃n: ℕ, e = exp.num n, from absurd ite_is_value ite_is_not_value
   )
   ( -- eq
@@ -237,7 +223,7 @@ lemma value_typed_num_is_num {e: exp} (e_typed_num: e ::: typ.num) (e_is_value: 
     assume _ _ _,
     assume e_is_eq: e = exp.eq e1 e2,
     assume _,
-    have eq_is_value: is_value (exp.eq e1 e2), by { rw[e_is_eq] at e_is_value, assumption },
+    have eq_is_value: is_value (exp.eq e1 e2), from eq.subst e_is_eq e_is_value,
     show ∃n: ℕ, e = exp.num n, from absurd eq_is_value eq_is_not_value
   )
 
@@ -256,12 +242,12 @@ lemma value_typed_bool_is_true_or_false {e: exp} (e_typed_bool: e ::: typ.bool) 
     show e = exp.bool true ∨ e = exp.bool false, by begin
       cases b,
       case tt {
-        apply or.inl,
-        assumption
+        left,
+        show e = exp.bool tt, from e_is_bool
       },
       case ff {
-        apply or.inr,
-        assumption
+        right,
+        show e = exp.bool ff, from e_is_bool
       }
     end
   )
@@ -270,14 +256,14 @@ lemma value_typed_bool_is_true_or_false {e: exp} (e_typed_bool: e ::: typ.bool) 
     assume _ _,
     assume e_is_add: e = exp.add e1 e2,
     assume _,
-    have add_is_value: is_value (exp.add e1 e2), by { rw[e_is_add] at e_is_value, assumption },
+    have add_is_value: is_value (exp.add e1 e2), from eq.subst e_is_add e_is_value,
     show e = exp.bool true ∨ e = exp.bool false, from absurd add_is_value add_is_not_value
   )
   ( -- ite
     assume e1 e2 e3: exp,
     assume _ _ _,
     assume e_is_ite: e = exp.ite e1 e2 e3,
-    have ite_is_value: is_value (exp.ite e1 e2 e3), by { rw[e_is_ite] at e_is_value, assumption },
+    have ite_is_value: is_value (exp.ite e1 e2 e3), from eq.subst e_is_ite e_is_value,
     show e = exp.bool true ∨ e = exp.bool false, from absurd ite_is_value ite_is_not_value
   )
   ( -- eq
@@ -285,7 +271,7 @@ lemma value_typed_bool_is_true_or_false {e: exp} (e_typed_bool: e ::: typ.bool) 
     assume _ _ _,
     assume e_is_eq: e = exp.eq e1 e2,
     assume _,
-    have eq_is_value: is_value (exp.eq e1 e2), by { rw[e_is_eq] at e_is_value, assumption },
+    have eq_is_value: is_value (exp.eq e1 e2), from eq.subst e_is_eq e_is_value,
     show e = exp.bool true ∨ e = exp.bool false, from absurd eq_is_value eq_is_not_value
   )
 
@@ -293,7 +279,7 @@ lemma bool_eq_bool_steps {e: exp} {b1 b2: bool} (e_is_eq: e = exp.eq (exp.bool b
   ∃e', e ⟶ e' :=
   have exp.eq (exp.bool b1) (exp.bool b2) ⟶ exp.bool (b1 = b2), from step.eq_bool,
   have ∃e', exp.eq (exp.bool b1) (exp.bool b2) ⟶ e', from exists.intro (exp.bool (b1 = b2)) this,
-  show ∃e', e ⟶ e', by { rw [←e_is_eq] at this, assumption }
+  show ∃e', e ⟶ e', from eq.symm e_is_eq ▸ this
 
 theorem progress(e: exp) (t: typ) (e_typed_t: e ::: t): is_value e ∨ ∃e', e ⟶ e' :=
   typed.rec_on e_typed_t
@@ -317,23 +303,18 @@ theorem progress(e: exp) (t: typ) (e_typed_t: e ::: t): is_value e ∨ ∃e', e 
     assume e2ih: is_value e2 ∨ ∃e2', e2 ⟶ e2',
     let e := exp.add e1 e2 in
     have e_is_add: e = exp.add e1 e2, from rfl,
-    have e_steps: ∃e', e ⟶ e', from or.elim e1ih (
+    have e_steps: ∃e', e ⟶ e', from or.elim e1ih
+    (
       assume e1_is_value: is_value e1,
       or.elim e2ih (
         assume e2_is_value: is_value e2,
         have e1_exists_num: ∃n1: ℕ, e1 = exp.num n1, from value_typed_num_is_num e1_typed_num e1_is_value,
         have e2_exists_num: ∃n2: ℕ, e2 = exp.num n2, from value_typed_num_is_num e2_typed_num e2_is_value,
-        exists.elim e1_exists_num (
-          assume n1: ℕ,
-          assume e1_is_num: e1 = exp.num n1,
-          exists.elim e2_exists_num (
-            assume n2: ℕ,
-            assume e2_is_num: e2 = exp.num n2,
-            have exp.add (exp.num n1) (exp.num n2) ⟶ exp.num (n1 + n2), from step.add,
-            have e ⟶ exp.num (n1 + n2), by { rw [←e1_is_num, ←e2_is_num, ←e_is_add] at this, assumption },
-            show ∃e', e ⟶ e', from exists.intro (exp.num (n1 + n2)) this
-          )
-        )
+        let ⟨(n1: ℕ), (e1_is_num: e1 = exp.num n1)⟩ := e1_exists_num in
+        let ⟨(n2: ℕ), (e2_is_num: e2 = exp.num n2)⟩ := e2_exists_num in
+        have exp.add (exp.num n1) (exp.num n2) ⟶ exp.num (n1 + n2), from step.add,
+        have e ⟶ exp.num (n1 + n2), from e_is_add.symm ▸ e1_is_num.symm ▸ e2_is_num.symm ▸ this,
+        show ∃e', e ⟶ e', from exists.intro (exp.num (n1 + n2)) this
       )
       (
         assume e2_can_step: ∃e2', e2 ⟶ e2',
@@ -376,13 +357,13 @@ theorem progress(e: exp) (t: typ) (e_typed_t: e ::: t): is_value e ∨ ∃e', e 
       ( -- ite-true
         assume e1_is_true: e1 = exp.bool true,
         have exp.ite (exp.bool true) e2 e3 ⟶ e2, from step.ite_true,
-        have e ⟶ e2, by { rw [←e1_is_true, ←e_is_ite] at this, assumption },
+        have e ⟶ e2, from eq.substr e_is_ite (eq.substr e1_is_true this),
         show ∃e', e ⟶ e', from exists.intro e2 this
       )
       ( -- ite-false
         assume e1_is_false: e1 = exp.bool false,
         have exp.ite (exp.bool false) e2 e3 ⟶ e3, from step.ite_false,
-        have e ⟶ e3, by { rw [←e1_is_false, ←e_is_ite] at this, assumption },
+        have e ⟶ e3, from eq.substr e_is_ite (eq.substr e1_is_false this),
         show ∃e', e ⟶ e', from exists.intro e3 this
       )
     )
@@ -413,8 +394,8 @@ theorem progress(e: exp) (t: typ) (e_typed_t: e ::: t): is_value e ∨ ∃e', e 
         typ_cases t
         ( -- num
           assume t_is_num: t = typ.num,
-          have e1_typed_num: e1 ::: typ.num, by { rw[t_is_num] at e1_typed_t, assumption  },
-          have e2_typed_num: e2 ::: typ.num, by { rw[t_is_num] at e2_typed_t, assumption  },
+          have e1_typed_num: e1 ::: typ.num, from eq.subst t_is_num e1_typed_t,
+          have e2_typed_num: e2 ::: typ.num, from eq.subst t_is_num e2_typed_t,
           have e1_exists_num: ∃n1: ℕ, e1 = exp.num n1, from value_typed_num_is_num e1_typed_num e1_is_value,
           have e2_exists_num: ∃n2: ℕ, e2 = exp.num n2, from value_typed_num_is_num e2_typed_num e2_is_value,
           exists.elim e1_exists_num (
@@ -424,15 +405,16 @@ theorem progress(e: exp) (t: typ) (e_typed_t: e ::: t): is_value e ∨ ∃e', e 
               assume n2: ℕ,
               assume e2_is_num: e2 = exp.num n2,
               have exp.eq (exp.num n1) (exp.num n2) ⟶ exp.bool (n1 = n2), from step.eq_num,
-              have e ⟶ exp.bool (n1 = n2), by { rw [←e1_is_num, ←e2_is_num, ←e_is_eq] at this, assumption },
+              have exp.eq e1 e2 ⟶ exp.bool (n1 = n2), from eq.substr e1_is_num (eq.substr e2_is_num this),
+              have e ⟶ exp.bool (n1 = n2), from eq.substr e_is_eq this,
               show ∃e', e ⟶ e', from exists.intro (exp.bool (n1 = n2)) this
             )
           )
         )
         ( -- bool
           assume t_is_bool: t = typ.bool,
-          have e1_typed_bool: e1 ::: typ.bool, by { rw[t_is_bool] at e1_typed_t, assumption  },
-          have e2_typed_bool: e2 ::: typ.bool, by { rw[t_is_bool] at e2_typed_t, assumption  },
+          have e1_typed_bool: e1 ::: typ.bool, from eq.subst t_is_bool e1_typed_t,
+          have e2_typed_bool: e2 ::: typ.bool, from eq.subst t_is_bool e2_typed_t,
           have e1_some_bool: e1 = exp.bool true ∨ e1 = exp.bool false,
           from value_typed_bool_is_true_or_false e1_typed_bool e1_is_value,
           have e2_some_bool: e2 = exp.bool true ∨ e2 = exp.bool false,
@@ -493,100 +475,88 @@ theorem progress(e: exp) (t: typ) (e_typed_t: e ::: t): is_value e ∨ ∃e', e 
   )
 
 lemma values_not_step {e: exp} (e_is_value: is_value e): ¬ ∃e', e ⟶ e' :=
-  classical.by_contradiction (
-    assume : ¬ ¬ ∃e', e ⟶ e',
-    have e_steps: ∃e', e ⟶ e', from of_not_not this,
-    exists.elim e_steps (
-      assume e': exp,
-      assume e_steps_to_e': e ⟶ e',
-      step_cases e_steps_to_e'
-      ( -- add_case
-        assume n1 n2: ℕ,
-        assume e_is_add: e = exp.add (exp.num n1) (exp.num n2),
-        assume _,
-        have  ¬ is_value (exp.add (exp.num n1) (exp.num n2)), from add_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_add] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- add_right_case
-        assume e1 e2 e2': exp,
-        assume _ _,
-        assume e_is_add: e = exp.add e1 e2,
-        assume _,
-        have  ¬ is_value (exp.add e1 e2), from add_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_add] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- add_left_case
-        assume e1 e1' e2: exp,
-        assume _,
-        assume e_is_add: e = exp.add e1 e2,
-        assume _,
-        have  ¬ is_value (exp.add e1 e2), from add_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_add] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- ite_true_case
-        assume e2 e3: exp,
-        assume e_is_ite: e = exp.ite (exp.bool true) e2 e3,
-        assume _,
-        have  ¬ is_value (exp.ite (exp.bool true) e2 e3), from ite_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_ite] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- ite_false_case
-        assume e2 e3: exp,
-        assume e_is_ite: e = exp.ite (exp.bool false) e2 e3,
-        assume _,
-        have  ¬ is_value (exp.ite (exp.bool false) e2 e3), from ite_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_ite] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- ite_case
-        assume e1 e1' e2 e3: exp,
-        assume _,
-        assume e_is_ite: e = exp.ite e1 e2 e3,
-        assume _,
-        have  ¬ is_value (exp.ite e1 e2 e3), from ite_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_ite] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- eq_num_case
-        assume n1 n2: ℕ,
-        assume e_is_eq: e = exp.eq (exp.num n1) (exp.num n2),
-        assume _,
-        have  ¬ is_value (exp.eq (exp.num n1) (exp.num n2)), from eq_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_eq] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- eq_bool_case
-        assume b1 b2: bool,
-        assume e_is_eq: e = exp.eq (exp.bool b1) (exp.bool b2),
-        assume _,
-        have  ¬ is_value (exp.eq (exp.bool b1) (exp.bool b2)), from eq_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_eq] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- eq_right_case
-        assume e1 e2 e2': exp,
-        assume _ _,
-        assume e_is_eq: e = exp.eq e1 e2,
-        assume _,
-        have  ¬ is_value (exp.eq e1 e2), from eq_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_eq] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
-      ( -- eq_left_case
-        assume e1 e1' e2: exp,
-        assume _,
-        assume e_is_eq: e = exp.eq e1 e2,
-        assume _,
-        have  ¬ is_value (exp.eq e1 e2), from eq_is_not_value,
-        have e_is_not_value: ¬ is_value e, by { rw [←e_is_eq] at this, assumption },
-        show false, from absurd e_is_value e_is_not_value
-      )
+  assume e_steps: ∃e', e ⟶ e',
+  have e_is_not_value: ¬ is_value e, from exists.elim e_steps (
+    assume e': exp,
+    assume e_steps_to_e': e ⟶ e',
+    step_cases e_steps_to_e'
+    ( -- add_case
+      assume n1 n2: ℕ,
+      assume e_is_add: e = exp.add (exp.num n1) (exp.num n2),
+      assume _,
+      have  ¬ is_value (exp.add (exp.num n1) (exp.num n2)), from add_is_not_value,
+      show ¬ is_value e, from e_is_add.symm ▸ this
     )
-  )
+    ( -- add_right_case
+      assume e1 e2 e2': exp,
+      assume _ _,
+      assume e_is_add: e = exp.add e1 e2,
+      assume _,
+      have  ¬ is_value (exp.add e1 e2), from add_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_add] at this, assumption }
+    )
+    ( -- add_left_case
+      assume e1 e1' e2: exp,
+      assume _,
+      assume e_is_add: e = exp.add e1 e2,
+      assume _,
+      have  ¬ is_value (exp.add e1 e2), from add_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_add] at this, assumption }
+    )
+    ( -- ite_true_case
+      assume e2 e3: exp,
+      assume e_is_ite: e = exp.ite (exp.bool true) e2 e3,
+      assume _,
+      have  ¬ is_value (exp.ite (exp.bool true) e2 e3), from ite_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_ite] at this, assumption }
+    )
+    ( -- ite_false_case
+      assume e2 e3: exp,
+      assume e_is_ite: e = exp.ite (exp.bool false) e2 e3,
+      assume _,
+      have  ¬ is_value (exp.ite (exp.bool false) e2 e3), from ite_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_ite] at this, assumption }
+    )
+    ( -- ite_case
+      assume e1 e1' e2 e3: exp,
+      assume _,
+      assume e_is_ite: e = exp.ite e1 e2 e3,
+      assume _,
+      have  ¬ is_value (exp.ite e1 e2 e3), from ite_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_ite] at this, assumption }
+    )
+    ( -- eq_num_case
+      assume n1 n2: ℕ,
+      assume e_is_eq: e = exp.eq (exp.num n1) (exp.num n2),
+      assume _,
+      have  ¬ is_value (exp.eq (exp.num n1) (exp.num n2)), from eq_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_eq] at this, assumption }
+    )
+    ( -- eq_bool_case
+      assume b1 b2: bool,
+      assume e_is_eq: e = exp.eq (exp.bool b1) (exp.bool b2),
+      assume _,
+      have  ¬ is_value (exp.eq (exp.bool b1) (exp.bool b2)), from eq_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_eq] at this, assumption }
+    )
+    ( -- eq_right_case
+      assume e1 e2 e2': exp,
+      assume _ _,
+      assume e_is_eq: e = exp.eq e1 e2,
+      assume _,
+      have  ¬ is_value (exp.eq e1 e2), from eq_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_eq] at this, assumption }
+    )
+    ( -- eq_left_case
+      assume e1 e1' e2: exp,
+      assume _,
+      assume e_is_eq: e = exp.eq e1 e2,
+      assume _,
+      have  ¬ is_value (exp.eq e1 e2), from eq_is_not_value,
+      show ¬ is_value e, by { rw [←e_is_eq] at this, assumption }
+    )
+  ),
+  show false, from absurd e_is_value e_is_not_value
 
 lemma add_step_cases {p: Prop} {e1 e2 e': exp} (add_steps: exp.add e1 e2 ⟶ e')
     (add_case: ∀ (n1 n2: ℕ), e1 = exp.num n1 → e2 = exp.num n2 → e' = exp.num (n1+n2) → p)
