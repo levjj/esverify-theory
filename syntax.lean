@@ -1,4 +1,5 @@
-def var := name
+@[reducible]
+def var := ℕ
 
 inductive unop
 | not    : unop
@@ -46,7 +47,38 @@ with exp: Type
 | app   : exp → exp → exp
 | ite   : exp → exp → exp → exp
 
-notation t₁ `≡` t₂ := term.binop binop.eq t₁ t₂
+inductive prop
+| term : term → prop
+| not  : prop → prop
+| and  : prop → prop → prop
+| or   : prop → prop → prop
+| pre  : term → term → prop
+| pre₁ : unop → term → prop
+| pre₂ : binop → term → term → prop
+| post : term → term → prop
+| call : term → term → prop
+| forallc : var → term → prop → prop
+| univ    : var → prop → prop
+| exis : var → prop → prop
 
-instance : has_coe value exp := ⟨exp.value⟩
-instance : has_coe value term := ⟨term.value⟩
+inductive termctx
+| hole  : termctx
+| value : value → termctx
+| var   : var → termctx
+| unop  : unop → termctx → termctx
+| binop : binop → termctx → termctx → termctx
+| app   : termctx → termctx → termctx
+
+inductive propctx
+| term    : termctx → propctx
+| not     : propctx → propctx
+| and     : propctx → propctx → propctx
+| or      : propctx → propctx → propctx
+| pre     : termctx → termctx → propctx
+| pre₁    : unop → termctx → propctx
+| pre₂    : binop → termctx → termctx → propctx
+| post    : termctx → termctx → propctx
+| call    : termctx → termctx → propctx
+| forallc : var → termctx → propctx → propctx
+| univ    : var → propctx → propctx
+| exis    : var → propctx → propctx
