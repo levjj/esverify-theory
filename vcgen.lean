@@ -1,4 +1,4 @@
-import .syntax .etc .props
+import .syntax .etc .evaluation .props
 
 reserve infix `⊢`:10
 
@@ -59,7 +59,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     ⟪ prop.implies P (term.unop unop.isBool x) ⟫ →
     (P ⊢ exp.ite x e₁ e₂ : (propctx.implies x Q₁ & propctx.implies (term.unop unop.not x) Q₂))
 
-| return {P: prop} {op: unop} {e: exp} {x: var}:
+| return {P: prop} {x: var}:
     x ∈ FV P →
     (P ⊢ exp.return x : x ≣ •)
 
@@ -101,9 +101,12 @@ notation P `⊩` s : 10 := stack.vcgen P s
     (P₁ & P₂ ⊢ e : Q) →
     (P₁ ⊩ (σ, e))
 
-| cons {P₁ P₂: prop} {s: stack} {σ: env} {f x y: var} {e: exp} {Q: propctx}:
+| cons {P₁ P₂: prop} {s: stack} {σ σ': env} {f g x y z: var} {R S: spec} {e: exp} {v: value} {Q: propctx}:
     (P₁ ⊩ s) →
     (⊢ σ : P₂) →
+    (σ f = value.func g z R S e σ') →
+    (σ x = v) →
+    ((σ[g↦value.func g z R S e σ'][z↦v], e) ⟶* s) →
     (P₁ & P₂ ⊢ letapp y = f[x] in e : Q) →
     (P₁ ⊩ (s · [σ, let y = f[x] in e]))
 

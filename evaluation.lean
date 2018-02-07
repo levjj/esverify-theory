@@ -68,13 +68,13 @@ notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
     (op v₁ v₂ = v) →
     ((σ, letop2 z = op [x, y] in e) ⟶ none, (σ[z↦v], e))
 
-| app {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {d v: value}:
+| app {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {v: value}:
     (σ f = value.func g z R S e σ') →
     (σ x = v) →
-    ((σ, letapp y = f [x] in e') ⟶ none,
-    ((σ[g↦value.func g z R S e σ'][x↦v], e) · [σ, let y = f[x] in e']))
+    ((σ, letapp y = f[x] in e') ⟶ none,
+    ((σ[g↦value.func g z R S e σ'][z↦v], e) · [σ, let y = f[x] in e']))
 
-| return {σ σ': env} {f g x y z: var} {e: exp} {v: value}:
+| return {σ σ': env} {f x y z: var} {e: exp} {v: value}:
     (σ z = v) →
     ((σ, exp.return z) · [σ', let y = f[x] in e] ⟶ some ⟨f, x, y⟩, (σ'[y↦v], e))
 
