@@ -1,16 +1,16 @@
 import .syntax .etc
 
 def unop.apply: unop → value → option value
-| unop.not value.true                := value.false
-| unop.not value.false               := value.true
-| unop.isInt (value.num _)           := value.true
-| unop.isInt _                       := value.false
-| unop.isBool value.true             := value.true
-| unop.isBool value.false            := value.true
-| unop.isBool _                      := value.false
-| unop.isFunc (value.func _ _ _ _ _) := value.true
-| unop.isFunc _                      := value.false
-| _ _                                := none
+| unop.not value.true                  := value.false
+| unop.not value.false                 := value.true
+| unop.isInt (value.num _)             := value.true
+| unop.isInt _                         := value.false
+| unop.isBool value.true               := value.true
+| unop.isBool value.false              := value.true
+| unop.isBool _                        := value.false
+| unop.isFunc (value.func _ _ _ _ _ _) := value.true
+| unop.isFunc _                        := value.false
+| _ _                                  := none
 
 instance : has_coe_to_fun unop := ⟨λ _, value → option value, unop.apply⟩
 
@@ -37,168 +37,60 @@ def binop.apply: binop → value → value → option value
 
 instance : has_coe_to_fun binop := ⟨λ _, value → value → option value, binop.apply⟩
 
-mutual inductive value.substituted, term.substituted, spec.substituted, exp.substituted
+inductive step : stack → option call → stack → Prop
+notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 
-with value.substituted : value → var → value → value → Prop
+| ctx {s s': stack} {c: option call} {σ: env} {y f x: var} {e: exp}:
+    (s ⟶ c, s') →
+    (s · [σ, let y = f[x] in e] ⟶ c, (s' · [σ, let y = f[x] in e]))
 
-| num {x: var} {v: value} {n: ℤ} :
-    value.substituted (value.num n) x v (value.num n)
+| tru {σ: env} {x: var} {e: exp}:
+    (σ, lett x = true in e) ⟶ none, (σ[x↦value.true], e)
 
-| true {x: var} {v: value} :
-    value.substituted value.true x v value.true
+| fals {σ: env} {x: var} {e: exp}:
+    (σ, letf x = false in e) ⟶ none, (σ[x↦value.false], e)
 
-| false {x: var} {v: value} :
-    value.substituted value.false x v value.false
+| num {σ: env} {x: var} {e: exp} {n: ℤ}:
+    (σ, letn x = n in e) ⟶ none, (σ[x↦value.num n], e)
 
-| func_f_same {v: value} {f x: var} {R S: spec} {e: exp} :
-    value.substituted (value.func f x R S e) f v (value.func f x R S e)
+| closure {σ: env} {R S: spec} {f x: var} {e₁ e₂: exp}:
+    (σ, letf f[x] req R ens S {e₁} in e₂) ⟶ none,
+    (σ[f↦value.func f x R S e₁ σ], e₂)
 
-| func_x_same {v: value} {f x: var} {R S: spec} {e: exp} :
-    value.substituted (value.func f x R S e) x v (value.func f x R S e)
+| unop {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
+    (σ x = v₁) →
+    (op v₁ = v) →
+    ((σ, letop y = op [x] in e) ⟶ none, (σ[y↦v], e))
 
-| func {f x y: var} {R R' S S': spec} {e e': exp} {v: value} :
-    (x ≠ f) →
-    (x ≠ y) →
-    exp.substituted e x v e' →
-    spec.substituted R x v R' →
-    spec.substituted S x v S' →
-    value.substituted (value.func f y R S e) x v (value.func f y R' S' e')
+| binop {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
+    (σ x = v₁) →
+    (σ y = v₂) →
+    (op v₁ v₂ = v) →
+    ((σ, letop2 z = op [x, y] in e) ⟶ none, (σ[z↦v], e))
 
-with term.substituted : term → var → value → term → Prop
+| app {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {d v: value}:
+    (σ f = value.func g z R S e σ') →
+    (σ x = v) →
+    ((σ, letapp y = f [x] in e') ⟶ none,
+    ((σ[g↦value.func g z R S e σ'][x↦v], e) · [σ, let y = f[x] in e']))
 
-| value {x: var} {v v₁ v₁': value} :
-    value.substituted v₁ x v v₁' →
-    term.substituted v₁ x v v₁'
+| return {σ σ': env} {f g x y z: var} {e: exp} {v: value}:
+    (σ z = v) →
+    ((σ, exp.return z) · [σ', let y = f[x] in e] ⟶ some ⟨f, x, y⟩, (σ'[y↦v], e))
 
-| same_var {x: var} {v: value} :
-    term.substituted (term.var x) x v v
+| ite_true {σ: env} {e₁ e₂: exp} {x: var}:
+    (σ x = value.true) →
+    ((σ, exp.ite x e₁ e₂) ⟶ none, (σ, e₁))
 
-| diff_var {x y: var} {v: value}:
-    (x ≠ y) →
-    term.substituted (term.var y) x v (term.var y)
+| ite_false {σ: env} {e₁ e₂: exp} {x: var}:
+    (σ x = value.false) →
+    ((σ, exp.ite x e₁ e₂) ⟶ none, (σ, e₂))
 
-| unop {x: var} {v: value} {op: unop} {t t': term}:
-    term.substituted t x v t' →
-    term.substituted (term.unop op t) x v (term.unop op t')
+notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 
-| binop {x: var} {v: value} {op: binop} {t₁ t₁' t₂ t₂': term}:
-    term.substituted t₁ x v t₁' →
-    term.substituted t₂ x v t₂' →
-    term.substituted (term.binop op t₁ t₂) x v (term.binop op t₁' t₂')
+inductive trans_step : stack → stack → Prop
+notation s `⟶*` s':100 := trans_step s s'
+| rfl {s: stack}                    : s ⟶* s
+| trans {s s' s'': stack} {c: call} : (s ⟶ c, s') → (s' ⟶* s'') → (s ⟶* s'')
 
-| app {x: var} {v: value} {t₁ t₁' t₂ t₂': term}:
-    term.substituted t₁ x v t₁' →
-    term.substituted t₂ x v t₂' →
-    term.substituted (term.app t₁ t₂) x v (term.app t₁' t₂')
-
-with spec.substituted : spec → var → value → spec → Prop
-
-| term {x: var} {v: value} {t t': term} :
-    term.substituted t x v t' →
-    spec.substituted (spec.term t) x v (spec.term t')
-
-| not {x: var} {v: value} {R R': spec} :
-    spec.substituted R x v R' →
-    spec.substituted (spec.not R) x v (spec.not R')
-
-| and {x: var} {v: value} {R R' S S': spec} :
-    spec.substituted R x v R' →
-    spec.substituted S x v S' →
-    spec.substituted (spec.and R S) x v (spec.and R' S')
-
-| or {x: var} {v: value} {R R' S S': spec} :
-    spec.substituted R x v R' →
-    spec.substituted S x v S' →
-    spec.substituted (spec.or R S) x v (spec.or R' S')
-
-| func_x_same {x: var} {v: value} {R S: spec} {t t': term} :
-    term.substituted t x v t' →
-    spec.substituted (spec.func t x R S) x v (spec.func t' x R S)
-
-| func {x y: var} {v: value} {R R' S S': spec} {t t': term} :
-    (x ≠ y) →
-    term.substituted t x v t' →
-    spec.substituted R x v R' →
-    spec.substituted S x v S' →
-    spec.substituted (spec.func t y R S) x v (spec.func t' y R' S')
-
-with exp.substituted : exp → var → value → exp → Prop
-
-| value {x: var} {v v₁ v₁': value} :
-    value.substituted v₁ x v v₁' →
-    exp.substituted v₁ x v v₁'
-
-| same_var {x: var} {v: value} :
-    exp.substituted (exp.var x) x v v
-
-| diff_var {x y: var} {v: value} :
-    (x ≠ y) →
-    exp.substituted (exp.var y) x v (exp.var y)
-
-| unop {x: var} {v: value} {op: unop} {e e': exp}:
-    exp.substituted e x v e' →
-    exp.substituted (exp.unop op e) x v (exp.unop op e')
-
-| binop {x: var} {v: value} {op: binop} {e₁ e₁' e₂ e₂': exp}:
-    exp.substituted e₁ x v e₁' →
-    exp.substituted e₂ x v e₂' →
-    exp.substituted (exp.binop op e₁ e₂) x v (exp.binop op e₁' e₂')
-
-| app {x: var} {v: value} {e₁ e₁' e₂ e₂': exp}:
-    exp.substituted e₁ x v e₁' →
-    exp.substituted e₂ x v e₂' →
-    exp.substituted (exp.app e₁ e₂) x v (exp.app e₁' e₂')
-
-inductive step : exp → exp → Prop
-notation e₁ `⟶` e₂:100 := step e₁ e₂
-
-| unop_ctx {op: unop} {e e': exp} :
-    (e ⟶ e') →
-    (exp.unop op e ⟶ exp.unop op e')
-
-| unop {op: unop} {v v': value} :
-    (op v = some v') →
-    (exp.unop op v ⟶ v')
-
-| binop_left {op: binop} {e₁ e₁' e₂: exp}:
-    (e₁ ⟶ e₁') →
-    (exp.binop op e₁ e₂ ⟶ exp.binop op e₁' e₂)
-
-| binop_right {op: binop} {v₁: value} {e₂ e₂': exp}:
-    (e₂ ⟶ e₂') →
-    (exp.binop op v₁ e₂ ⟶ exp.binop op v₁ e₂')
-
-| binop {op: binop} {v₁ v₂ v': value} :
-    (op v₁ v₂ = some v') →
-    (exp.binop op v₁ v₂ ⟶ v')
-
-| app_left {e₁ e₁' e₂: exp}:
-    (e₁ ⟶ e₁') →
-    (exp.app e₁ e₂ ⟶ exp.app e₁' e₂)
-
-| app_right {v₁: value} {e₂ e₂': exp}:
-    (e₂ ⟶ e₂') →
-    (exp.app  v₁ e₂ ⟶ exp.app v₁ e₂')
-
-| app {f x: var} {R S: spec} {e e': exp} {v: value}:
-    (e.substituted x v e') →
-    (exp.app (value.func f x R S e) v ⟶ e')
-
-| ite {e1 e1' e2 e3: exp}:
-    (e1 ⟶ e1') →
-    (exp.ite e1 e2 e3 ⟶ exp.ite e1' e2 e3)
-
-| ite_true {e2 e3: exp}:
-    exp.ite value.true e2 e3 ⟶ e2
-
-| ite_false {e2 e3: exp}:
-    exp.ite value.false e2 e3 ⟶ e3
-
-notation e1 `⟶` e2:100 := step e1 e2
-
-inductive trans_step : exp → exp → Prop
-notation e `⟶*` e':100 := trans_step e e'
-| rfl {e: exp}:          e ⟶* e
-| trans {e e' e'': exp}: (e ⟶ e') → (e' ⟶* e'') → (e ⟶* e'')
-
-notation e `⟶*` e':100 := trans_step e e'
+notation s `⟶*` s':100 := trans_step s s'
