@@ -7,25 +7,24 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
 
 | tru {P: prop} {x: var} {e: exp} {Q: propctx}:
     x ∉ FV P →
-    (P & x ≡ term.true ⊢ e : Q) →
-    (P ⊢ lett x = true in e : propctx.exist x (x ≡ term.true & Q))
+    (P & x ≡ value.true ⊢ e : Q) →
+    (P ⊢ lett x = true in e : propctx.exist x (x ≡ value.true & Q))
 
 | fals {P: prop} {x: var} {e: exp} {Q: propctx}:
     x ∉ FV P →
-    (P & x ≡ term.false ⊢ e : Q) →
-    (P ⊢ letf x = false in e : propctx.exist x (x ≡ term.false & Q))
+    (P & x ≡ value.false ⊢ e : Q) →
+    (P ⊢ letf x = false in e : propctx.exist x (x ≡ value.false & Q))
 
 | num {P: prop} {x: var} {n: ℕ} {e: exp} {Q: propctx}:
     x ∉ FV P →
-    (P & x ≡ term.num n ⊢ e : Q) →
-    (P ⊢ letn x = n in e : propctx.exist x (x ≡ term.num n & Q))
+    (P & x ≡ value.num n ⊢ e : Q) →
+    (P ⊢ letn x = n in e : propctx.exist x (x ≡ value.num n & Q))
 
 | func {P: prop} {f x: var} {R S: spec} {e₁ e₂: exp} {Q₁ Q₂: propctx}:
     f ∉ FV P →
     x ∉ FV P →
     (P & spec.func f x R S & R ⊢ e₂ : Q₂) →
-    ⟪ prop.implies (P & (spec.func f x R S) & R)
-                   (Q₂ (term.app f x)) ⟫ →
+    ⟪prop.implies (P & spec.func f x R S & R & Q₂ (term.app f x)) S⟫ →
     (P ⊢ letf f[x] req R ens S {e₁} in e₂ :
          propctx.exist f (spec.func f x R S & Q₁))
 
@@ -69,45 +68,44 @@ inductive env.vcgen : env → prop → Prop
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
 | empty:
-    ⊢ env.empty : term.true
+    ⊢ env.empty : value.true
 
 | tru {σ: env} {x: var} {Q: prop}:
     (⊢ σ : Q) →
-    (⊢ (σ[x ↦ value.true]) : (Q & x ≡ term.true))
+    (⊢ (σ[x ↦ value.true]) : (Q & x ≡ value.true))
 
 | fls {σ: env} {x: var} {Q: prop}:
     (⊢ σ : Q) →
-    (⊢ (σ[x ↦ value.false]) : (Q & x ≡ term.false))
+    (⊢ (σ[x ↦ value.false]) : (Q & x ≡ value.false))
 
-| num {σ: env} {x: var} {n: ℤ} {Q: prop}:
+| num {n: ℤ} {σ: env} {x: var} {Q: prop}:
     (⊢ σ : Q) →
-    (⊢ (σ[x ↦ value.num n]) : (Q & x ≡ term.num n))
+    (⊢ (σ[x ↦ value.num n]) : (Q & x ≡ value.num n))
 
-| func {σ₁ σ₂: env} {f x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
+| func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
     (⊢ σ₁ : Q₁) →
     (⊢ σ₂ : Q₂) →
-    (Q₂ & spec.func f x R S & R ⊢ e : Q₃) →
-    ⟪ prop.implies (Q₂ & (spec.func f x R S) & R)
-                   (Q₃ (term.app f x)) ⟫ →
-    (⊢ (σ₁[x ↦ value.func f x R S e σ₂]) : (Q₁ & spec.func f x R S))
+    (Q₂ & spec.func g x R S & R ⊢ e : Q₃) →
+    ⟪prop.implies (Q₂ & spec.func g x R S & R & Q₃ (term.app g x)) S⟫ →
+    (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) : (Q₁ & spec.func f x R S & f ≡ value.func g x R S e σ₂))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
-inductive stack.vcgen : prop → stack → Prop
-notation P `⊩` s : 10 := stack.vcgen P s
+inductive stack.vcgen : list call → stack → Prop
+notation H `⊩` s : 10 := stack.vcgen H s
 
-| top {P₁ P₂: prop} {σ: env} {e: exp} {Q: propctx}:
-    (⊢ σ : P₂) →
-    (P₁ & P₂ ⊢ e : Q) →
-    (P₁ ⊩ (σ, e))
+| top {H: list call} {P: prop} {σ: env} {e: exp} {Q: propctx}:
+    (⊢ σ : P) →
+    (H & P ⊢ e : Q) →
+    (H ⊩ (σ, e))
 
-| cons {P₁ P₂: prop} {s: stack} {σ σ': env} {f g x y z: var} {R S: spec} {e: exp} {v: value} {Q: propctx}:
-    (P₁ ⊩ s) →
-    (⊢ σ : P₂) →
+| cons {H: list call} {P: prop} {s: stack} {σ σ': env} {f g x y z: var} {R S: spec} {e: exp} {v: value} {Q: propctx}:
+    (H ⊩ s) →
+    (⊢ σ : P) →
     (σ f = value.func g z R S e σ') →
     (σ x = v) →
     ((σ[g↦value.func g z R S e σ'][z↦v], e) ⟶* s) →
-    (P₁ & P₂ ⊢ letapp y = f[x] in e : Q) →
-    (P₁ ⊩ (s · [σ, let y = f[x] in e]))
+    (H & P ⊢ letapp y = f[x] in e : Q) →
+    (H ⊩ (s · [σ, let y = f[x] in e]))
 
 notation P `⊩` s : 10 := stack.vcgen P s

@@ -10,6 +10,7 @@ def propctx.implies(p q: propctx): propctx := propctx.or (propctx.not p) q
 
 -- P & Q
 class has_and (α : Type) := (and : α → α → α) 
+instance : has_and spec := ⟨spec.and⟩
 instance : has_and prop := ⟨prop.and⟩
 instance : has_and propctx := ⟨propctx.and⟩
 infix `&`:10 := has_and.and
@@ -18,9 +19,10 @@ infix `&`:10 := has_and.and
 notation `•` := termctx.hole
 
 -- simple coercions
-instance : has_coe var term := ⟨term.var⟩
-instance : has_coe term prop := ⟨prop.term⟩
-instance : has_coe termctx propctx := ⟨propctx.term⟩
+instance value_to_term : has_coe value term := ⟨term.value⟩
+instance var_to_term : has_coe var term := ⟨term.var⟩
+instance term_to_prop : has_coe term prop := ⟨prop.term⟩
+instance termctx_to_propctx : has_coe termctx propctx := ⟨propctx.term⟩
 
 -- use (t ≡ t)/(t ≣ t) to construct equality comparison
 infix ≡ := term.binop binop.eq
@@ -44,21 +46,39 @@ notation st `·` `[` env `,` `let` y `=`:1 f `[` x `]` `in` e `]` := stack.cons 
 -- (σ, e) : stack
 instance : has_coe (env × exp) stack := ⟨λe, stack.top e.1 e.2⟩
 
+-- auxiliary lemmas for nat
+
+lemma nonneg_of_nat {n: ℕ}: 0 ≤ n := nat.rec_on n
+  (show 0 ≤ 0, by refl)
+  (λn zero_lt_n, show 0 ≤ n + 1, from le_add_of_le_of_nonneg zero_lt_n zero_le_one)
+
+lemma lt_of_add_one {n: ℕ}: n < n + 1 :=
+  have n ≤ n, by refl,
+  show n < n + 1, from lt_add_of_le_of_pos this zero_lt_one
+
+lemma lt_of_add {n m: ℕ}: n < n + m + 1 ∧ m < n + m + 1 :=
+  have n_nonneg: 0 ≤ n, from nonneg_of_nat,
+  have m_nonneg: 0 ≤ m, from nonneg_of_nat,
+  have n ≤ n, by refl,
+  have n ≤ n + m, from le_add_of_le_of_nonneg this m_nonneg,
+  have h₁: n < n + m + 1, from lt_add_of_le_of_pos this zero_lt_one,
+  have m ≤ m, by refl,
+  have m ≤ m + n, from le_add_of_le_of_nonneg this n_nonneg,
+  have m ≤ n + m, by { rw[add_comm], assumption },
+  have h₂: m < n + m + 1, from lt_add_of_le_of_pos this zero_lt_one,
+  ⟨h₁, h₂⟩
+
 -- env lookup as function application
 
 @[reducible]
 def env.size: env → ℕ := env.rec (λ_, ℕ) 0 (λ_ _ _ n, n + 1)
 instance : has_sizeof env := ⟨env.size⟩
 
-lemma subenv_smaller (σ: env) (x: var) (v: value): σ.size < (σ[x ↦ v].size) :=
-  have σ.size ≤ σ.size, by refl,
-  lt_add_of_le_of_pos this zero_lt_one
-
 def env.apply: env → var → option value
 | env.empty _ := none
 | (σ[x↦v]) y :=
-  have σ.size < (σ[x ↦ v].size), from subenv_smaller σ x v,
-  if x = y then v else env.apply σ y
+  have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
+  if x = y then v else σ.apply y
 
 instance : has_coe_to_fun env := ⟨λ _, var → option value, env.apply⟩
 
@@ -70,24 +90,42 @@ instance : has_mem var env := ⟨λx σ, σ.contains x⟩
 
 -- spec to prop coercion
 
+@[reducible]
+def spec.size: spec → ℕ := spec.rec (λ_, ℕ)
+  (λ_, 0)
+  (λ_ n, n + 1)
+  (λ_ _ n m , n + m + 1)
+  (λ_ _ n m , n + m + 1)
+  (λ_ _ _ _ n m , n + m + 1)
+
+instance : has_sizeof spec := ⟨spec.size⟩
+
 def spec.to_prop : spec → prop
 | (spec.term t)       := prop.term t
-| (spec.not S)        := prop.not S.to_prop
-| (spec.and R S)      := R.to_prop & S.to_prop
-| (spec.or R S)       := prop.or R.to_prop S.to_prop
+| (spec.not S)        :=
+    have S.size < S.not.size, from lt_of_add_one,
+    prop.not S.to_prop
+| (spec.and R S)      :=
+    have R.size < (R & S).size, from lt_of_add.left,
+    have S.size < (R & S).size, from lt_of_add.right,
+    R.to_prop & S.to_prop
+| (spec.or R S)       :=
+    have R.size < (R & S).size, from lt_of_add.left,
+    have S.size < (R & S).size, from lt_of_add.right,
+    prop.or R.to_prop S.to_prop
 | (spec.func f x R S) :=
-  (term.unop unop.isFunc f) &
-  (prop.forallc x f (prop.implies R.to_prop (prop.pre f x)
-                   & prop.implies (R.to_prop & prop.post f x) S.to_prop))
+    have R.size < (R & S).size, from lt_of_add.left,
+    have S.size < (R & S).size, from lt_of_add.right,
+    (term.unop unop.isFunc f) &
+    (prop.forallc x f (prop.implies R.to_prop (prop.pre f x)
+                     & prop.implies (R.to_prop & prop.post f x) S.to_prop))
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
 
 -- term to termctx coercion
 
 def term.to_termctx : term → termctx
-| term.true             := termctx.true
-| term.false            := termctx.false
-| (term.num n)          := termctx.num n
+| (term.value v)        := termctx.value v
 | (term.var x)          := termctx.var x
 | (term.unop op t)      := termctx.unop op t.to_termctx
 | (term.binop op t₁ t₂) := termctx.binop op t₁.to_termctx t₂.to_termctx
@@ -115,14 +153,12 @@ instance prop_to_propctx : has_coe prop propctx := ⟨prop.to_propctx⟩
 -- termctx substituttion as function application
 
 def termctx.apply: termctx → term → term
-| •                        t := t
-| termctx.true             _ := term.true
-| termctx.false            _ := term.false
-| (termctx.num n)          _ := term.num n
-| (termctx.var x)          _ := term.var x
-| (termctx.unop op t₁)     t := term.unop op (t₁.apply t)
-| (termctx.binop op t₁ t₂) t := term.binop op (t₁.apply t) (t₂.apply t)
-| (termctx.app t₁ t₂)      t := term.app (t₁.apply t) (t₂.apply t)
+| •                           t := t
+| (termctx.value v)           _ := term.value v
+| (termctx.var x)             _ := term.var x
+| (termctx.unop op t₁)        t := term.unop op (t₁.apply t)
+| (termctx.binop op t₁ t₂)    t := term.binop op (t₁.apply t) (t₂.apply t)
+| (termctx.app t₁ t₂)         t := term.app (t₁.apply t) (t₂.apply t)
 
 instance : has_coe_to_fun termctx := ⟨λ _, term → term, termctx.apply⟩
 
@@ -146,7 +182,11 @@ instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 -- call history to prop coercion
 
 def calls_to_prop: list call → prop
-| list.nil           := term.true
-| (⟨f, x, y⟩ :: rest) := prop.call f x & prop.post f x & term.app f x ≡ y & calls_to_prop rest
+| list.nil := value.true
+| (⟨f, x, R, S, e, σ, vₓ, v⟩ :: rest) :=
+    prop.call (value.func f x R S e σ) vₓ &
+    prop.post (value.func f x R S e σ) vₓ &
+    term.app (value.func f x R S e σ) vₓ ≡ v &
+    calls_to_prop rest
 
 instance call_to_prop: has_coe (list call) prop := ⟨calls_to_prop⟩

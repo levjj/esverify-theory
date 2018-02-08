@@ -1,12 +1,15 @@
+-- x ∈ VariableNames
 @[reducible]
 def var := ℕ
 
+-- ⊗ ∈ UnaryOperators
 inductive unop
 | not    : unop
 | isInt  : unop
 | isBool : unop
 | isFunc : unop
 
+-- ⊕ ∈ BinaryOperators
 inductive binop
 | plus  : binop
 | minus : binop
@@ -17,34 +20,16 @@ inductive binop
 | eq    : binop
 | lt    : binop
 
-inductive term
-| true  : term
-| false : term
-| num   : ℤ → term
-| var   : var → term
-| unop  : unop → term → term
-| binop : binop → term → term → term
-| app   : term → term → term
+mutual inductive value, exp, term, spec, env
 
-inductive spec
-| term : term → spec
-| not  : spec → spec
-| and  : spec → spec → spec
-| or   : spec → spec → spec
-| func : term → var → spec → spec → spec
-
-mutual inductive value, env, exp
-
+-- v ∈ Values := true | false | n | <func f(x) R S {e}, σ>
 with value: Type
 | true  : value
 | false : value
 | num   : ℤ → value
 | func  : var → var → spec → spec → exp → env → value
 
-with env: Type
-| empty : env
-| cons  : var → value → env → env -- [x: v, env]
-
+-- e ∈ Expressions := ...
 with exp: Type
 | true   : var → exp → exp                           -- let x = true in e
 | false  : var → exp → exp                           -- let x = false in e
@@ -56,12 +41,37 @@ with exp: Type
 | ite    : var → exp → exp → exp                     -- if x then e else e
 | return : var → exp                                 -- return x
 
+-- A ∈ LogicalTerms := v | x | ⊗A | A⊕A | A(A)
+with term: Type
+| value : value → term
+| var   : var → term
+| unop  : unop → term → term
+| binop : binop → term → term → term
+| app   : term → term → term
+
+-- R,S ∈ Specs := A | ¬ R | R ∧ S | R ∨ S | spec A(x) req R ens S
+with spec: Type
+| term : term → spec
+| not  : spec → spec
+| and  : spec → spec → spec
+| or   : spec → spec → spec
+| func : term → var → spec → spec → spec
+
+-- σ ∈ Environments := • | σ[x ↦ v]
+with env: Type
+| empty : env
+| cons  : var → value → env → env
+
+-- s ∈ Stacks := (σ, e) | s · (σ, let y = f(x) in e)
 inductive stack
-| top  : env → exp → stack -- (σ, e)
-| cons : stack → env → var → var → var → exp → stack -- κ · (σ, let y = f(x) in e)
+| top  : env → exp → stack
+| cons : stack → env → var → var → var → exp → stack
 
-structure call := (f: var) (x: var) (y: var) -- f(x)=y
+ -- H ∈ CallHistory := f(vₓ)=v (all values closed)
+ structure call := (f: var) (x: var) (R: spec) (S: spec) (e: exp) (σ: env) (vₓ: value) (v: value)
 
+-- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
+--                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P
 inductive prop
 | term    : term → prop
 | not     : prop → prop
@@ -75,16 +85,18 @@ inductive prop
 | forallc : var → term → prop → prop
 | exist   : var → prop → prop
 
+-- A[•] ∈ TermContexts := • | v | x | ⊗ A[•] | A[•] ⊕ A[•] | A[•] ( A[•] )
 inductive termctx
 | hole  : termctx
-| true  : termctx
-| false : termctx
-| num   : ℤ → termctx
+| value : value → termctx
 | var   : var → termctx
 | unop  : unop → termctx → termctx
 | binop : binop → termctx → termctx → termctx
 | app   : termctx → termctx → termctx
 
+-- P[•], Q[•] ∈ PropositionsContexts := A[•] | ¬ P[•] | P[•] ∧ Q[•] | P[•] ∨ Q[•]
+--             | pre(A[•], A[•]) | pre(⊗, A[•]) | pre(⊕, A[•], A[•]) | post(A[•], A[•])
+--             | call(A[•], A[•]) | ∀x. {call(A[•], x)} ⇒ P[•] | ∃x. P[•]
 inductive propctx
 | term    : termctx → propctx
 | not     : propctx → propctx
