@@ -8,11 +8,15 @@ def prop.implies(p q: prop): prop := prop.or (prop.not p) q
 @[reducible]
 def propctx.implies(p q: propctx): propctx := propctx.or (propctx.not p) q
 
+@[reducible]
+def qfprop.implies(p q: qfprop): qfprop := qfprop.or (qfprop.not p) q
+
 -- P & Q
 class has_and (α : Type) := (and : α → α → α) 
 instance : has_and spec := ⟨spec.and⟩
 instance : has_and prop := ⟨prop.and⟩
 instance : has_and propctx := ⟨propctx.and⟩
+instance : has_and qfprop := ⟨qfprop.and⟩
 infix `&`:10 := has_and.and
 
 -- use • as hole
@@ -23,6 +27,7 @@ instance value_to_term : has_coe value term := ⟨term.value⟩
 instance var_to_term : has_coe var term := ⟨term.var⟩
 instance term_to_prop : has_coe term prop := ⟨prop.term⟩
 instance termctx_to_propctx : has_coe termctx propctx := ⟨propctx.term⟩
+instance term_to_qfprop : has_coe term qfprop := ⟨qfprop.term⟩
 
 -- use (t ≡ t)/(t ≣ t) to construct equality comparison
 infix ≡ := term.binop binop.eq

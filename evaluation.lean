@@ -74,11 +74,11 @@ notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
     ((σ, letapp y = f[x] in e') ⟶ none,
     ((σ[g↦value.func g z R S e σ'][z↦v], e) · [σ, let y = f[x] in e']))
 
-| return {σ₁ σ₂ σ₃: env} {f x y z: var} {R S: spec} {e e': exp} {v vₓ: value}:
+| return {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R S: spec} {e e': exp} {v vₓ: value}:
     (σ₁ z = v) →
-    (σ₂ f = value.func f x R S e σ₃) →
+    (σ₂ f = value.func g gx R S e σ₃) →
     (σ₂ x = vₓ) →
-    ((σ₁, exp.return z) · [σ₂, let y = f[x] in e'] ⟶ some ⟨f, x, R, S, e, σ₃, vₓ, v⟩, (σ₂[y↦v], e'))
+    ((σ₁, exp.return z) · [σ₂, let y = f[x] in e'] ⟶ some ⟨g, gx, R, S, e, σ₃, vₓ, v⟩, (σ₂[y↦v], e'))
 
 | ite_true {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.true) →

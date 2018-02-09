@@ -109,3 +109,14 @@ inductive propctx
 | call    : termctx → termctx → propctx
 | forallc : var → termctx → propctx → propctx
 | exist   : var → propctx → propctx
+
+-- P,Q ∈ QuantifierFreePropositions := ...
+inductive qfprop
+| term    : term → qfprop
+| not     : qfprop → qfprop
+| and     : qfprop → qfprop → qfprop
+| or      : qfprop → qfprop → qfprop
+| pre     : term → term → qfprop
+| pre₁    : unop → term → qfprop
+| pre₂    : binop → term → term → qfprop
+| post    : term → term → qfprop
