@@ -3,7 +3,7 @@ import .syntax .etc
 -- free variables
 
 inductive free_in_term (x: var) : term → Prop
-| freevar                          : free_in_term x
+| var                              : free_in_term x
 | unop {t: term} {op: unop}        : free_in_term t → free_in_term (term.unop op t)
 | binop₁ {t₁ t₂: term} {op: binop} : free_in_term t₁ → free_in_term (term.binop op t₁ t₂)
 | binop₂ {t₁ t₂: term} {op: binop} : free_in_term t₂ → free_in_term (term.binop op t₁ t₂)
@@ -62,11 +62,50 @@ def FV {α: Type} [h: has_fv α] (a: α): set var := (has_fv.fv a).to_set
 
 -- helper lemmas
 
-lemma free_in_term.freevar.inv {x y: var}: free_in_term x y → (x = y) :=
+lemma free_in_term.var.inv {x y: var}: free_in_term x y → (x = y) :=
   assume x_free_in_y: free_in_term x y,
   begin
     cases x_free_in_y,
-    case free_in_term.freevar a b c { exact rfl }
+    case free_in_term.var { exact rfl }
+  end
+
+lemma free_in_term.unop.inv {x: var} {op: unop} {t: term}: free_in_term x (term.unop op t) → free_in_term x t :=
+  assume x_free_in_unop: free_in_term x (term.unop op t),
+  begin
+    cases x_free_in_unop,
+    case free_in_term.unop x_free_in_t { from x_free_in_t }
+  end
+
+lemma free_in_term.binop.inv {x: var} {op: binop} {t₁ t₂: term}:
+                              free_in_term x (term.binop op t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_binop: free_in_term x (term.binop op t₁ t₂),
+  begin
+    cases x_free_in_binop,
+    case free_in_term.binop₁ x_free_in_t₁ { from or.inl x_free_in_t₁ },
+    case free_in_term.binop₂ x_free_in_t₂ { from or.inr x_free_in_t₂ }
+  end
+
+lemma free_in_term.app.inv {x: var} {t₁ t₂: term}:
+                           free_in_term x (term.app t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_app: free_in_term x (term.app t₁ t₂),
+  begin
+    cases x_free_in_app,
+    case free_in_term.app₁ x_free_in_t₁ { from or.inl x_free_in_t₁ },
+    case free_in_term.app₂ x_free_in_t₂ { from or.inr x_free_in_t₂ }
+  end
+
+lemma free_in_prop.term.inv {t: term} {x: var}: free_in_prop x t → free_in_term x t :=
+  assume x_free_in_t: free_in_prop x t,
+  begin
+    cases x_free_in_t,
+    case free_in_prop.term free_in_t { from free_in_t }
+  end
+
+lemma free_in_prop.not.inv {P: prop} {x: var}: free_in_prop x P.not → free_in_prop x P :=
+  assume x_free_in_not: free_in_prop x P.not,
+  begin
+    cases x_free_in_not,
+    case free_in_prop.not free_in_P { from free_in_P }
   end
 
 lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ & P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
@@ -77,6 +116,64 @@ lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ & P�
       show free_in_prop x P₁ ∨ free_in_prop x P₂, from or.inl free_in_P₁
     },
     case free_in_prop.and₂ free_in_P₂ {
+      show free_in_prop x P₁ ∨ free_in_prop x P₂, from or.inr free_in_P₂
+    }
+  end
+
+lemma free_in_prop.or.inv {P₁ P₂: prop} {x: var}: free_in_prop x (prop.or P₁ P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
+  assume x_free_in_or: free_in_prop x (prop.or P₁ P₂),
+  begin
+    cases x_free_in_or,
+    case free_in_prop.or₁ free_in_P₁ {
+      show free_in_prop x P₁ ∨ free_in_prop x P₂, from or.inl free_in_P₁
+    },
+    case free_in_prop.or₂ free_in_P₂ {
+      show free_in_prop x P₁ ∨ free_in_prop x P₂, from or.inr free_in_P₂
+    }
+  end
+
+lemma free_in_prop.pre.inv {t₁ t₂: term} {x: var}:
+      free_in_prop x (prop.pre t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_pre: free_in_prop x (prop.pre t₁ t₂),
+  begin
+    cases x_free_in_pre,
+    case free_in_prop.pre₁ free_in_t₁ { from or.inl free_in_t₁ },
+    case free_in_prop.pre₂ free_in_t₂ { from or.inr free_in_t₂ } 
+  end
+
+lemma free_in_prop.post.inv {t₁ t₂: term} {x: var}:
+      free_in_prop x (prop.post t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_post: free_in_prop x (prop.post t₁ t₂),
+  begin
+    cases x_free_in_post,
+    case free_in_prop.post₁ free_in_t₁ { from or.inl free_in_t₁ },
+    case free_in_prop.post₂ free_in_t₂ { from or.inr free_in_t₂ } 
+  end
+
+lemma free_in_prop.forallc.inv {P: prop} {t: term} {x fx: var}:
+      free_in_prop x (prop.forallc fx t P) → (x ≠ fx) ∧ (free_in_term x t ∨ free_in_prop x P) :=
+  assume x_free_in_forallc: free_in_prop x (prop.forallc fx t P),
+  begin
+    cases x_free_in_forallc,
+    case free_in_prop.forallc₁ x_neq_fx free_in_t {
+      from ⟨x_neq_fx, or.inl free_in_t⟩ 
+    },
+    case free_in_prop.forallc₂ x_neq_fx free_in_P {
+      from ⟨x_neq_fx, or.inr free_in_P⟩ 
+    }
+  end
+
+lemma free_in_prop.implies.inv {P₁ P₂: prop} {x: var}: free_in_prop x (prop.implies P₁ P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
+  assume x_free_in_implies: free_in_prop x (prop.or P₁.not P₂),
+  begin
+    cases x_free_in_implies,
+    case free_in_prop.or₁ x_free_in_not_P₁ {
+      cases x_free_in_not_P₁,
+      case free_in_prop.not free_in_P₁ {
+        show free_in_prop x P₁ ∨ free_in_prop x P₂, from or.inl free_in_P₁
+      }
+    },
+    case free_in_prop.or₂ free_in_P₂ {
       show free_in_prop x P₁ ∨ free_in_prop x P₂, from or.inr free_in_P₂
     }
   end
