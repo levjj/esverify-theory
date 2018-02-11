@@ -98,8 +98,8 @@ lemma free_in_prop.not.inv {P: prop} {x: var}: free_in_prop x P.not → free_in_
     case free_in_prop.not free_in_P { from free_in_P }
   end
 
-lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ & P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
-  assume x_free_in_and: free_in_prop x (P₁ & P₂),
+lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ && P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
+  assume x_free_in_and: free_in_prop x (P₁ && P₂),
   begin
     cases x_free_in_and,
     case free_in_prop.and₁ free_in_P₁ {
@@ -110,8 +110,8 @@ lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ & P�
     }
   end
 
-lemma free_in_prop.or.inv {P₁ P₂: prop} {x: var}: free_in_prop x (prop.or P₁ P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
-  assume x_free_in_or: free_in_prop x (prop.or P₁ P₂),
+lemma free_in_prop.or.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ || P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
+  assume x_free_in_or: free_in_prop x (P₁ || P₂),
   begin
     cases x_free_in_or,
     case free_in_prop.or₁ free_in_P₁ {
@@ -169,115 +169,116 @@ lemma free_in_prop.implies.inv {P₁ P₂: prop} {x: var}: free_in_prop x (prop.
   end
 
 lemma call_history_closed (H: list call) (x: var): ¬ free_in_prop x (calls_to_prop H) :=
-  list.rec_on H
-  ( -- empty history
-    assume x_free: free_in_prop x (calls_to_prop list.nil),
-    have calls_to_prop list.nil = value.true, from rfl,
-    have x_free_in_true: free_in_prop x value.true, from this ▸ x_free,
-    show «false», by begin
-      cases x_free_in_true,
-      case free_in_prop.term x_free_in_term {
-        cases x_free_in_term
-      }
-    end
-  )
-  ( -- <call> :: rest
-    assume ⟨f, x', R, S, e, σ, vₓ, v⟩,
-    assume rest: list call,
-    assume ih: ¬ free_in_prop x (calls_to_prop rest),
-    assume x_free: free_in_prop x (calls_to_prop (⟨f, x', R, S, e, σ, vₓ, v⟩ :: rest)),
-    have calls_to_prop (⟨f, x', R, S, e, σ, vₓ, v⟩ :: rest) =
-      (prop.call (value.func f x' R S e σ) vₓ &
-      prop.post (value.func f x' R S e σ) vₓ &
-      term.app (value.func f x' R S e σ) vₓ ≡ v &
-      calls_to_prop rest), from rfl,
-    have x_free_in_prop: free_in_prop x (
-      prop.call (value.func f x' R S e σ) vₓ &
-      prop.post (value.func f x' R S e σ) vₓ &
-      term.app (value.func f x' R S e σ) vₓ ≡ v &
-      calls_to_prop rest), from this ▸ x_free,
-    have x_not_free_in_v: ¬ free_in_term x v, from (
-      assume x_free_in_v: free_in_term x v,
-      show «false», by cases x_free_in_v
-    ),
-    have x_not_free_in_vₓ: ¬ free_in_term x vₓ, from (
-      assume x_free_in_vₓ: free_in_term x vₓ,
-      show «false», by cases x_free_in_vₓ
-    ),
-    have x_not_free_in_f: ¬ free_in_term x (value.func f x' R S e σ), from (
-      assume x_free_in_f: free_in_term x (value.func f x' R S e σ),
-      show «false», by cases x_free_in_f
-    ),
-    have
-      free_in_prop x (calls_to_prop rest) ∨
-      free_in_prop x (prop.call (value.func f x' R S e σ) vₓ &
-        prop.post (value.func f x' R S e σ) vₓ &
-        term.app (value.func f x' R S e σ) vₓ ≡ v),
-    from (free_in_prop.and.inv x_free_in_prop).symm,
-    or.elim this ih (
-      assume x_free_in_call: free_in_prop x (
-        prop.call (value.func f x' R S e σ) vₓ &
-        prop.post (value.func f x' R S e σ) vₓ &
-        term.app (value.func f x' R S e σ) vₓ ≡ v),
-      have
-        free_in_prop x (term.app (value.func f x' R S e σ) vₓ ≡ v) ∨
-        free_in_prop x (prop.call (value.func f x' R S e σ) vₓ &
-          prop.post (value.func f x' R S e σ) vₓ),
-      from (free_in_prop.and.inv x_free_in_call).symm,
-      or.elim this (
-        assume x_free_in_eq_app: free_in_prop x (term.app (value.func f x' R S e σ) vₓ ≡ v),
-        show «false», by begin
-          cases x_free_in_eq_app,
-          case free_in_prop.term x_free_in_term {
-            cases x_free_in_term,
-            case free_in_term.binop₁ x_free_in_app {
-              cases x_free_in_app,
-              case free_in_term.app₁ x_free_in_f {
-                show «false», from x_not_free_in_f x_free_in_f
-              },
-              case free_in_term.app₂ x_free_in_vₓ {
-                show «false», from x_not_free_in_vₓ x_free_in_vₓ
-              }
-            },
-            case free_in_term.binop₂ x_free_in_v {
-              show «false», from x_not_free_in_v x_free_in_v
-            }
-          }
-        end
-      )
-      (
-        assume x_free_in_call_or_func: free_in_prop x (
-          prop.call (value.func f x' R S e σ) vₓ &
-          prop.post (value.func f x' R S e σ) vₓ),
-        have
-          free_in_prop x (prop.call (value.func f x' R S e σ) vₓ) ∨
-          free_in_prop x (prop.post (value.func f x' R S e σ) vₓ),
-        from free_in_prop.and.inv x_free_in_call_or_func,
-        or.elim this
-        (
-          assume x_free_in_call: free_in_prop x (prop.call (value.func f x' R S e σ) vₓ),
-          show «false», by begin
-            cases x_free_in_call,
-            case free_in_prop.call₁ x_free_in_f {
-              show «false», from x_not_free_in_f x_free_in_f
-            },
-            case free_in_prop.call₂ x_free_in_vₓ {
-              show «false», from x_not_free_in_vₓ x_free_in_vₓ
-            }
-          end
-        )
-        (
-          assume x_free_in_post: free_in_prop x (prop.post (value.func f x' R S e σ) vₓ),
-          show «false», by begin
-            cases x_free_in_post,
-            case free_in_prop.post₁ x_free_in_f {
-              show «false», from x_not_free_in_f x_free_in_f
-            },
-            case free_in_prop.post₂ x_free_in_vₓ {
-              show «false», from x_not_free_in_vₓ x_free_in_vₓ
-            }
-          end
-        )
-      )
-    )
-  )
+  sorry
+  -- list.rec_on H
+  -- ( -- empty history
+  --   assume x_free: free_in_prop x (calls_to_prop list.nil),
+  --   have calls_to_prop list.nil = value.true, from rfl,
+  --   have x_free_in_true: free_in_prop x value.true, from this ▸ x_free,
+  --   show «false», by begin
+  --     cases x_free_in_true,
+  --     case free_in_prop.term x_free_in_term {
+  --       cases x_free_in_term
+  --     }
+  --   end
+  -- )
+  -- ( -- <call> :: rest
+  --   assume ⟨f, x', R, S, e, σ, vₓ, v⟩,
+  --   assume rest: list call,
+  --   assume ih: ¬ free_in_prop x (calls_to_prop rest),
+  --   assume x_free: free_in_prop x (calls_to_prop (⟨f, x', R, S, e, σ, vₓ, v⟩ :: rest)),
+  --   have calls_to_prop (⟨f, x', R, S, e, σ, vₓ, v⟩ :: rest) =
+  --     (prop.call (value.func f x' R S e σ) vₓ &&
+  --      prop.post (value.func f x' R S e σ) vₓ &&
+  --      (term.app (value.func f x' R S e σ) vₓ ≡ v) &&
+  --      calls_to_prop rest), from rfl,
+  --   have x_free_in_prop: free_in_prop x (
+  --     prop.call (value.func f x' R S e σ) vₓ &&
+  --     prop.post (value.func f x' R S e σ) vₓ &&
+  --     (term.app (value.func f x' R S e σ) vₓ ≡ v) &&
+  --     calls_to_prop rest), from this ▸ x_free,
+  --   have x_not_free_in_v: ¬ free_in_term x v, from (
+  --     assume x_free_in_v: free_in_term x v,
+  --     show «false», by cases x_free_in_v
+  --   ),
+  --   have x_not_free_in_vₓ: ¬ free_in_term x vₓ, from (
+  --     assume x_free_in_vₓ: free_in_term x vₓ,
+  --     show «false», by cases x_free_in_vₓ
+  --   ),
+  --   have x_not_free_in_f: ¬ free_in_term x (value.func f x' R S e σ), from (
+  --     assume x_free_in_f: free_in_term x (value.func f x' R S e σ),
+  --     show «false», by cases x_free_in_f
+  --   ),
+  --   have
+  --     free_in_prop x (calls_to_prop rest) ∨
+  --     free_in_prop x (prop.call (value.func f x' R S e σ) vₓ &&
+  --     prop.post (value.func f x' R S e σ) vₓ &&
+  --     (term.app (value.func f x' R S e σ) vₓ ≡ v)),
+  --   from (free_in_prop.and.inv x_free_in_prop).symm,
+  --   or.elim this ih (
+  --     assume x_free_in_call: free_in_prop x (
+  --       prop.call (value.func f x' R S e σ) vₓ &&
+  --       prop.post (value.func f x' R S e σ) vₓ &&
+  --       (term.app (value.func f x' R S e σ) vₓ ≡ v)),
+  --     have
+  --       free_in_prop x (term.app (value.func f x' R S e σ) vₓ ≡ v) ∨
+  --       free_in_prop x (prop.call (value.func f x' R S e σ) vₓ &&
+  --         prop.post (value.func f x' R S e σ) vₓ),
+  --     from (free_in_prop.and.inv x_free_in_call).symm,
+  --     or.elim this (
+  --       assume x_free_in_eq_app: free_in_prop x (term.app (value.func f x' R S e σ) vₓ ≡ v),
+  --       show «false», by begin
+  --         cases x_free_in_eq_app,
+  --         case free_in_prop.term x_free_in_term {
+  --           cases x_free_in_term,
+  --           case free_in_term.binop₁ x_free_in_app {
+  --             cases x_free_in_app,
+  --             case free_in_term.app₁ x_free_in_f {
+  --               show «false», from x_not_free_in_f x_free_in_f
+  --             },
+  --             case free_in_term.app₂ x_free_in_vₓ {
+  --               show «false», from x_not_free_in_vₓ x_free_in_vₓ
+  --             }
+  --           },
+  --           case free_in_term.binop₂ x_free_in_v {
+  --             show «false», from x_not_free_in_v x_free_in_v
+  --           }
+  --         }
+  --       end
+  --     )
+  --     (
+  --       assume x_free_in_call_or_func: free_in_prop x (
+  --         prop.call (value.func f x' R S e σ) vₓ &&
+  --         prop.post (value.func f x' R S e σ) vₓ),
+  --       have
+  --         free_in_prop x (prop.call (value.func f x' R S e σ) vₓ) ∨
+  --         free_in_prop x (prop.post (value.func f x' R S e σ) vₓ),
+  --       from free_in_prop.and.inv x_free_in_call_or_func,
+  --       or.elim this
+  --       (
+  --         assume x_free_in_call: free_in_prop x (prop.call (value.func f x' R S e σ) vₓ),
+  --         show «false», by begin
+  --           cases x_free_in_call,
+  --           case free_in_prop.call₁ x_free_in_f {
+  --             show «false», from x_not_free_in_f x_free_in_f
+  --           },
+  --           case free_in_prop.call₂ x_free_in_vₓ {
+  --             show «false», from x_not_free_in_vₓ x_free_in_vₓ
+  --           }
+  --         end
+  --       )
+  --       (
+  --         assume x_free_in_post: free_in_prop x (prop.post (value.func f x' R S e σ) vₓ),
+  --         show «false», by begin
+  --           cases x_free_in_post,
+  --           case free_in_prop.post₁ x_free_in_f {
+  --             show «false», from x_not_free_in_f x_free_in_f
+  --           },
+  --           case free_in_prop.post₂ x_free_in_vₓ {
+  --             show «false», from x_not_free_in_vₓ x_free_in_vₓ
+  --           }
+  --         end
+  --       )
+  --     )
+  --   )
+  -- )

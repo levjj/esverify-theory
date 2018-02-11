@@ -12,13 +12,21 @@ def propctx.implies(p q: propctx): propctx := propctx.or (propctx.not p) q
 @[reducible]
 def qfprop.implies(p q: qfprop): qfprop := qfprop.or (qfprop.not p) q
 
--- P & Q
+-- P && Q
 class has_and (α : Type) := (and : α → α → α) 
 instance : has_and spec := ⟨spec.and⟩
 instance : has_and prop := ⟨prop.and⟩
 instance : has_and propctx := ⟨propctx.and⟩
 instance : has_and qfprop := ⟨qfprop.and⟩
-infix `&`:10 := has_and.and
+infix `&&` := has_and.and
+
+-- P || Q
+class has_or (α : Type) := (or : α → α → α) 
+instance : has_or spec := ⟨spec.or⟩
+instance : has_or prop := ⟨prop.or⟩
+instance : has_or propctx := ⟨propctx.or⟩
+instance : has_or qfprop := ⟨qfprop.or⟩
+infix `||` := has_or.or
 
 -- use • as hole
 notation `•` := termctx.hole
@@ -29,6 +37,19 @@ instance var_to_term : has_coe var term := ⟨term.var⟩
 instance term_to_prop : has_coe term prop := ⟨prop.term⟩
 instance termctx_to_propctx : has_coe termctx propctx := ⟨propctx.term⟩
 instance term_to_qfprop : has_coe term qfprop := ⟨qfprop.term⟩
+
+-- qfprop to prop coercion
+def qfprop.to_prop: qfprop → prop
+| (qfprop.term t)        := prop.term t
+| (qfprop.not P)         := prop.not P.to_prop
+| (qfprop.and P Q)       := P.to_prop && Q.to_prop
+| (qfprop.or P Q)        := P.to_prop || Q.to_prop
+| (qfprop.pre t₁ t₂)     := prop.pre t₁ t₂ 
+| (qfprop.pre₁ op t)     := prop.pre₁ op t
+| (qfprop.pre₂ op t₁ t₂) := prop.pre₂ op t₁ t₂
+| (qfprop.post t₁ t₂)    := prop.post t₁ t₂
+
+instance qfprop_to_prop : has_coe qfprop prop := ⟨qfprop.to_prop⟩
 
 -- use (t ≡ t)/(t ≣ t) to construct equality comparison
 infix ≡ := term.binop binop.eq
@@ -147,19 +168,19 @@ def spec.to_prop : spec → prop
     have S.size < S.not.size, from lt_of_add_one,
     prop.not S.to_prop
 | (spec.and R S)      :=
-    have R.size < (R & S).size, from lt_of_add.left,
-    have S.size < (R & S).size, from lt_of_add.right,
-    R.to_prop & S.to_prop
+    have R.size < (R && S).size, from lt_of_add.left,
+    have S.size < (R && S).size, from lt_of_add.right,
+    R.to_prop && S.to_prop
 | (spec.or R S)       :=
-    have R.size < (R & S).size, from lt_of_add.left,
-    have S.size < (R & S).size, from lt_of_add.right,
-    prop.or R.to_prop S.to_prop
+    have R.size < (R || S).size, from lt_of_add.left,
+    have S.size < (R || S).size, from lt_of_add.right,
+    R.to_prop || S.to_prop
 | (spec.func f x R S) :=
-    have R.size < (R & S).size, from lt_of_add.left,
-    have S.size < (R & S).size, from lt_of_add.right,
-    (term.unop unop.isFunc f) &
+    have R.size < (R && S).size, from lt_of_add.left,
+    have S.size < (R && S).size, from lt_of_add.right,
+    (term.unop unop.isFunc f) &&
     (prop.forallc x f (prop.implies R.to_prop (prop.pre f x)
-                     & prop.implies (R.to_prop & prop.post f x) S.to_prop))
+                    && prop.implies (R.to_prop && prop.post f x) S.to_prop))
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
 
@@ -178,16 +199,16 @@ instance term_to_termctx : has_coe term termctx := ⟨term.to_termctx⟩
 
 def prop.to_propctx : prop → propctx
 | (prop.term t)        := propctx.term t
-| (prop.not p)         := propctx.not p.to_propctx
-| (prop.and p₁ p₂)     := p₁.to_propctx & p₂.to_propctx
-| (prop.or p₁ p₂)      := propctx.or p₁.to_propctx p₂.to_propctx
+| (prop.not P)         := propctx.not P.to_propctx
+| (prop.and P₁ P₂)     := P₁.to_propctx && P₂.to_propctx
+| (prop.or P₁ P₂)      := P₁.to_propctx || P₂.to_propctx
 | (prop.pre t₁ t₂)     := propctx.pre t₁ t₂
 | (prop.pre₁ op t)     := propctx.pre₁ op t
 | (prop.pre₂ op t₁ t₂) := propctx.pre₂ op t₁ t₂
 | (prop.post t₁ t₂)    := propctx.post t₁ t₂
 | (prop.call t₁ t₂)    := propctx.call t₁ t₂
-| (prop.forallc x t p) := propctx.forallc x t p.to_propctx
-| (prop.exist x p)     := propctx.exist x p.to_propctx
+| (prop.forallc x t P) := propctx.forallc x t P.to_propctx
+| (prop.exist x P)     := propctx.exist x P.to_propctx
 
 instance prop_to_propctx : has_coe prop propctx := ⟨prop.to_propctx⟩
 
@@ -207,16 +228,16 @@ instance : has_coe_to_fun termctx := ⟨λ _, term → term, termctx.apply⟩
 
 def propctx.apply: propctx → term → prop
 | (propctx.term t₁) t        := t₁ t
-| (propctx.not p) t          := prop.not (p.apply t)
-| (propctx.and p₁ p₂) t      := (p₁.apply t) & (p₂.apply t)
-| (propctx.or p₁ p₂) t       := prop.or (p₁.apply t) (p₂.apply t)
+| (propctx.not P) t          := prop.not (P.apply t)
+| (propctx.and P₁ P₂) t      := P₁.apply t && P₂.apply t
+| (propctx.or P₁ P₂) t       := P₁.apply t || P₂.apply t
 | (propctx.pre t₁ t₂) t      := prop.or (t₁ t) (t₂ t)
 | (propctx.pre₁ op t₁) t     := prop.pre₁ op (t₁ t)
 | (propctx.pre₂ op t₁ t₂) t  := prop.pre₂ op (t₁ t) (t₂ t)
 | (propctx.post t₁ t₂) t     := prop.post (t₁ t) (t₂ t)
 | (propctx.call t₁ t₂) t     := prop.call (t₁ t) (t₂ t)
-| (propctx.forallc x t₁ p) t := prop.forallc x (t₁ t) (p.apply t)
-| (propctx.exist x p) t      := prop.exist x (p.apply t)
+| (propctx.forallc x t₁ P) t := prop.forallc x (t₁ t) (P.apply t)
+| (propctx.exist x P) t      := prop.exist x (P.apply t)
 
 instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 
@@ -225,9 +246,9 @@ instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 def calls_to_prop: list call → prop
 | list.nil := value.true
 | (⟨f, x, R, S, e, σ, vₓ, v⟩ :: rest) :=
-    prop.call (value.func f x R S e σ) vₓ &
-    prop.post (value.func f x R S e σ) vₓ &
-    term.app (value.func f x R S e σ) vₓ ≡ v &
+    prop.call (value.func f x R S e σ) vₓ &&
+    prop.post (value.func f x R S e σ) vₓ &&
+    (term.app (value.func f x R S e σ) vₓ ≡ v) &&
     calls_to_prop rest
 
 instance call_to_prop: has_coe (list call) prop := ⟨calls_to_prop⟩

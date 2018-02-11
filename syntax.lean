@@ -110,7 +110,7 @@ inductive propctx
 | forallc : var → termctx → propctx → propctx
 | exist   : var → propctx → propctx
 
--- P,Q ∈ QuantifierFreePropositions := ...
+-- P,Q ∈ QuantifierAndTriggerFreePropositions := ...
 inductive qfprop
 | term    : term → qfprop
 | not     : qfprop → qfprop

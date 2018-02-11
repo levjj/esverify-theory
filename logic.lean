@@ -6,9 +6,25 @@ constant prop.instantiated_p: prop → qfprop
 
 constant prop.instantiated_n: prop → qfprop
 
-def prop.erased_p: prop → qfprop := sorry
+axiom instantiated.not {P: prop}: P.not.instantiated_p = P.instantiated_n.not
 
-def prop.erased_n: prop → qfprop := sorry
+def prop.erased_p: prop → qfprop
+| (prop.term t)        := qfprop.term t
+| (prop.not P)         := qfprop.not P.erased_n
+| (prop.and P₁ P₂)     := P₁.erased_p && P₂.erased_p
+| (prop.or P₁ P₂)      := P₁.erased_p || P₂.erased_p
+| (prop.pre t₁ t₂)     := qfprop.pre t₁ t₂
+| (prop.pre₁ op t)     := qfprop.pre₁ op t
+| (prop.pre₂ op t₁ t₂) := qfprop.pre₂ op t₁ t₂
+| (prop.post t₁ t₂)    := qfprop.post t₁ t₂
+| (prop.call t₁ t₂)    := qfprop.call t₁ t₂
+| (prop.forallc x t P) := qfprop.forallc x t p.to_propctx
+| (prop.exist x P)     := qfprop.exist x p.to_propctx
+
+ -- propositions without quantifiers or call triggers do not participate in instantiations
+axiom and_dist_of_no_instantiations {P: prop} {Q: qfprop}: (P && Q).instantiated_p = P.instantiated_p && Q
+
+axiom or_dist_of_no_instantiations {P: prop} {Q: qfprop}: (P || Q).instantiated_p = P.instantiated_p || Q
 
 -- substitution
 
@@ -26,16 +42,16 @@ def spec.subst (x: var) (v: value): spec → spec
     have R.size < R.not.size, from lt_of_add_one,
     spec.not R.subst
 | (spec.and R S) :=
-    have R.size < (R & S).size, from lt_of_add.left,
-    have S.size < (R & S).size, from lt_of_add.right,
-    R.subst & S.subst
+    have R.size < (R && S).size, from lt_of_add.left,
+    have S.size < (R && S).size, from lt_of_add.right,
+    R.subst && S.subst
 | (spec.or R S) :=
-    have R.size < (R & S).size, from lt_of_add.left,
-    have S.size < (R & S).size, from lt_of_add.right,
-    spec.or R.subst S.subst
+    have R.size < (R || S).size, from lt_of_add.left,
+    have S.size < (R || S).size, from lt_of_add.right,
+    R.subst || S.subst
 | (spec.func t y R S) :=
-    have R.size < (R & S).size, from lt_of_add.left,
-    have S.size < (R & S).size, from lt_of_add.right,
+    have R.size < (R && S).size, from lt_of_add.left,
+    have S.size < (R && S).size, from lt_of_add.right,
     if x = y
     then spec.func (term.subst x v t) x R S
     else spec.func (term.subst x v t) y R.subst S.subst
@@ -49,8 +65,8 @@ def spec.subst_env: env → spec → spec
 def qfprop.subst (x: var) (v: value): qfprop → qfprop
 | (qfprop.term t)        := term.subst x v t
 | (qfprop.not P)         := qfprop.not P.subst
-| (qfprop.and P Q)       := P.subst & Q.subst
-| (qfprop.or P Q)        := qfprop.or P.subst Q.subst
+| (qfprop.and P Q)       := P.subst && Q.subst
+| (qfprop.or P Q)        := P.subst || Q.subst
 | (qfprop.pre t₁ t₂)     := qfprop.pre (term.subst x v t₁) (term.subst x v t₂)
 | (qfprop.pre₁ op t)     := qfprop.pre₁ op (term.subst x v t)
 | (qfprop.pre₂ op t₁ t₂) := qfprop.pre₂ op (term.subst x v t₁) (term.subst x v t₂)
@@ -61,6 +77,41 @@ def qfprop.subst_env: env → qfprop → qfprop
 | (σ[x↦v]) P :=
     have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
     qfprop.subst x v (qfprop.subst_env σ P)
+
+-- validity
+
+inductive valid : qfprop → Prop
+notation `⊨` p: 100 := valid p
+
+| tru: ⊨ value.true
+
+| eq {t: term}: ⊨ term.binop binop.eq t t
+
+| and {Q P: qfprop}: ⊨ P → ⊨ Q → ⊨ (P && Q)
+
+| orl {Q P: qfprop}: ⊨ P → ⊨ (P || Q)
+
+| orr {Q P: qfprop}: ⊨ Q → ⊨ (P || Q)
+
+| mp {Q P: qfprop}: ⊨ qfprop.implies P Q → ⊨ P → ⊨ Q
+
+notation `⊨` p: 100 := valid p
+notation σ `⊨` p: 100 := valid (qfprop.subst_env σ p)
+
+-- axioms about instantiation
+
+axiom instantiated_p_of_erased_p {σ: env} {P: prop} : σ ⊨ P.erased_p → σ ⊨ P.instantiated_p
+axiom instantiated_n_of_instantiated_p {σ: env} {P: prop} : σ ⊨ P.instantiated_p → σ ⊨ P.instantiated_n
+axiom erased_n_of_instantiated_n {σ: env} {P: prop} : σ ⊨ P.instantiated_n → σ ⊨ P.erased_n
+
+-- notation ⟪ P ⟫
+
+@[reducible]
+def VC(P: prop) := ∀ (σ: env), σ ⊨ P.instantiated_p
+
+notation `⟪` P `⟫`: 100 := VC P
+
+-- lemmas
 
 lemma free_of_subst_term {t: term} {x y: var} {v: value}:
           free_in_term x (term.subst y v t) → x ≠ y ∧ free_in_term x t :=
@@ -454,25 +505,6 @@ lemma free_of_subst_env {R: spec} {σ: env} {x: var}:
     )
   end
 
--- validity
-
-inductive valid : qfprop → Prop
-notation `⊨` p: 100 := valid p
-
-| tru: ⊨ value.true
-
-| eq {t: term}: ⊨ term.binop binop.eq t t
-
-| and {q p: qfprop}: ⊨ p → ⊨ q → ⊨ (p & q)
-
-| orl {q p: qfprop}: ⊨ p → ⊨ (qfprop.or p q)
-
-| orr {q p: qfprop}: ⊨ q → ⊨ (qfprop.or p q)
-
-| mp {q p: qfprop}: ⊨ qfprop.implies p q → ⊨ p → ⊨ q
-
-notation `⊨` p: 100 := valid p
-notation σ `⊨` p: 100 := valid (qfprop.subst_env σ p)
 
 lemma qfprop.subst_env.and {σ: env} {P Q: qfprop}:
       qfprop.subst_env σ (P & Q) = (qfprop.subst_env σ P & qfprop.subst_env σ Q) :=
@@ -504,16 +536,3 @@ lemma valid_env.and {σ: env} {P Q: qfprop}: σ ⊨ P → σ ⊨ Q → σ ⊨ (P
   assume q_valid: valid (qfprop.subst_env σ Q),
   have qfprop.subst_env σ (P & Q) = (qfprop.subst_env σ P & qfprop.subst_env σ Q), from qfprop.subst_env.and,
   show σ ⊨ (P & Q), from this.symm ▸ valid.and p_valid q_valid
-
--- axioms about instantiation
-
-axiom instantiated_p_of_erased_p {σ: env} {P: prop} : σ ⊨ P.erased_p → σ ⊨ P.instantiated_p
-axiom instantiated_n_of_instantiated_p {σ: env} {P: prop} : σ ⊨ P.instantiated_p → σ ⊨ P.instantiated_n
-axiom erased_n_of_instantiated_n {σ: env} {P: prop} : σ ⊨ P.instantiated_n → σ ⊨ P.erased_n
-
--- notation ⟪ P ⟫
-
-@[reducible]
-def VC(P: prop) := ∀ (σ: env), σ ⊨ P.instantiated_p
-
-notation `⟪` P `⟫`: 100 := VC P

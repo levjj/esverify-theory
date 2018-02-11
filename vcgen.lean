@@ -7,7 +7,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
 
 | tru {P: prop} {x: var} {e: exp} {Q: propctx}:
     x ∉ FV P →
-    (P & x ≡ value.true ⊢ e : Q) →
+    (P && x ≡ value.true ⊢ e : Q) →
     (P ⊢ lett x = true in e : propctx.exist x (x ≡ value.true & Q))
 
 | fals {P: prop} {x: var} {e: exp} {Q: propctx}:
