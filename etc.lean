@@ -1,4 +1,5 @@
 import .syntax
+import data.set data.finset data.list
 
 -- p → q: prop
 
@@ -72,6 +73,41 @@ lemma lt_of_add {n m: ℕ}: n < n + m + 1 ∧ m < n + m + 1 :=
   have m ≤ n + m, by { rw[add_comm], assumption },
   have h₂: m < n + m + 1, from lt_add_of_le_of_pos this zero_lt_one,
   ⟨h₁, h₂⟩
+
+-- other auxiliary lemmas
+
+lemma neq_symm {α: Type} {a b: α}: a ≠ b → b ≠ a :=
+  assume a_neq_b: ¬ (a = b),
+  assume b_eq_a: b = a,
+  by simp * at *
+
+-- lemma mem_of_2set {α: Type} [h: decidable_eq α] [set_mem: has_mem (set α) α] {a b c: α}:
+--   (@has_mem.mem (set α) α set_mem {b,c} a) → (a = b) ∨ (a = c) :=
+--   let d: list α := {b,c} in
+--   list_of_set
+
+--   assume a_in_d: a ∈ d,
+--   have a = b ∨ a ∈ [c], from list.eq_or_mem_of_mem_insert a_in_d,
+
+lemma mem_of_2set {α: Type} {a b c: α}:
+  a ∈ ({b, c}: set α) -> (a = b) ∨ (a = c) :=
+  assume a_in_bc: a ∈ {b, c},
+  have a_in_bc: a ∈ insert b (insert c (∅: set α)), by { simp * at * },
+  have a = b ∨ a ∈ insert c ∅, from set.eq_or_mem_of_mem_insert a_in_bc,
+  or.elim this (
+    assume : a = b,
+    show (a = b) ∨ (a = c), from or.inl this
+  ) (
+    assume : a ∈ insert c ∅,
+    have a = c ∨ a ∈ ∅, from set.eq_or_mem_of_mem_insert this,
+    or.elim this (
+      assume : a = c,
+      show (a = b) ∨ (a = c), from or.inr this
+    ) (
+      assume : a ∈ ∅,
+      show (a = b) ∨ (a = c), from absurd this (set.not_mem_empty a)
+    )
+  )
 
 -- env lookup as function application
 

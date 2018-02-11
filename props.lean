@@ -10,17 +10,6 @@ inductive free_in_term (x: var) : term → Prop
 | app₁ {t₁ t₂: term}               : free_in_term t₁ → free_in_term (term.app t₁ t₂)
 | app₂ {t₁ t₂: term}               : free_in_term t₂ → free_in_term (term.app t₁ t₂)
 
-inductive free_in_spec (x: var) : spec → Prop
-| term {t: term}                       : free_in_term x t → free_in_spec (spec.term t)
-| not {R: spec}                        : free_in_spec R  → free_in_spec (spec.not R)
-| and₁ {R S: spec}                     : free_in_spec R → free_in_spec (spec.and R S)
-| and₂ {R S: spec}                     : free_in_spec S → free_in_spec (spec.and R S)
-| or₁ {R S: spec}                      : free_in_spec R → free_in_spec (spec.or R S)
-| or₂ {R S: spec}                      : free_in_spec S → free_in_spec (spec.or R S)
-| func₁ {y: var} {t: term} {R S: spec} : (x ≠ y) → free_in_term x t → free_in_spec (spec.func t y R S)
-| func₂ {y: var} {t: term} {R S: spec} : (x ≠ y) → free_in_spec R → free_in_spec (spec.func t y R S)
-| func₃ {y: var} {t: term} {R S: spec} : (x ≠ y) → free_in_spec S → free_in_spec (spec.func t y R S)
-
 inductive free_in_prop (x: var) : prop → Prop
 | term {t: term}                        : free_in_term x t → free_in_prop t
 | not {p: prop}                         : free_in_prop p → free_in_prop (prop.not p)
@@ -45,22 +34,23 @@ inductive free_in_prop (x: var) : prop → Prop
 
 inductive freevars
 | term: term → freevars
-| spec: spec → freevars
 | prop: prop → freevars
 
 class has_fv (α: Type) := (fv : α → freevars)
 instance : has_fv term := ⟨freevars.term⟩
-instance : has_fv spec := ⟨freevars.spec⟩
 instance : has_fv prop := ⟨freevars.prop⟩
 
 def freevars.to_set: freevars → set var
 | (freevars.term t) := λx, free_in_term x t
-| (freevars.spec R) := λx, free_in_spec x R
 | (freevars.prop P) := λx, free_in_prop x P
 
 def FV {α: Type} [h: has_fv α] (a: α): set var := (has_fv.fv a).to_set
 
 -- helper lemmas
+
+lemma free_in_term.value.inv {x: var} {v: value}: ¬ free_in_term x v :=
+  assume x_free_in_v: free_in_term x v,
+  show «false», by cases x_free_in_v
 
 lemma free_in_term.var.inv {x y: var}: free_in_term x y → (x = y) :=
   assume x_free_in_y: free_in_term x y,

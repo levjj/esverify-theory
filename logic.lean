@@ -62,225 +62,395 @@ def qfprop.subst_env: env → qfprop → qfprop
     have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
     qfprop.subst x v (qfprop.subst_env σ P)
 
-lemma not_free_of_subst_term {t: term} {x: var} {v: value}: ¬(free_in_term x (term.subst x v t)) :=
+lemma free_of_subst_term {t: term} {x y: var} {v: value}:
+          free_in_term x (term.subst y v t) → x ≠ y ∧ free_in_term x t :=
+  assume x_free_in_subst: free_in_term x (term.subst y v t),
   begin
-    induction t with v' y unop t₁ x_not_free_in_t₁ binop t₂ t₃ x_not_free_in_t₂ x_not_free_in_t₃
-                     t₄ t₅ x_not_free_in_t₄ x_not_free_in_t₅,
-    show ¬free_in_term x (term.subst x v (term.value v')), from (
-      assume x_free_in_v': free_in_term x (term.subst x v (term.value v')),
-      have term.subst x v (term.value v') = v', by unfold term.subst,
-      have free_in_term x v', from this ▸ x_free_in_v',
-      show «false», by cases this
+    induction t with v' z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+    show x ≠ y ∧ free_in_term x (term.value v'), from (
+      have term.subst y v (term.value v') = v', by unfold term.subst,
+      have free_in_term x v', from this ▸ x_free_in_subst,
+      show x ≠ y ∧ free_in_term x (term.value v'), from absurd this free_in_term.value.inv
     ),
-    show ¬free_in_term x (term.subst x v (term.var y)), from (
-      assume x_free_in_y: free_in_term x (term.subst x v (term.var y)),
-      have hite: term.subst x v (term.var y) = (if x = y then v else y), by unfold term.subst,
-      if x_is_y: x = y then
-        have term.subst x v (term.var y) = v, by simp * at *,
-        have free_in_term x v, from this ▸ x_free_in_y,
-        show «false», by cases this
+    show x ≠ y ∧ free_in_term x (term.var z), from (
+      have hite: term.subst y v (term.var z) = (if y = z then v else z), by unfold term.subst,
+      if y_is_z: y = z then
+        have term.subst y v (term.var z) = v, by simp * at *,
+        have free_in_term x v, from this ▸ x_free_in_subst,
+        show x ≠ y ∧ free_in_term x (term.var z), from absurd this free_in_term.value.inv
       else
-        have term.subst x v (term.var y) = y, by simp * at *,
-        have free_in_term x y, from this ▸ x_free_in_y,
-        have x = y, from free_in_term.var.inv this,
-        show «false», from x_is_y this
+        have term.subst y v (term.var z) = z, by simp * at *,
+        have free_in_term x z, from this ▸ x_free_in_subst,
+        have x_is_z: x = z, from free_in_term.var.inv this,
+        have x ≠ y, from x_is_z.symm ▸ (neq_symm y_is_z),
+        show x ≠ y ∧ free_in_term x (term.var z), from ⟨this, x_is_z ▸ free_in_term.var x⟩
     ),
-    show ¬free_in_term x (term.subst x v (term.unop unop t₁)), from (
-      assume x_free_in_unop: free_in_term x (term.subst x v (term.unop unop t₁)),
-      have term.subst x v (term.unop unop t₁) = term.unop unop (term.subst x v t₁), by unfold term.subst,
-      have free_in_term x (term.unop unop (term.subst x v t₁)), from this ▸ x_free_in_unop,
-      have free_in_term x (term.subst x v t₁), from free_in_term.unop.inv this,
-      show «false», from x_not_free_in_t₁ this
+    show x ≠ y ∧ free_in_term x (term.unop unop t₁), from (
+      have term.subst y v (term.unop unop t₁) = term.unop unop (term.subst y v t₁), by unfold term.subst,
+      have free_in_term x (term.unop unop (term.subst y v t₁)), from this ▸ x_free_in_subst,
+      have free_in_term x (term.subst y v t₁), from free_in_term.unop.inv this,
+      have x ≠ y ∧ free_in_term x t₁, from t₁_ih this,
+      show x ≠ y ∧ free_in_term x (term.unop unop t₁), from ⟨this.left, free_in_term.unop this.right⟩
     ),
-    show ¬free_in_term x (term.subst x v (term.binop binop t₂ t₃)), from (
-      assume x_free_in_binop: free_in_term x (term.subst x v (term.binop binop t₂ t₃)),
-      have term.subst x v (term.binop binop t₂ t₃) = term.binop binop (term.subst x v t₂) (term.subst x v t₃),
+    show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from (
+      have term.subst y v (term.binop binop t₂ t₃) = term.binop binop (term.subst y v t₂) (term.subst y v t₃),
       by unfold term.subst,
-      have free_in_term x (term.binop binop (term.subst x v t₂) (term.subst x v t₃)), from this ▸ x_free_in_binop,
-      have free_in_term x (term.subst x v t₂) ∨ free_in_term x (term.subst x v t₃), from free_in_term.binop.inv this,
+      have free_in_term x (term.binop binop (term.subst y v t₂) (term.subst y v t₃)), from this ▸ x_free_in_subst,
+      have free_in_term x (term.subst y v t₂) ∨ free_in_term x (term.subst y v t₃), from free_in_term.binop.inv this,
       or.elim this (
-        assume : free_in_term x (term.subst x v t₂),
-        show «false», from x_not_free_in_t₂ this
+        assume : free_in_term x (term.subst y v t₂),
+        have x ≠ y ∧ free_in_term x t₂, from t₂_ih this,
+        show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from ⟨this.left, free_in_term.binop₁ this.right⟩
       ) (
-        assume : free_in_term x (term.subst x v t₃),
-        show «false», from x_not_free_in_t₃ this
+        assume : free_in_term x (term.subst y v t₃),
+        have x ≠ y ∧ free_in_term x t₃, from t₃_ih this,
+        show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from ⟨this.left, free_in_term.binop₂ this.right⟩
       )
     ),
-    show ¬free_in_term x (term.subst x v (term.app t₄ t₅)), from (
-      assume x_free_in_app: free_in_term x (term.subst x v (term.app t₄ t₅)),
-      have term.subst x v (term.app t₄ t₅) = term.app (term.subst x v t₄) (term.subst x v t₅),
+    show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from (
+      have term.subst y v (term.app t₄ t₅) = term.app (term.subst y v t₄) (term.subst y v t₅),
       by unfold term.subst,
-      have free_in_term x (term.app (term.subst x v t₄) (term.subst x v t₅)), from this ▸ x_free_in_app,
-      have free_in_term x (term.subst x v t₄) ∨ free_in_term x (term.subst x v t₅), from free_in_term.app.inv this,
+      have free_in_term x (term.app (term.subst y v t₄) (term.subst y v t₅)), from this ▸ x_free_in_subst,
+      have free_in_term x (term.subst y v t₄) ∨ free_in_term x (term.subst y v t₅), from free_in_term.app.inv this,
       or.elim this (
-        assume : free_in_term x (term.subst x v t₄),
-        show «false», from x_not_free_in_t₄ this
+        assume : free_in_term x (term.subst y v t₄),
+        have x ≠ y ∧ free_in_term x t₄, from t₄_ih this,
+        show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from ⟨this.left, free_in_term.app₁ this.right⟩
       ) (
-        assume : free_in_term x (term.subst x v t₅),
-        show «false», from x_not_free_in_t₅ this
+        assume : free_in_term x (term.subst y v t₅),
+        have x ≠ y ∧ free_in_term x t₅, from t₅_ih this,
+        show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from ⟨this.left, free_in_term.app₂ this.right⟩
       )
     )
   end
 
-lemma not_free_of_subst_spec {R: spec} {x: var} {v: value}: ¬ (free_in_prop x (spec.subst x v R).to_prop) :=
+lemma free_of_subst_spec {R: spec} {x y: var} {v: value}:
+          free_in_prop x (spec.subst y v R) → x ≠ y ∧ free_in_prop x R :=
+  sorry
+  -- assume x_free_in_subst: free_in_prop x (spec.subst y v R),
+  -- begin
+  --   induction R with t S₁ S₁_ih S₂ S₃ S₂_ih S₃_ih
+  --                    S₄ S₅ S₄_ih S₅_ih f fx S₆ S₇ S₆_ih S₇_ih,
+  --   show x ≠ y ∧ free_in_prop x (spec.term t).to_prop, from (
+  --     have spec.subst y v (spec.term t) = spec.term (term.subst y v t), by unfold spec.subst,
+  --     have x_free_in_term': free_in_prop x (spec.term (term.subst y v t)).to_prop, from this ▸ x_free_in_subst,
+  --     have (spec.term (term.subst y v t)).to_prop = prop.term (term.subst y v t), by unfold spec.to_prop,
+  --     have free_in_prop x (term.subst y v t), from this ▸ x_free_in_term',
+  --     have free_in_term x (term.subst y v t), from free_in_prop.term.inv this,
+  --     have x ≠ y ∧ free_in_term x t, from free_of_subst_term this,
+  --     show x ≠ y ∧ free_in_prop x (spec.term t).to_prop, from ⟨this.left, free_in_prop.term this.right⟩
+  --   ),
+  --   show x ≠ y ∧ free_in_prop x S₁.not.to_prop, from (
+  --     have (spec.subst y v S₁.not = (spec.subst y v S₁).not), by unfold spec.subst,
+  --     have x_free_in_not': free_in_prop x (spec.subst y v S₁).not.to_prop, from this ▸ x_free_in_subst,
+  --     have (spec.subst y v S₁).not.to_prop = (spec.subst y v S₁).to_prop.not, by unfold spec.to_prop,
+  --     have free_in_prop x (spec.subst y v S₁).to_prop.not, from this ▸ x_free_in_not',
+  --     have free_in_prop x (spec.subst y v S₁).to_prop, from free_in_prop.not.inv this,
+  --     have x ≠ y ∧ free_in_prop x S₁.to_prop, from S₁_ih this,
+  --     show x ≠ y ∧ free_in_prop x S₁.not.to_prop, from ⟨this.left, free_in_prop.not this.right⟩
+  --   ),
+  --   show x ≠ y ∧ free_in_prop x (S₂ & S₃).to_prop, from (
+  --     have spec.subst y v (spec.and S₂ S₃) = (spec.subst y v S₂ & spec.subst y v S₃), by unfold spec.subst,
+  --     have x_free_in_and': free_in_prop x (spec.subst y v S₂ & spec.subst y v S₃).to_prop, from this ▸ x_free_in_subst,
+  --     have (spec.and (spec.subst y v S₂) (spec.subst y v S₃)).to_prop
+  --        = ((spec.subst y v S₂).to_prop & (spec.subst y v S₃).to_prop),
+  --     by unfold spec.to_prop,
+  --     have free_in_prop x ((spec.subst y v S₂).to_prop & (spec.subst y v S₃).to_prop), from this ▸ x_free_in_and',
+  --     have free_in_prop x (spec.subst y v S₂).to_prop ∨ free_in_prop x (spec.subst y v S₃).to_prop,
+  --     from free_in_prop.and.inv this,
+  --     or.elim this (
+  --       assume : free_in_prop x (spec.subst y v S₂).to_prop,
+  --       have x ≠ y ∧ free_in_prop x S₂.to_prop, from S₂_ih this,
+  --       show x ≠ y ∧ free_in_prop x (S₂ & S₃).to_prop, from ⟨this.left, free_in_prop.and₁ this.right⟩
+  --     ) (
+  --       assume : free_in_prop x (spec.subst y v S₃).to_prop,
+  --       have x ≠ y ∧ free_in_prop x S₃.to_prop, from S₃_ih this,
+  --       show x ≠ y ∧ free_in_prop x (S₂ & S₃).to_prop, from ⟨this.left, free_in_prop.and₂ this.right⟩
+  --     )
+  --   ),
+  --   show x ≠ y ∧ free_in_prop x (spec.or S₄ S₅).to_prop, from (
+  --     have spec.subst y v (spec.or S₄ S₅) = spec.or (spec.subst y v S₄) (spec.subst y v S₅), by unfold spec.subst,
+  --     have x_free_in_or': free_in_prop x (spec.or (spec.subst y v S₄) (spec.subst y v S₅)).to_prop,
+  --     from this ▸ x_free_in_subst,
+  --     have (spec.or (spec.subst y v S₄) (spec.subst y v S₅)).to_prop
+  --        = (prop.or (spec.subst y v S₄).to_prop (spec.subst y v S₅).to_prop),
+  --     by unfold spec.to_prop,
+  --     have free_in_prop x (prop.or (spec.subst y v S₄).to_prop (spec.subst y v S₅).to_prop),
+  --     from this ▸ x_free_in_or',
+  --     have free_in_prop x (spec.subst y v S₄).to_prop ∨ free_in_prop x (spec.subst y v S₅).to_prop,
+  --     from free_in_prop.or.inv this,
+  --     or.elim this (
+  --       assume : free_in_prop x (spec.subst y v S₄).to_prop,
+  --       have x ≠ y ∧ free_in_prop x S₄.to_prop, from S₄_ih this,
+  --       show x ≠ y ∧ free_in_prop x (spec.or S₄ S₅).to_prop, from ⟨this.left, free_in_prop.or₁ this.right⟩
+  --     ) (
+  --       assume : free_in_prop x (spec.subst y v S₅).to_prop,
+  --       have x ≠ y ∧ free_in_prop x S₅.to_prop, from S₅_ih this,
+  --       show x ≠ y ∧ free_in_prop x (spec.or S₄ S₅).to_prop, from ⟨this.left, free_in_prop.or₂ this.right⟩
+  --     )
+  --   ),
+  --   show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from (
+  --     if y_is_fx: y = fx then
+  --       have h₁: spec.subst y v (spec.func f fx S₆ S₇) = spec.func (term.subst y v f) fx S₆ S₇,
+  --       by { unfold spec.subst, simp * },
+  --       let forallp := (prop.implies S₆.to_prop (prop.pre (term.subst y v f) fx)
+  --                     & prop.implies (S₆.to_prop & prop.post (term.subst y v f) fx) S₇.to_prop) in
+  --       have h₂: (spec.func (term.subst y v f) fx S₆ S₇).to_prop =
+  --                (term.unop unop.isFunc (term.subst y v f) & prop.forallc fx (term.subst y v f) forallp),
+  --       by unfold spec.to_prop,
+  --       let forallp' := (prop.implies S₆.to_prop (prop.pre f fx)
+  --                       & prop.implies (S₆.to_prop & prop.post f fx) S₇.to_prop) in
+  --       have h₃: (spec.func f fx S₆ S₇).to_prop = (term.unop unop.isFunc f & prop.forallc fx f forallp'),
+  --       by unfold spec.to_prop,
+  --       have free_in_prop x (term.unop unop.isFunc (term.subst y v f) & prop.forallc fx (term.subst y v f) forallp),
+  --       from h₂ ▸ h₁ ▸ x_free_in_subst,
+  --       have free_in_prop x (term.unop unop.isFunc (term.subst y v f))
+  --          ∨ free_in_prop x (prop.forallc fx (term.subst y v f) forallp),
+  --       from free_in_prop.and.inv this,
+  --       or.elim this (
+  --         assume : free_in_prop x (term.unop unop.isFunc (term.subst y v f)),
+  --         have free_in_term x (term.unop unop.isFunc (term.subst y v f)), from free_in_prop.term.inv this,
+  --         have free_in_term x (term.subst y v f), from free_in_term.unop.inv this,
+  --         have x_neq_y: x ≠ y, from (free_of_subst_term this).left,
+  --         have free_in_term x f, from (free_of_subst_term this).right,
+  --         have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --         have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --         have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --         -- have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --         show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --       ) (
+  --         assume : free_in_prop x (prop.forallc fx (term.subst y v f) forallp),
+  --         have x_neq_fx: x ≠ fx, from (free_in_prop.forallc.inv this).left,
+  --         have x_neq_y: x ≠ y, from y_is_fx.symm ▸ x_neq_fx,
+  --         have free_in_term x (term.subst y v f) ∨ free_in_prop x forallp, from (free_in_prop.forallc.inv this).right,
+  --         or.elim this (
+  --           assume : free_in_term x (term.subst y v f),
+  --           have free_in_term x f, from (free_of_subst_term this).right,
+  --           have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --           have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --           have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --           have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --           show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --         ) (
+  --           assume : free_in_prop x forallp,
+  --           or.elim (free_in_prop.and.inv this) (
+  --             assume : free_in_prop x (prop.implies S₆.to_prop (prop.pre (term.subst y v f) fx)),
+  --             or.elim (free_in_prop.implies.inv this) (
+  --               assume : free_in_prop x S₆.to_prop,
+  --               have free_in_prop x S₆.to_prop.not, from free_in_prop.not this,
+  --               have free_in_prop x (prop.implies S₆.to_prop (prop.pre f fx)), from free_in_prop.or₁ this,
+  --               have free_in_prop x forallp', from free_in_prop.and₁ this,
+  --               have free_in_prop x (prop.forallc fx f forallp'), from free_in_prop.forallc₂ x_neq_fx this,
+  --               have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₂ this,
+  --               have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --               show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --             ) (
+  --               assume : free_in_prop x (prop.pre (term.subst y v f) fx),
+  --               or.elim (free_in_prop.pre.inv this) (
+  --                 assume : free_in_term x (term.subst y v f),
+  --                 have free_in_term x f, from (free_of_subst_term this).right,
+  --                 have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --                 have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --                 have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --                 have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --                 show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --               ) (
+  --                 assume : free_in_term x fx,
+  --                 have x = fx, from free_in_term.var.inv this,
+  --                 show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from absurd this x_neq_fx
+  --               )
+  --             )
+  --           )
+  --           (
+  --             assume : free_in_prop x (prop.implies (S₆.to_prop & prop.post (term.subst y v f) fx)
+  --                                                    S₇.to_prop),
+  --             or.elim (free_in_prop.implies.inv this) (
+  --               assume : free_in_prop x (S₆.to_prop & prop.post (term.subst y v f) fx),
+  --               or.elim (free_in_prop.and.inv this) (
+  --                 assume : free_in_prop x S₆.to_prop,
+  --                 have free_in_prop x S₆.to_prop.not, from free_in_prop.not this,
+  --                 have free_in_prop x (prop.implies S₆.to_prop (prop.pre f fx)), from free_in_prop.or₁ this,
+  --                 have free_in_prop x forallp', from free_in_prop.and₁ this,
+  --                 have free_in_prop x (prop.forallc fx f forallp'), from free_in_prop.forallc₂ x_neq_fx this,
+  --                 have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₂ this,
+  --                 have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --                 show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --               ) (
+  --                 assume : free_in_prop x (prop.post (term.subst y v f) fx),
+  --                 or.elim (free_in_prop.post.inv this) (
+  --                   assume : free_in_term x (term.subst y v f),
+  --                   have free_in_term x f, from (free_of_subst_term this).right,
+  --                   have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --                   have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --                   have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --                   have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --                   show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --                 ) (
+  --                   assume : free_in_term x fx,
+  --                   have x = fx, from free_in_term.var.inv this,
+  --                   show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from absurd this x_neq_fx
+  --                 )
+  --               )
+  --             ) (
+  --               assume : free_in_prop x S₇.to_prop,
+  --               have free_in_prop x (prop.implies (S₆.to_prop & prop.post f fx)
+  --                                                  S₇.to_prop), from free_in_prop.or₂ this,
+  --               have free_in_prop x forallp', from free_in_prop.and₂ this,
+  --               have free_in_prop x (prop.forallc fx f forallp'), from free_in_prop.forallc₂ x_neq_fx this,
+  --               have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₂ this,
+  --               have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --               show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --             )
+  --           )
+  --         )
+  --       )
+  --     else
+  --       have h₁: spec.subst y v (spec.func f fx S₆ S₇)
+  --          = spec.func (term.subst y v f) fx (spec.subst y v S₆) (spec.subst y v S₇),
+  --       by { unfold spec.subst, simp * },
+  --       let forallp := (prop.implies (spec.subst y v S₆).to_prop (prop.pre (term.subst y v f) fx)
+  --                     & prop.implies ((spec.subst y v S₆).to_prop & prop.post (term.subst y v f) fx)
+  --                                    (spec.subst y v S₇).to_prop) in
+  --       have h₂: (spec.func (term.subst y v f) fx (spec.subst y v S₆) (spec.subst y v S₇)).to_prop =
+  --                (term.unop unop.isFunc (term.subst y v f) & prop.forallc fx (term.subst y v f) forallp),
+  --       by unfold spec.to_prop,
+  --       let forallp' := (prop.implies S₆.to_prop (prop.pre f fx)
+  --                       & prop.implies (S₆.to_prop & prop.post f fx) S₇.to_prop) in
+  --       have h₃: (spec.func f fx S₆ S₇).to_prop = (term.unop unop.isFunc f & prop.forallc fx f forallp'),
+  --       by unfold spec.to_prop,
+  --       have free_in_prop x (term.unop unop.isFunc (term.subst y v f) & prop.forallc fx (term.subst y v f) forallp),
+  --       from h₂ ▸ h₁ ▸ x_free_in_subst,
+  --       have free_in_prop x (term.unop unop.isFunc (term.subst y v f))
+  --          ∨ free_in_prop x (prop.forallc fx (term.subst y v f) forallp),
+  --       from free_in_prop.and.inv this,
+  --       or.elim this (
+  --         assume : free_in_prop x (term.unop unop.isFunc (term.subst y v f)),
+  --         have free_in_term x (term.unop unop.isFunc (term.subst y v f)), from free_in_prop.term.inv this,
+  --         have free_in_term x (term.subst y v f), from free_in_term.unop.inv this,
+  --         have x_neq_y: x ≠ y , from (free_of_subst_term this).left,
+  --         have free_in_term x f, from (free_of_subst_term this).right,
+  --         have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --         have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --         have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --         have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --         show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --       ) (
+  --         assume : free_in_prop x (prop.forallc fx (term.subst y v f) forallp),
+  --         have x_neq_fx: x ≠ fx, from (free_in_prop.forallc.inv this).left,
+  --         have free_in_term x (term.subst y v f) ∨ free_in_prop x forallp,
+  --         from (free_in_prop.forallc.inv this).right,
+  --         or.elim this (
+  --           assume : free_in_term x (term.subst y v f),
+  --           have x_neq_y: x ≠ y , from (free_of_subst_term this).left,
+  --           have free_in_term x f, from (free_of_subst_term this).right,
+  --           have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --           have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --           have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --           have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --           show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --         ) (
+  --           assume : free_in_prop x forallp,
+  --           or.elim (free_in_prop.and.inv this) (
+  --             assume : free_in_prop x (prop.implies (spec.subst y v S₆).to_prop (prop.pre (term.subst y v f) fx)),
+  --             or.elim (free_in_prop.implies.inv this) (
+  --               assume : free_in_prop x (spec.subst y v S₆).to_prop,
+  --               have x_neq_y: x ≠ y, from (S₆_ih this).left,
+  --               have free_in_prop x S₆.to_prop, from (S₆_ih this).right,
+  --               have free_in_prop x S₆.to_prop.not, from free_in_prop.not this,
+  --               have free_in_prop x (prop.implies S₆.to_prop (prop.pre f fx)), from free_in_prop.or₁ this,
+  --               have free_in_prop x forallp', from free_in_prop.and₁ this,
+  --               have free_in_prop x (prop.forallc fx f forallp'), from free_in_prop.forallc₂ x_neq_fx this,
+  --               have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₂ this,
+  --               have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --               show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --             ) (
+  --               assume : free_in_prop x (prop.pre (term.subst y v f) fx),
+  --               or.elim (free_in_prop.pre.inv this) (
+  --                 assume : free_in_term x (term.subst y v f),
+  --                 have x_neq_y: x ≠ y , from (free_of_subst_term this).left,
+  --                 have free_in_term x f, from (free_of_subst_term this).right,
+  --                 have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --                 have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --                 have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --                 have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --                 show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --               ) (
+  --                 assume : free_in_term x fx,
+  --                 have x = fx, from free_in_term.var.inv this,
+  --                 show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from absurd this x_neq_fx
+  --               )
+  --             )
+  --           )
+  --           (
+  --             assume : free_in_prop x (prop.implies ((spec.subst y v S₆).to_prop & prop.post (term.subst y v f) fx)
+  --                                                    (spec.subst y v S₇).to_prop),
+  --             or.elim (free_in_prop.implies.inv this) (
+  --               assume : free_in_prop x ((spec.subst y v S₆).to_prop & prop.post (term.subst y v f) fx),
+  --               or.elim (free_in_prop.and.inv this) (
+  --                 assume : free_in_prop x (spec.subst y v S₆).to_prop,
+  --                 have x_neq_y: x ≠ y, from (S₆_ih this).left,
+  --                 have free_in_prop x S₆.to_prop, from (S₆_ih this).right,
+  --                 have free_in_prop x S₆.to_prop.not, from free_in_prop.not this,
+  --                 have free_in_prop x (prop.implies S₆.to_prop (prop.pre f fx)), from free_in_prop.or₁ this,
+  --                 have free_in_prop x forallp', from free_in_prop.and₁ this,
+  --                 have free_in_prop x (prop.forallc fx f forallp'), from free_in_prop.forallc₂ x_neq_fx this,
+  --                 have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₂ this,
+  --                 have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --                 show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --               ) (
+  --                 assume : free_in_prop x (prop.post (term.subst y v f) fx),
+  --                 or.elim (free_in_prop.post.inv this) (
+  --                   assume : free_in_term x (term.subst y v f),
+  --                   have x_neq_y: x ≠ y , from (free_of_subst_term this).left,
+  --                   have free_in_term x f, from (free_of_subst_term this).right,
+  --                   have free_in_term x (term.unop unop.isFunc f), from free_in_term.unop this,
+  --                   have free_in_prop x (term.unop unop.isFunc f), from free_in_prop.term this,
+  --                   have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₁ this,
+  --                   have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --                   show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --                 ) (
+  --                   assume : free_in_term x fx,
+  --                   have x = fx, from free_in_term.var.inv this,
+  --                   show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from absurd this x_neq_fx
+  --                 )
+  --               )
+  --             ) (
+  --               assume : free_in_prop x (spec.subst y v S₇).to_prop,
+  --               have x_neq_y: x ≠ y, from (S₇_ih this).left,
+  --               have free_in_prop x S₇.to_prop, from (S₇_ih this).right,
+  --               have free_in_prop x (prop.implies (S₆.to_prop & prop.post f fx)
+  --                                                  S₇.to_prop), from free_in_prop.or₂ this,
+  --               have free_in_prop x forallp', from free_in_prop.and₂ this,
+  --               have free_in_prop x (prop.forallc fx f forallp'), from free_in_prop.forallc₂ x_neq_fx this,
+  --               have free_in_prop x (term.unop unop.isFunc f & prop.forallc fx f forallp'), from free_in_prop.and₂ this,
+  --               have free_in_prop x (spec.func f fx S₆ S₇).to_prop, from h₃ ▸ this,
+  --               show x ≠ y ∧ free_in_prop x (spec.func f fx S₆ S₇).to_prop, from ⟨x_neq_y, this⟩
+  --             )
+  --           )
+  --         )
+  --       )
+  --   )
+  -- end
+
+lemma free_of_subst_env_spec {R: spec} {σ: env} {x y: var} {v: value}:
+        free_in_prop x (spec.subst_env (σ[y↦v]) R).to_prop → x ≠ y ∧ free_in_prop x (spec.subst_env σ R).to_prop :=
+  assume x_free: free_in_prop x (spec.subst_env (σ[y↦v]) R).to_prop,
+  have spec.subst_env (σ[y↦v]) R = spec.subst y v (spec.subst_env σ R), by unfold spec.subst_env,
+  have free_in_prop x (spec.subst y v (spec.subst_env σ R)).to_prop, from this ▸ x_free,
+  show x ≠ y ∧ free_in_prop x (spec.subst_env σ R), from free_of_subst_spec this
+
+lemma free_of_subst_env {R: spec} {σ: env} {x: var}:
+        free_in_prop x (spec.subst_env σ R).to_prop → free_in_prop x R.to_prop :=
+  assume x_free_in_subst: free_in_prop x (spec.subst_env σ R).to_prop,
   begin
-    induction R with t S₁ x_not_free_in_S₁ S₂ S₃ x_not_free_in_S₂ x_not_free_in_S₃
-                     S₄ S₅ x_not_free_in_S₄ x_not_free_in_S₅ f fx S₆ S₇ x_not_free_in_S₆ x_not_free_in_S₇,
-    show ¬free_in_prop x (spec.subst x v (spec.term t)).to_prop, from (
-      assume x_free_in_term: free_in_prop x (spec.subst x v (spec.term t)).to_prop,
-      have spec.subst x v (spec.term t) = spec.term (term.subst x v t), by unfold spec.subst,
-      have x_free_in_term': free_in_prop x (spec.term (term.subst x v t)).to_prop, from this ▸ x_free_in_term,
-      have (spec.term (term.subst x v t)).to_prop = prop.term (term.subst x v t), by unfold spec.to_prop,
-      have free_in_prop x (term.subst x v t), from this ▸ x_free_in_term',
-      have free_in_term x (term.subst x v t), from free_in_prop.term.inv this,
-      show «false», from not_free_of_subst_term this
+    induction σ with y v σ' ih,
+    show free_in_prop x R.to_prop, from (
+      have spec.subst_env env.empty R = R, by unfold spec.subst_env,
+      show free_in_prop x R.to_prop, from this ▸ x_free_in_subst
     ),
-    show ¬free_in_prop x (spec.subst x v S₁.not).to_prop, from (
-      assume x_free_in_not: free_in_prop x (spec.subst x v S₁.not).to_prop,
-      have (spec.subst x v S₁.not = (spec.subst x v S₁).not), by unfold spec.subst,
-      have x_free_in_not': free_in_prop x (spec.subst x v S₁).not.to_prop, from this ▸ x_free_in_not,
-      have (spec.subst x v S₁).not.to_prop = (spec.subst x v S₁).to_prop.not, by unfold spec.to_prop,
-      have free_in_prop x (spec.subst x v S₁).to_prop.not, from this ▸ x_free_in_not',
-      have free_in_prop x (spec.subst x v S₁).to_prop, from free_in_prop.not.inv this,
-      show «false», from x_not_free_in_S₁ this
-    ),
-    show ¬free_in_prop x (spec.subst x v (S₂ & S₃)).to_prop, from (
-      assume x_free_in_and: free_in_prop x (spec.subst x v (S₂ & S₃)).to_prop,
-      have spec.subst x v (spec.and S₂ S₃) = (spec.subst x v S₂ & spec.subst x v S₃), by unfold spec.subst,
-      have x_free_in_and': free_in_prop x (spec.subst x v S₂ & spec.subst x v S₃).to_prop, from this ▸ x_free_in_and,
-      have (spec.and (spec.subst x v S₂) (spec.subst x v S₃)).to_prop
-         = ((spec.subst x v S₂).to_prop & (spec.subst x v S₃).to_prop),
-      by unfold spec.to_prop,
-      have free_in_prop x ((spec.subst x v S₂).to_prop & (spec.subst x v S₃).to_prop), from this ▸ x_free_in_and',
-      have free_in_prop x (spec.subst x v S₂).to_prop ∨ free_in_prop x (spec.subst x v S₃).to_prop,
-      from free_in_prop.and.inv this,
-      or.elim this (
-        assume : free_in_prop x (spec.subst x v S₂).to_prop,
-        show «false», from x_not_free_in_S₂ this
-      ) (
-        assume : free_in_prop x (spec.subst x v S₃).to_prop,
-        show «false», from x_not_free_in_S₃ this
-      )
-    ),
-    show ¬free_in_prop x (spec.subst x v (spec.or S₄ S₅)).to_prop, from (
-      assume x_free_in_or: free_in_prop x (spec.subst x v (spec.or S₄ S₅)).to_prop,
-      have spec.subst x v (spec.or S₄ S₅) = spec.or (spec.subst x v S₄) (spec.subst x v S₅), by unfold spec.subst,
-      have x_free_in_or': free_in_prop x (spec.or (spec.subst x v S₄) (spec.subst x v S₅)).to_prop,
-      from this ▸ x_free_in_or,
-      have (spec.or (spec.subst x v S₄) (spec.subst x v S₅)).to_prop
-         = (prop.or (spec.subst x v S₄).to_prop (spec.subst x v S₅).to_prop),
-      by unfold spec.to_prop,
-      have free_in_prop x (prop.or (spec.subst x v S₄).to_prop (spec.subst x v S₅).to_prop),
-      from this ▸ x_free_in_or',
-      have free_in_prop x (spec.subst x v S₄).to_prop ∨ free_in_prop x (spec.subst x v S₅).to_prop,
-      from free_in_prop.or.inv this,
-      or.elim this (
-        assume : free_in_prop x (spec.subst x v S₄).to_prop,
-        show «false», from x_not_free_in_S₄ this
-      ) (
-        assume : free_in_prop x (spec.subst x v S₅).to_prop,
-        show «false», from x_not_free_in_S₅ this
-      )
-    ),
-    show ¬free_in_prop x (spec.subst x v (spec.func f fx S₆ S₇)).to_prop, from (
-      assume x_free_in_func: free_in_prop x (spec.subst x v (spec.func f fx S₆ S₇)).to_prop,
-      if x_is_fx: x = fx then
-        have h₁: spec.subst x v (spec.func f fx S₆ S₇) = spec.func (term.subst x v f) fx S₆ S₇,
-        by { unfold spec.subst, simp * },
-        let forallp := (prop.implies S₆.to_prop (prop.pre (term.subst x v f) fx)
-                      & prop.implies (S₆.to_prop & prop.post (term.subst x v f) fx) S₇.to_prop) in
-        have h₂: (spec.func (term.subst x v f) fx S₆ S₇).to_prop =
-                 (term.unop unop.isFunc (term.subst x v f) & prop.forallc fx (term.subst x v f) forallp),
-        by unfold spec.to_prop,
-        have free_in_prop x (term.unop unop.isFunc (term.subst x v f) & prop.forallc fx (term.subst x v f) forallp),
-        from h₂ ▸ h₁ ▸ x_free_in_func,
-        have free_in_prop x (term.unop unop.isFunc (term.subst x v f))
-           ∨ free_in_prop x (prop.forallc fx (term.subst x v f) forallp),
-        from free_in_prop.and.inv this,
-        or.elim this (
-          assume : free_in_prop x (term.unop unop.isFunc (term.subst x v f)),
-          have free_in_term x (term.unop unop.isFunc (term.subst x v f)), from free_in_prop.term.inv this,
-          have free_in_term x (term.subst x v f), from free_in_term.unop.inv this,
-          show «false», from not_free_of_subst_term this
-        ) (
-          assume : free_in_prop x (prop.forallc fx (term.subst x v f) forallp),
-          have (x ≠ fx) ∧ (free_in_term x (term.subst x v f) ∨ free_in_prop x forallp),
-          from free_in_prop.forallc.inv this,
-          have ¬ (x = fx), from this.left,
-          show «false», from this x_is_fx
-        )
-      else
-        have h₁: spec.subst x v (spec.func f fx S₆ S₇)
-           = spec.func (term.subst x v f) fx (spec.subst x v S₆) (spec.subst x v S₇),
-        by { unfold spec.subst, simp * },
-        let forallp := (prop.implies (spec.subst x v S₆).to_prop (prop.pre (term.subst x v f) fx)
-                      & prop.implies ((spec.subst x v S₆).to_prop & prop.post (term.subst x v f) fx)
-                                     (spec.subst x v S₇).to_prop) in
-        have h₂: (spec.func (term.subst x v f) fx (spec.subst x v S₆) (spec.subst x v S₇)).to_prop =
-                 (term.unop unop.isFunc (term.subst x v f) & prop.forallc fx (term.subst x v f) forallp),
-        by unfold spec.to_prop,
-        have free_in_prop x (term.unop unop.isFunc (term.subst x v f) & prop.forallc fx (term.subst x v f) forallp),
-        from h₂ ▸ h₁ ▸ x_free_in_func,
-        have free_in_prop x (term.unop unop.isFunc (term.subst x v f))
-           ∨ free_in_prop x (prop.forallc fx (term.subst x v f) forallp),
-        from free_in_prop.and.inv this,
-        or.elim this (
-          assume : free_in_prop x (term.unop unop.isFunc (term.subst x v f)),
-          have free_in_term x (term.unop unop.isFunc (term.subst x v f)), from free_in_prop.term.inv this,
-          have free_in_term x (term.subst x v f), from free_in_term.unop.inv this,
-          show «false», from not_free_of_subst_term this
-        ) (
-          assume : free_in_prop x (prop.forallc fx (term.subst x v f) forallp),
-          have free_in_term x (term.subst x v f) ∨ free_in_prop x forallp,
-          from (free_in_prop.forallc.inv this).right,
-          or.elim this (
-            assume : free_in_term x (term.subst x v f),
-            show «false», from not_free_of_subst_term this
-          ) (
-            assume : free_in_prop x forallp,
-            or.elim (free_in_prop.and.inv this) (
-              assume : free_in_prop x (prop.implies (spec.subst x v S₆).to_prop (prop.pre (term.subst x v f) fx)),
-              or.elim (free_in_prop.implies.inv this) (
-                assume : free_in_prop x (spec.subst x v S₆).to_prop,
-                show «false», from x_not_free_in_S₆ this
-              ) (
-                assume : free_in_prop x (prop.pre (term.subst x v f) fx),
-                or.elim (free_in_prop.pre.inv this) (
-                  assume : free_in_term x (term.subst x v f),
-                  show «false», from not_free_of_subst_term this
-                ) (
-                  assume : free_in_term x fx,
-                  have x = fx, from free_in_term.var.inv this,
-                  show «false», from x_is_fx this
-                )
-              )
-            )
-            (
-              assume : free_in_prop x (prop.implies ((spec.subst x v S₆).to_prop & prop.post (term.subst x v f) fx)
-                                                     (spec.subst x v S₇).to_prop),
-              or.elim (free_in_prop.implies.inv this) (
-                assume : free_in_prop x ((spec.subst x v S₆).to_prop & prop.post (term.subst x v f) fx),
-                or.elim (free_in_prop.and.inv this) (
-                  assume : free_in_prop x (spec.subst x v S₆).to_prop,
-                  show «false», from x_not_free_in_S₆ this
-                ) (
-                  assume : free_in_prop x (prop.post (term.subst x v f) fx),
-                  or.elim (free_in_prop.post.inv this) (
-                    assume : free_in_term x (term.subst x v f),
-                    show «false», from not_free_of_subst_term this
-                  ) (
-                    assume : free_in_term x fx,
-                    have x = fx, from free_in_term.var.inv this,
-                    show «false», from x_is_fx this
-                  )
-                )
-              ) (
-                assume : free_in_prop x (spec.subst x v S₇).to_prop,
-                show «false», from x_not_free_in_S₇ this
-              )
-            )
-          )
-        )
+    show free_in_prop x R.to_prop, from (
+      have free_in_prop x (spec.subst_env σ' R), from (free_of_subst_env_spec x_free_in_subst).right,
+      show free_in_prop x R.to_prop, from ih this
     )
   end
 
