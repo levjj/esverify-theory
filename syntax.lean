@@ -83,7 +83,7 @@ inductive prop
 | post    : term → term → prop
 | call    : term → term → prop
 | forallc : var → term → prop → prop
-| exist   : var → prop → prop
+| exis    : var → prop → prop
 
 -- A[•] ∈ TermContexts := • | v | x | ⊗ A[•] | A[•] ⊕ A[•] | A[•] ( A[•] )
 inductive termctx
@@ -108,15 +108,16 @@ inductive propctx
 | post    : termctx → termctx → propctx
 | call    : termctx → termctx → propctx
 | forallc : var → termctx → propctx → propctx
-| exist   : var → propctx → propctx
+| exis    : var → propctx → propctx
 
--- P,Q ∈ QuantifierAndTriggerFreePropositions := ...
-inductive qfprop
-| term    : term → qfprop
-| not     : qfprop → qfprop
-| and     : qfprop → qfprop → qfprop
-| or      : qfprop → qfprop → qfprop
-| pre     : term → term → qfprop
-| pre₁    : unop → term → qfprop
-| pre₂    : binop → term → term → qfprop
-| post    : term → term → qfprop
+-- P,Q ∈ VerificationCondition := ...
+inductive vc: Type
+| term    : term → vc
+| not     : vc → vc
+| and     : vc → vc → vc
+| or      : vc → vc → vc
+| pre     : term → term → vc
+| pre₁    : unop → term → vc
+| pre₂    : binop → term → term → vc
+| post    : term → term → vc
+| univ    : var → vc → vc

@@ -4,20 +4,23 @@ import data.set data.finset data.list
 -- p → q: prop
 
 @[reducible]
+def spec.implies(p q: spec): spec := spec.or (spec.not p) q
+
+@[reducible]
 def prop.implies(p q: prop): prop := prop.or (prop.not p) q
 
 @[reducible]
 def propctx.implies(p q: propctx): propctx := propctx.or (propctx.not p) q
 
 @[reducible]
-def qfprop.implies(p q: qfprop): qfprop := qfprop.or (qfprop.not p) q
+def vc.implies(p q: vc): vc := vc.or (vc.not p) q
 
 -- P && Q
 class has_and (α : Type) := (and : α → α → α) 
 instance : has_and spec := ⟨spec.and⟩
 instance : has_and prop := ⟨prop.and⟩
 instance : has_and propctx := ⟨propctx.and⟩
-instance : has_and qfprop := ⟨qfprop.and⟩
+instance : has_and vc := ⟨vc.and⟩
 infix `&&` := has_and.and
 
 -- P || Q
@@ -25,7 +28,7 @@ class has_or (α : Type) := (or : α → α → α)
 instance : has_or spec := ⟨spec.or⟩
 instance : has_or prop := ⟨prop.or⟩
 instance : has_or propctx := ⟨propctx.or⟩
-instance : has_or qfprop := ⟨qfprop.or⟩
+instance : has_or vc := ⟨vc.or⟩
 infix `||` := has_or.or
 
 -- use • as hole
@@ -36,20 +39,7 @@ instance value_to_term : has_coe value term := ⟨term.value⟩
 instance var_to_term : has_coe var term := ⟨term.var⟩
 instance term_to_prop : has_coe term prop := ⟨prop.term⟩
 instance termctx_to_propctx : has_coe termctx propctx := ⟨propctx.term⟩
-instance term_to_qfprop : has_coe term qfprop := ⟨qfprop.term⟩
-
--- qfprop to prop coercion
-def qfprop.to_prop: qfprop → prop
-| (qfprop.term t)        := prop.term t
-| (qfprop.not P)         := prop.not P.to_prop
-| (qfprop.and P Q)       := P.to_prop && Q.to_prop
-| (qfprop.or P Q)        := P.to_prop || Q.to_prop
-| (qfprop.pre t₁ t₂)     := prop.pre t₁ t₂ 
-| (qfprop.pre₁ op t)     := prop.pre₁ op t
-| (qfprop.pre₂ op t₁ t₂) := prop.pre₂ op t₁ t₂
-| (qfprop.post t₁ t₂)    := prop.post t₁ t₂
-
-instance qfprop_to_prop : has_coe qfprop prop := ⟨qfprop.to_prop⟩
+instance term_to_vc : has_coe term vc := ⟨vc.term⟩
 
 -- use (t ≡ t)/(t ≣ t) to construct equality comparison
 infix ≡ := term.binop binop.eq
@@ -101,14 +91,6 @@ lemma neq_symm {α: Type} {a b: α}: a ≠ b → b ≠ a :=
   assume a_neq_b: ¬ (a = b),
   assume b_eq_a: b = a,
   by simp * at *
-
--- lemma mem_of_2set {α: Type} [h: decidable_eq α] [set_mem: has_mem (set α) α] {a b c: α}:
---   (@has_mem.mem (set α) α set_mem {b,c} a) → (a = b) ∨ (a = c) :=
---   let d: list α := {b,c} in
---   list_of_set
-
---   assume a_in_d: a ∈ d,
---   have a = b ∨ a ∈ [c], from list.eq_or_mem_of_mem_insert a_in_d,
 
 lemma mem_of_2set {α: Type} {a b c: α}:
   a ∈ ({b, c}: set α) -> (a = b) ∨ (a = c) :=
@@ -184,6 +166,40 @@ def spec.to_prop : spec → prop
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
 
+-- prop size
+
+@[reducible]
+def prop.size: prop → ℕ := @prop.rec (λ_, ℕ)
+  (λ_, 0)
+  (λ_ n, n + 1)
+  (λ_ _ n m , n + m + 1)
+  (λ_ _ n m , n + m + 1)
+  (λ_ _, 0)
+  (λ_ _, 0)
+  (λ_ _ _, 0)
+  (λ_ _, 0)
+  (λ_ _, 0)
+  (λ_ _ _ n, n + 1)
+  (λ_ _ n, n + 1)
+
+instance : has_sizeof prop := ⟨prop.size⟩
+
+-- vc size
+
+@[reducible]
+def vc.size: vc → ℕ := @vc.rec (λ_, ℕ)
+  (λ_, 0)
+  (λ _ n, n + 1)
+  (λ_ _ n m , n + m + 1)
+  (λ_ _ n m , n + m + 1)
+  (λ_ _, 0)
+  (λ_ _, 0)
+  (λ_ _ _, 0)
+  (λ_ _, 0)
+  (λ_ _ n, n + 1)
+
+instance : has_sizeof vc := ⟨vc.size⟩
+
 -- term to termctx coercion
 
 def term.to_termctx : term → termctx
@@ -208,7 +224,7 @@ def prop.to_propctx : prop → propctx
 | (prop.post t₁ t₂)    := propctx.post t₁ t₂
 | (prop.call t₁ t₂)    := propctx.call t₁ t₂
 | (prop.forallc x t P) := propctx.forallc x t P.to_propctx
-| (prop.exist x P)     := propctx.exist x P.to_propctx
+| (prop.exis x P)      := propctx.exis x P.to_propctx
 
 instance prop_to_propctx : has_coe prop propctx := ⟨prop.to_propctx⟩
 
@@ -237,7 +253,7 @@ def propctx.apply: propctx → term → prop
 | (propctx.post t₁ t₂) t     := prop.post (t₁ t) (t₂ t)
 | (propctx.call t₁ t₂) t     := prop.call (t₁ t) (t₂ t)
 | (propctx.forallc x t₁ P) t := prop.forallc x (t₁ t) (P.apply t)
-| (propctx.exist x P) t      := prop.exist x (P.apply t)
+| (propctx.exis x P) t       := prop.exis x (P.apply t)
 
 instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 

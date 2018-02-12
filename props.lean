@@ -28,7 +28,7 @@ inductive free_in_prop (x: var) : prop → Prop
 | call₂ {t₁ t₂: term}                   : free_in_term x t₂ → free_in_prop (prop.call t₁ t₂)
 | forallc₁ {y: var} {t: term} {p: prop} : (x ≠ y) → free_in_term x t → free_in_prop (prop.forallc y t p)
 | forallc₂ {y: var} {t: term} {p: prop} : (x ≠ y) → free_in_prop p → free_in_prop (prop.forallc y t p)
-| exist {y: var} {p: prop}              : (x ≠ y) → free_in_prop p → free_in_prop (prop.exist y p)
+| exis {y: var} {p: prop}               : (x ≠ y) → free_in_prop p → free_in_prop (prop.exis y p)
 
 -- notation x ∈ FV t/p
 
