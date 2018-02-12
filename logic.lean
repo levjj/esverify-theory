@@ -83,7 +83,7 @@ def term.subst_env: env → term → term
 | env.empty t := t
 | (σ[x↦v]) t :=
     have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
-    term.subst_env σ (term.subst x v t)
+    term.subst x v (term.subst_env σ t)
 
 def spec.subst (x: var) (v: value): spec → spec
 | (spec.term t) :=
@@ -110,7 +110,7 @@ def spec.subst_env: env → spec → spec
 | env.empty R := R
 | (σ[x↦v]) R :=
     have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
-    spec.subst_env σ (spec.subst x v R)
+    spec.subst x v (spec.subst_env σ R)
 
 def vc.subst (x: var) (v: value): vc → vc
 | (vc.term t)        := term.subst x v t
@@ -127,7 +127,7 @@ def vc.subst_env: env → vc → vc
 | env.empty P := P
 | (σ[x↦v]) P :=
     have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
-    vc.subst_env σ (vc.subst x v P)
+    vc.subst x v (vc.subst_env σ P)
 
 -- validity
 
@@ -206,65 +206,66 @@ notation `⟪` P `⟫`: 100 := VC P
 
 lemma free_of_subst_term {t: term} {x y: var} {v: value}:
           free_in_term x (term.subst y v t) → x ≠ y ∧ free_in_term x t :=
-  assume x_free_in_subst: free_in_term x (term.subst y v t),
-  begin
-    induction t with v' z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
-    show x ≠ y ∧ free_in_term x (term.value v'), from (
-      have term.subst y v (term.value v') = v', by unfold term.subst,
-      have free_in_term x v', from this ▸ x_free_in_subst,
-      show x ≠ y ∧ free_in_term x (term.value v'), from absurd this free_in_term.value.inv
-    ),
-    show x ≠ y ∧ free_in_term x (term.var z), from (
-      have hite: term.subst y v (term.var z) = (if y = z then v else z), by unfold term.subst,
-      if y_is_z: y = z then
-        have term.subst y v (term.var z) = v, by simp * at *,
-        have free_in_term x v, from this ▸ x_free_in_subst,
-        show x ≠ y ∧ free_in_term x (term.var z), from absurd this free_in_term.value.inv
-      else
-        have term.subst y v (term.var z) = z, by simp * at *,
-        have free_in_term x z, from this ▸ x_free_in_subst,
-        have x_is_z: x = z, from free_in_term.var.inv this,
-        have x ≠ y, from x_is_z.symm ▸ (neq_symm y_is_z),
-        show x ≠ y ∧ free_in_term x (term.var z), from ⟨this, x_is_z ▸ free_in_term.var x⟩
-    ),
-    show x ≠ y ∧ free_in_term x (term.unop unop t₁), from (
-      have term.subst y v (term.unop unop t₁) = term.unop unop (term.subst y v t₁), by unfold term.subst,
-      have free_in_term x (term.unop unop (term.subst y v t₁)), from this ▸ x_free_in_subst,
-      have free_in_term x (term.subst y v t₁), from free_in_term.unop.inv this,
-      have x ≠ y ∧ free_in_term x t₁, from t₁_ih this,
-      show x ≠ y ∧ free_in_term x (term.unop unop t₁), from ⟨this.left, free_in_term.unop this.right⟩
-    ),
-    show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from (
-      have term.subst y v (term.binop binop t₂ t₃) = term.binop binop (term.subst y v t₂) (term.subst y v t₃),
-      by unfold term.subst,
-      have free_in_term x (term.binop binop (term.subst y v t₂) (term.subst y v t₃)), from this ▸ x_free_in_subst,
-      have free_in_term x (term.subst y v t₂) ∨ free_in_term x (term.subst y v t₃), from free_in_term.binop.inv this,
-      or.elim this (
-        assume : free_in_term x (term.subst y v t₂),
-        have x ≠ y ∧ free_in_term x t₂, from t₂_ih this,
-        show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from ⟨this.left, free_in_term.binop₁ this.right⟩
-      ) (
-        assume : free_in_term x (term.subst y v t₃),
-        have x ≠ y ∧ free_in_term x t₃, from t₃_ih this,
-        show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from ⟨this.left, free_in_term.binop₂ this.right⟩
-      )
-    ),
-    show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from (
-      have term.subst y v (term.app t₄ t₅) = term.app (term.subst y v t₄) (term.subst y v t₅),
-      by unfold term.subst,
-      have free_in_term x (term.app (term.subst y v t₄) (term.subst y v t₅)), from this ▸ x_free_in_subst,
-      have free_in_term x (term.subst y v t₄) ∨ free_in_term x (term.subst y v t₅), from free_in_term.app.inv this,
-      or.elim this (
-        assume : free_in_term x (term.subst y v t₄),
-        have x ≠ y ∧ free_in_term x t₄, from t₄_ih this,
-        show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from ⟨this.left, free_in_term.app₁ this.right⟩
-      ) (
-        assume : free_in_term x (term.subst y v t₅),
-        have x ≠ y ∧ free_in_term x t₅, from t₅_ih this,
-        show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from ⟨this.left, free_in_term.app₂ this.right⟩
-      )
-    )
-  end
+  sorry
+  -- assume x_free_in_subst: free_in_term x (term.subst y v t),
+  -- begin
+  --   induction t with v' z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+  --   show x ≠ y ∧ free_in_term x (term.value v'), from (
+  --     have term.subst y v (term.value v') = v', by unfold term.subst,
+  --     have free_in_term x v', from this ▸ x_free_in_subst,
+  --     show x ≠ y ∧ free_in_term x (term.value v'), from absurd this free_in_term.value.inv
+  --   ),
+  --   show x ≠ y ∧ free_in_term x (term.var z), from (
+  --     have hite: term.subst y v (term.var z) = (if y = z then v else z), by unfold term.subst,
+  --     if y_is_z: y = z then
+  --       have term.subst y v (term.var z) = v, by simp * at *,
+  --       have free_in_term x v, from this ▸ x_free_in_subst,
+  --       show x ≠ y ∧ free_in_term x (term.var z), from absurd this free_in_term.value.inv
+  --     else
+  --       have term.subst y v (term.var z) = z, by simp * at *,
+  --       have free_in_term x z, from this ▸ x_free_in_subst,
+  --       have x_is_z: x = z, from free_in_term.var.inv this,
+  --       have x ≠ y, from x_is_z.symm ▸ (neq_symm y_is_z),
+  --       show x ≠ y ∧ free_in_term x (term.var z), from ⟨this, x_is_z ▸ free_in_term.var x⟩
+  --   ),
+  --   show x ≠ y ∧ free_in_term x (term.unop unop t₁), from (
+  --     have term.subst y v (term.unop unop t₁) = term.unop unop (term.subst y v t₁), by unfold term.subst,
+  --     have free_in_term x (term.unop unop (term.subst y v t₁)), from this ▸ x_free_in_subst,
+  --     have free_in_term x (term.subst y v t₁), from free_in_term.unop.inv this,
+  --     have x ≠ y ∧ free_in_term x t₁, from t₁_ih this,
+  --     show x ≠ y ∧ free_in_term x (term.unop unop t₁), from ⟨this.left, free_in_term.unop this.right⟩
+  --   ),
+  --   show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from (
+  --     have term.subst y v (term.binop binop t₂ t₃) = term.binop binop (term.subst y v t₂) (term.subst y v t₃),
+  --     by unfold term.subst,
+  --     have free_in_term x (term.binop binop (term.subst y v t₂) (term.subst y v t₃)), from this ▸ x_free_in_subst,
+  --     have free_in_term x (term.subst y v t₂) ∨ free_in_term x (term.subst y v t₃), from free_in_term.binop.inv this,
+  --     or.elim this (
+  --       assume : free_in_term x (term.subst y v t₂),
+  --       have x ≠ y ∧ free_in_term x t₂, from t₂_ih this,
+  --       show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from ⟨this.left, free_in_term.binop₁ this.right⟩
+  --     ) (
+  --       assume : free_in_term x (term.subst y v t₃),
+  --       have x ≠ y ∧ free_in_term x t₃, from t₃_ih this,
+  --       show x ≠ y ∧ free_in_term x (term.binop binop t₂ t₃), from ⟨this.left, free_in_term.binop₂ this.right⟩
+  --     )
+  --   ),
+  --   show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from (
+  --     have term.subst y v (term.app t₄ t₅) = term.app (term.subst y v t₄) (term.subst y v t₅),
+  --     by unfold term.subst,
+  --     have free_in_term x (term.app (term.subst y v t₄) (term.subst y v t₅)), from this ▸ x_free_in_subst,
+  --     have free_in_term x (term.subst y v t₄) ∨ free_in_term x (term.subst y v t₅), from free_in_term.app.inv this,
+  --     or.elim this (
+  --       assume : free_in_term x (term.subst y v t₄),
+  --       have x ≠ y ∧ free_in_term x t₄, from t₄_ih this,
+  --       show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from ⟨this.left, free_in_term.app₁ this.right⟩
+  --     ) (
+  --       assume : free_in_term x (term.subst y v t₅),
+  --       have x ≠ y ∧ free_in_term x t₅, from t₅_ih this,
+  --       show x ≠ y ∧ free_in_term x (term.app t₄ t₅), from ⟨this.left, free_in_term.app₂ this.right⟩
+  --     )
+  --   )
+  -- end
 
 lemma free_of_subst_spec {R: spec} {x y: var} {v: value}:
           free_in_prop x (spec.subst y v R) → x ≠ y ∧ free_in_prop x R :=
@@ -576,32 +577,10 @@ lemma free_of_subst_spec {R: spec} {x y: var} {v: value}:
 
 lemma free_of_subst_env_spec {R: spec} {σ: env} {x y: var} {v: value}:
         free_in_prop x (spec.subst_env (σ[y↦v]) R).to_prop → x ≠ y ∧ free_in_prop x (spec.subst_env σ R).to_prop :=
-
   assume x_free: free_in_prop x (spec.subst_env (σ[y↦v]) R).to_prop,
-  show x ≠ y ∧ free_in_prop x (spec.subst_env σ R), by begin
-    induction σ with z v' σ' ih,
-    show x ≠ y ∧ free_in_prop x (spec.subst_env env.empty R), from (
-      have spec.subst_env (env.empty[y↦v]) R = spec.subst_env env.empty (spec.subst y v R), by unfold spec.subst_env,
-      have x_free': free_in_prop x (spec.subst_env env.empty (spec.subst y v R)).to_prop, from this ▸ x_free,
-      have (spec.subst_env env.empty (spec.subst y v R))
-         = (spec.subst y v R), by unfold spec.subst_env,
-      have free_in_prop x (spec.to_prop (spec.subst y v R)), from this ▸ x_free',
-      have h: x ≠ y ∧ free_in_prop x R, from free_of_subst_spec this,
-      have (spec.subst_env env.empty R) = R, by unfold spec.subst_env,
-      show x ≠ y ∧ free_in_prop x (spec.subst_env env.empty R), from ⟨h.left, this.symm ▸ h.right⟩
-    ),
-    show x ≠ y ∧ free_in_prop x (spec.subst_env (σ'[z↦v']) R), from (
-      have spec.subst_env (σ'[z↦v'][y↦v]) R = spec.subst_env (σ'[z↦v']) (spec.subst y v R), by unfold spec.subst_env,
-      have x_free': free_in_prop x (spec.subst_env (σ'[z↦v']) (spec.subst y v R)).to_prop, from this ▸ x_free,
-
-      -- ih
-
-      -- free_of_subst_spec
-
-      
-
-    )
-  end
+  have spec.subst_env (σ[y↦v]) R = spec.subst y v (spec.subst_env σ R), by unfold spec.subst_env,
+  have free_in_prop x (spec.subst y v (spec.subst_env σ R)).to_prop, from this ▸ x_free,
+  show x ≠ y ∧ free_in_prop x (spec.subst_env σ R), from free_of_subst_spec this
 
 lemma free_of_subst_env {R: spec} {σ: env} {x: var}:
         free_in_prop x (spec.subst_env σ R).to_prop → free_in_prop x R.to_prop :=
@@ -618,38 +597,237 @@ lemma free_of_subst_env {R: spec} {σ: env} {x: var}:
     )
   end
 
+lemma term.subst_env.var.inv {x: var} {σ: env}:
+  (term.subst_env σ x = x) ∨ (∃v:value, term.subst_env σ x = v) :=
+  sorry
+  -- begin
+  --   induction σ with y v' σ' ih,
+  --   show (term.subst_env env.empty x = x) ∨ (∃v:value, term.subst_env env.empty x = v), from (
+  --     have (term.subst_env env.empty x = x), by unfold term.subst_env,
+  --     show (term.subst_env env.empty x = x) ∨ (∃v:value, term.subst_env env.empty x = v), from or.inl this
+  --   ),
+  --   show (term.subst_env (σ'[y↦v']) x = x) ∨ (∃v:value, term.subst_env (σ'[y↦v']) x = v), from (
+  --     have tsubst: (term.subst_env (σ'[y↦v']) x = term.subst y v' (term.subst_env σ' x)),
+  --     by unfold term.subst_env,
+  --     have (term.subst_env σ' ↑x = ↑x ∨ ∃ (v : value), term.subst_env σ' ↑x = ↑v), from ih,
+  --     or.elim this (
+  --       assume σ'_x_is_x: term.subst_env σ' ↑x = ↑x,
+  --       have h: (term.subst_env (σ'[y↦v']) x = term.subst y v' ↑x),
+  --       from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) x σ'_x_is_x tsubst,
+  --       have term.subst y v' (term.var x) = (if y = x then v' else x), by unfold term.subst,
+  --       decidable.by_cases (
+  --         assume : x = y,
+  --         have term.subst y v' (term.var x) = v', by simp * at *,
+  --         have term.subst_env (σ'[y↦v']) x = v', from eq.trans h this,
+  --         have (∃v:value, term.subst_env (σ'[y↦v']) x = v), from exists.intro v' this,
+  --         show (term.subst_env (σ'[y↦v']) x = x) ∨ (∃v:value, term.subst_env (σ'[y↦v']) x = v), from or.inr this
+  --       ) (
+  --         assume : ¬(x = y),
+  --         have ¬(y = x), from neq_symm this,
+  --         have term.subst y v' (term.var x) = x, by simp * at *,
+  --         have term.subst_env (σ'[y↦v']) x = x, from eq.trans h this,
+  --         show (term.subst_env (σ'[y↦v']) x = x) ∨ (∃v:value, term.subst_env (σ'[y↦v']) x = v), from or.inl this
+  --       )
+  --     ) (
+  --       assume : ∃ (v : value), term.subst_env σ' ↑x = ↑v,
+  --       let ⟨v, σ'_x_is_v⟩ := this in
+  --       have h: (term.subst_env (σ'[y↦v']) x = term.subst y v' ↑v),
+  --       from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) v σ'_x_is_v tsubst,
+  --       have term.subst y v' (term.value v) = ↑v, by unfold term.subst,
+  --       have term.subst_env (σ'[y↦v']) x = v, from eq.trans h this,
+  --       have (∃v:value, term.subst_env (σ'[y↦v']) x = v), from exists.intro v this,
+  --       show (term.subst_env (σ'[y↦v']) x = x) ∨ (∃v:value, term.subst_env (σ'[y↦v']) x = v), from or.inr this
+  --     )
+  --   )
+  -- end
+
 lemma term.subst_env.var {σ: env} {x: var} {v: value}:
-      σ x = some v → (term.subst_env σ x = v) :=
-begin
-  intro env_has_x,
-  induction σ with y v' σ' ih,
-  show (term.subst_env env.empty x = v), by begin
-    have env_has_none: (env.apply env.empty x = none), by unfold env.apply,
-    have : (some v = none), from env_has_x ▸ env_has_none,
-    contradiction
-  end,
-  show (term.subst_env (σ'[y↦v']) x = v), from
-    have app: ((σ'[y↦v']).apply x = (if y = x then v' else σ'.apply x)), by unfold env.apply,
-    if x_eq_y: x = y then
-      have (y = x) = «true», by simp [x_eq_y],
-      have ((σ'[y↦v']).apply x = v'), by simp * at *,
-      have some v' = some v, from eq.trans this.symm env_has_x,
-      have v'_is_v: v' = v, by injection this,
-      have term.subst_env (σ'[y↦v']) x = term.subst y v' (term.subst_env σ' x),
-
-
-      -- from eq. -- x_eq_y ▸ app,
-      -- have env_has_none: (σ'[y↦v']).apply x = v',
-      sorry
-
-    else
-      sorry
-    -- calc
-    -- vc.subst_env (σ'[x↦v]) P.not = vc.subst x v (vc.subst_env σ' P.not) : by unfold vc.subst_env
-    --                          ... = vc.subst x v (vc.subst_env σ' P).not : by rw[ih]
-    --                          ... = (vc.subst x v (vc.subst_env σ' P)).not : by unfold vc.subst
-    --                          ... = (vc.subst_env (σ'[x↦v]) P).not : by unfold vc.subst_env
-end
+      ((σ x = none) ↔ (term.subst_env σ x = x)) ∧ ((σ x = some v) ↔ (term.subst_env σ x = v)) :=
+  sorry
+-- begin
+--   induction σ with y v' σ' ih,
+--   show (((env.empty x = none) ↔ (term.subst_env env.empty x = x))
+--      ∧ ((env.empty x = some v) ↔ (term.subst_env env.empty x = v))), by begin
+--     split,
+--     show ((env.empty x = none) ↔ (term.subst_env env.empty x = x)), by begin
+--       split,
+--       show ((env.empty x = none) → (term.subst_env env.empty x = x)), by begin
+--         assume _,
+--         show (term.subst_env env.empty x = x), by unfold term.subst_env
+--       end,
+--       show ((term.subst_env env.empty x = x) → (env.empty x = none)), by begin
+--         assume _,
+--         show (env.apply env.empty x = none), by unfold env.apply
+--       end
+--     end,
+--     show ((env.empty x = some v) ↔ (term.subst_env env.empty x = v)), by begin
+--       split,
+--       show ((env.empty x = some v) → (term.subst_env env.empty x = v)), by begin
+--         assume env_has_some: (env.apply (env.empty) x = some v),
+--         have env_has_none: (env.apply env.empty x = none), by unfold env.apply,
+--         have : (some v = none), from env_has_some ▸ env_has_none,
+--         contradiction 
+--       end,
+--       show ((term.subst_env env.empty x = v) → (env.empty x = some v)), by begin
+--         assume subst_is_v: (term.subst_env env.empty x = v),
+--         have : (term.subst_env env.empty x = x), by unfold term.subst_env,
+--         have : (↑v = ↑x), from eq.trans subst_is_v.symm this,
+--         contradiction 
+--       end
+--     end
+--   end,
+--   show ((((σ'[y↦v']) x = none) ↔ (term.subst_env (σ'[y↦v']) x = x))
+--      ∧ (((σ'[y↦v']) x = some v) ↔ (term.subst_env (σ'[y↦v']) x = v))), by begin
+--     have tsubst: (term.subst_env (σ'[y↦v']) x = term.subst y v' (term.subst_env σ' x)),
+--     by unfold term.subst_env,
+--     have app: ((σ'[y↦v']).apply x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
+--     by unfold env.apply,
+--     split,
+--     show (((σ'[y↦v']) x = none) ↔ (term.subst_env (σ'[y↦v']) x = x)), by begin
+--       split,
+--       show (((σ'[y↦v']) x = none) → (term.subst_env (σ'[y↦v']) x = x)), by begin
+--         assume σ'_does_not_have_x: ((σ'[y↦v']) x = none),
+--         by_cases (y = x ∧ option.is_none (σ'.apply x)) with h,
+--         show (term.subst_env (σ'[y↦v']) x = x), from
+--           have ((σ'[y↦v']).apply x) = v', by simp * at *,
+--           have some v' = none, from eq.trans this.symm σ'_does_not_have_x,
+--           by contradiction,
+--         show (term.subst_env (σ'[y↦v']) x = x), from
+--           have ((σ'[y↦v']).apply x) = σ'.apply x, by simp * at *,
+--           have σ'_x_is_none: σ'.apply x = none, from eq.trans this.symm σ'_does_not_have_x,
+--           have term.subst_env σ' x = x, from ih.left.mp σ'_x_is_none,
+--           have h2: term.subst_env (σ'[y↦v']) x = term.subst y v' x,
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) x this tsubst,
+--           have term.subst y v' (term.var x) = (if y = x then v' else x), by unfold term.subst,
+--           have ¬(y = x) ∨ ¬(option.is_none (env.apply σ' x)) , from not_and_distrib.mp h,
+--           have ¬(y = x), from this.elim id ( 
+--             assume : ¬(option.is_none (env.apply σ' x)),
+--             have (env.apply σ' x) ≠ none, from not_is_none.inv (env.apply σ' x) this,
+--             show ¬(y = x), from absurd σ'_x_is_none this
+--           ),
+--           have term.subst y v' (term.var x) = x, by simp * at *,
+--           show (term.subst_env (σ'[y↦v']) x = x), from eq.trans h2 this
+--       end,
+--       show ((term.subst_env (σ'[y↦v']) x = x) → ((σ'[y↦v']) x = none)), from (
+--         assume h: term.subst_env (σ'[y↦v']) x = x,
+--         have h2: term.subst y v' (term.subst_env σ' x) = x, from eq.trans tsubst.symm h,
+--         have (term.subst_env σ' x = x) ∨ (∃v:value, term.subst_env σ' x = v), from term.subst_env.var.inv,
+--         or.elim this (
+--           assume : term.subst_env σ' x = x,
+--           have σ'_x_is_none: σ' x = none, from ih.left.mpr this,
+--           have h3: term.subst_env (σ'[y↦v']) x = term.subst y v' x,
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) x this tsubst,
+--           have term.subst y v' (term.var x) = (if y = x then v' else x), by unfold term.subst,
+--           decidable.by_cases (
+--             assume : x = y,
+--             have term.subst y v' (term.var x) = v', by simp * at *,
+--             have term.subst_env (σ'[y↦v']) x = v', from eq.trans h3 this,
+--             have ↑x = ↑v', from eq.trans h.symm this,
+--             show (σ'[y↦v']) x = none, by contradiction
+--           ) (
+--             assume : ¬(x = y),
+--             have ¬(y = x), from neq_symm this,
+--             have (σ'[y↦v']).apply x = σ'.apply x, by simp * at *,
+--             show (σ'[y↦v']).apply x = none, from eq.trans this σ'_x_is_none
+--           )
+--         ) (
+--           assume : (∃v'':value, term.subst_env σ' x = v''),
+--           let ⟨v'', σ'_x_is_v''⟩ := this in
+--           have h3: (term.subst_env (σ'[y↦v']) x = term.subst y v' ↑v''),
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) v'' σ'_x_is_v'' tsubst,
+--           have term.subst y v' (term.value v'') = ↑v'', by unfold term.subst,
+--           have term.subst_env (σ'[y↦v']) x = ↑v'', from eq.trans h3 this,
+--           have ↑x = ↑v'', from eq.trans h.symm this,
+--           show (σ'[y↦v']) x = none, by contradiction
+--         )
+--       )
+--     end,
+--     show (((σ'[y↦v']) x = some v) ↔ (term.subst_env (σ'[y↦v']) x = v)), by begin
+--       split,
+--       show (((σ'[y↦v']) x = some v) → (term.subst_env (σ'[y↦v']) x = v)), by begin
+--         assume env_has_x: ((σ'[y↦v']) x = some v),
+--         have app: ((σ'[y↦v']).apply x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
+--         by unfold env.apply,
+--         by_cases (y = x ∧ option.is_none (σ'.apply x)) with h,
+--         show (term.subst_env (σ'[y↦v']) ↑x = ↑v), from (
+--           have ((σ'[y↦v']).apply x = v'), by simp * at *,
+--           have some v' = some v, from eq.trans this.symm env_has_x,
+--           have v'_is_v: v' = v, by injection this,
+--           have option.is_none (σ'.apply x), from h.right,
+--           have σ'.apply x = none, from (is_none.inv (σ'.apply x)).mp this,
+--           have σ'_x_is_x: term.subst_env σ' x = x, from ih.left.mp this,
+--           have term.subst_env (σ'[y↦v']) x = term.subst y v' (term.subst_env σ' x),
+--           by unfold term.subst_env,
+--           have h2: term.subst_env (σ'[y↦v']) x = term.subst y v' (term.var x),
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) x σ'_x_is_x tsubst,
+--           have term.subst y v' (term.var x) = (if y = x then v' else x), by unfold term.subst,
+--           have term.subst y v' (term.var x) = v', by simp * at *,
+--           show term.subst_env (σ'[y↦v']) x = v, from v'_is_v ▸ eq.trans h2 this
+--         ),
+--         show (term.subst_env (σ'[y↦v']) ↑x = ↑v), from (
+--           have (σ'[y↦v']).apply x = σ'.apply x, by simp * at *,
+--           have σ'.apply x = v, from eq.trans this.symm env_has_x,
+--           have σ'_x_is_v: term.subst_env σ' ↑x = ↑v, from ih.right.mp this,
+--           have term.subst_env (σ'[y↦v']) x = term.subst y v' (term.subst_env σ' x),
+--           by unfold term.subst_env,
+--           have h2: term.subst_env (σ'[y↦v']) x = term.subst y v' v,
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) v σ'_x_is_v tsubst,
+--           have term.subst y v' (term.value v) = ↑v, by unfold term.subst,
+--           show term.subst_env (σ'[y↦v']) x = v, from eq.trans h2 this
+--         )
+--       end,
+--       show ((term.subst_env (σ'[y↦v']) x = v) → ((σ'[y↦v']) x = some v)), from (
+--         assume h: term.subst_env (σ'[y↦v']) x = v,
+--         have h2: term.subst y v' (term.subst_env σ' x) = v, from eq.trans tsubst.symm h,
+--         have (term.subst_env σ' x = x) ∨ (∃v:value, term.subst_env σ' x = v), from term.subst_env.var.inv,
+--         or.elim this (
+--           assume : term.subst_env σ' x = x,
+--           have σ'_x_is_none: σ' x = none, from ih.left.mpr this,
+--           have h3: term.subst_env (σ'[y↦v']) x = term.subst y v' x,
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) x this tsubst,
+--           have h4: term.subst y v' (term.var x) = (if y = x then v' else x), by unfold term.subst,
+--           decidable.by_cases (
+--             assume x_is_y: x = y,
+--             have term.subst y v' (term.var x) = (if x = x then v' else x),
+--             from @eq.subst var (λa, term.subst y v' (term.var x) = (if a = x then v' else x)) y x x_is_y.symm h4,
+--             have term.subst y v' (term.var x) = v', by { simp at this, assumption },
+--             have term.subst_env (σ'[y↦v']) x = v', from eq.trans h3 this,
+--             have ↑v = ↑v', from eq.trans h.symm this,
+--             have v_is_v': v = v', by injection this,
+--             have opt_is_none: option.is_none (env.apply σ' x), from (is_none.inv (σ' x)).mpr σ'_x_is_none,
+--             have (if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = v',
+--             by { simp[x_is_y.symm], simp[opt_is_none] },
+--             have (σ'[y↦v']).apply x = v', from eq.trans app this,
+--             have (σ'[y↦v']) x = some v', from this,
+--             show (σ'[y↦v']) x = some v, from @eq.subst value (λa, (σ'[y↦v']) x = some a) v' v v_is_v'.symm this
+--           ) (
+--             assume : ¬(x = y),
+--             have ¬(y = x), from neq_symm this,
+--             have term.subst y v' (term.var x) = x, by { simp[this] at h4, assumption },
+--             have ↑v = ↑x, from eq.trans (eq.trans h.symm h3) this,
+--             show ((σ'[y↦v']) x = some v), by contradiction
+--           )
+--         ) (
+--           assume : (∃v'':value, term.subst_env σ' x = v''),
+--           let ⟨v'', σ'_x_is_v''⟩ := this in
+--           have h3: (term.subst_env (σ'[y↦v']) x = term.subst y v' ↑v''),
+--           from @eq.subst term (λa, term.subst_env (σ'[y↦v']) x = term.subst y v' a) (term.subst_env σ' x) v'' σ'_x_is_v'' tsubst,
+--           have term.subst y v' (term.value v'') = ↑v'', by unfold term.subst,
+--           have term.subst_env (σ'[y↦v']) x = ↑v'', from eq.trans h3 this,
+--           have v_is_v'': ↑v = ↑v'', from eq.trans h.symm this,
+--           have term.subst_env σ' x = v,
+--           from @eq.subst term (λa, term.subst_env σ' x = a) v'' v v_is_v''.symm σ'_x_is_v'',
+--           have σ'_x_app_is_v: env.apply σ' x = some v, from ih.right.mpr this,
+--           have opt_is_not_none: ¬ option.is_none (env.apply σ' x), from not_is_none.rinv σ'_x_app_is_v,
+--           have (if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x,
+--           by { simp[opt_is_not_none] },
+--           have (σ'[y↦v']) x = σ'.apply x, from eq.trans app this,
+--           show (σ'[y↦v']) x = some v, from eq.trans this σ'_x_app_is_v
+--         )
+--       )
+--     end
+--   end
+-- end
 
 lemma vc.subst_env.not {σ: env} {P: vc}:
       vc.subst_env σ P.not = (vc.subst_env σ P).not :=

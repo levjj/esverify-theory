@@ -633,10 +633,8 @@ lemma exp.progress{H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have h5: ⊨ vc.subst_env σ (vc.pre₁ op x), from this,
       have vc.subst_env σ (vc.pre₁ op x) = vc.pre₁ op (term.subst_env σ x), from vc.subst_env.pre₁,
       have ⊨ vc.pre₁ op (term.subst_env σ x), from this ▸ h5,
-      trace_val env_has_x,
-
-
-      have ⊨ vc.pre₁ op v, from sorry,
+      have x_from_env: term.subst_env σ x = v, from term.subst_env.var.right.mp env_has_x,
+      have ⊨ vc.pre₁ op v, from x_from_env ▸ this,
       have (∃v', op v = some v'), from valid.pre₁.inv this,
       let ⟨v', op_v_is_v'⟩ := this in
       have s ⟶ none, (σ[y↦v'], e'), from step.unop env_has_x op_v_is_v',

@@ -87,6 +87,54 @@ lemma lt_of_add {n m: ℕ}: n < n + m + 1 ∧ m < n + m + 1 :=
 
 -- other auxiliary lemmas
 
+lemma is_none.inv {α: Type} (a: option α): option.is_none a ↔ (a = none) :=
+  begin
+    cases a,
+    case option.some v {
+      split,
+      assume is_none_some,
+      contradiction,
+      assume is_none_some,
+      contradiction,
+    },
+    case option.none {
+      split,
+      assume is_none_none,
+      exact rfl,
+      assume is_none_none,
+      exact rfl
+    }
+  end
+
+lemma not_is_none.inv {α: Type} (a: option α): ¬ option.is_none a → (a ≠ none) :=
+  assume is_not_none: ¬ option.is_none a,
+  begin
+    cases a,
+    case option.some v {
+      assume is_none_some,
+      contradiction
+    },
+    case option.none {
+      assume is_none_none,
+      have : (option.is_none none = tt), by unfold option.is_none,
+      contradiction
+    }
+  end
+
+lemma not_is_none.rinv {α: Type} {a: option α} {b: α}: a = some b → ¬ option.is_none a :=
+  assume is_some_b: a = some b,
+  begin
+    cases a,
+    case option.some v {
+      assume is_none_some,
+      contradiction
+    },
+    case option.none {
+      assume is_none_none,
+      contradiction
+    }
+  end
+
 lemma neq_symm {α: Type} {a b: α}: a ≠ b → b ≠ a :=
   assume a_neq_b: ¬ (a = b),
   assume b_eq_a: b = a,
@@ -122,7 +170,7 @@ def env.apply: env → var → option value
 | env.empty _ := none
 | (σ[x↦v]) y :=
   have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
-  if x = y then v else σ.apply y
+  if x = y ∧ option.is_none (σ.apply y) then v else σ.apply y
 
 instance : has_coe_to_fun env := ⟨λ _, var → option value, env.apply⟩
 
