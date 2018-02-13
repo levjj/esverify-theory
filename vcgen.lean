@@ -1,4 +1,4 @@
-import .syntax .etc .evaluation .props .logic
+import .syntax .notations .evaluation .logic
 
 reserve infix `⊢`:10
 
@@ -73,18 +73,22 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     ⊢ env.empty : value.true
 
 | tru {σ: env} {x: var} {Q: prop}:
+    x ∉ σ →
     (⊢ σ : Q) →
     (⊢ (σ[x ↦ value.true]) : (Q && (x ≡ value.true)))
 
 | fls {σ: env} {x: var} {Q: prop}:
+    x ∉ σ →
     (⊢ σ : Q) →
     (⊢ (σ[x ↦ value.false]) : (Q && (x ≡ value.false)))
 
 | num {n: ℤ} {σ: env} {x: var} {Q: prop}:
+    x ∉ σ →
     (⊢ σ : Q) →
     (⊢ (σ[x ↦ value.num n]) : (Q && (x ≡ value.num n)))
 
 | func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
+    f ∉ σ₁ →
     (⊢ σ₁ : Q₁) →
     (⊢ σ₂ : Q₂) →
     FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →

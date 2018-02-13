@@ -53,7 +53,7 @@ notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 
 | unop {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
     (σ x = v₁) →
-    (op v₁ = v) →
+    (unop.apply op v₁ = v) →
     ((σ, letop y = op [x] in e) ⟶ none, (σ[y↦v], e))
 
 | binop {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
@@ -93,26 +93,8 @@ notation s `⟶*` s':100 := trans_step s s'
 
 -- lemmas
 
-lemma binop.eq_of_equal_values {v: value}: binop.eq v v = value.true :=
-begin
-  cases v with n f x R S e σ,
-  show (binop.eq value.true value.true = value.true), by begin
-    have : (binop.apply binop.eq value.true value.true = value.true), by unfold binop.apply,
-    assumption
-  end,
-  show (binop.eq value.true value.true = value.true), by begin
-    have : (binop.apply binop.eq value.false value.false = value.true), by unfold binop.apply,
-    assumption
-  end,
-  show (binop.eq (value.num n) (value.num n) = value.true), by begin
-    have : (binop.apply binop.eq (value.num n) (value.num n) = (if n = n then value.true else value.false)),
-    by unfold binop.apply,
-    have : (binop.apply binop.eq (value.num n) (value.num n) = value.true), by simp[this],
-    assumption
-  end,
-  show (binop.eq (value.func f x R S e σ) (value.func f x R S e σ) = value.true), by begin
-    have : (binop.apply binop.eq (value.func f x R S e σ) (value.func f x R S e σ) = value.true),
-    by unfold binop.apply,
-    assumption
-  end
-end
+lemma binop.eq_of_equal_values {v: value}: binop.apply binop.eq v v = value.true :=
+  have binop.apply binop.eq v v = @ite (v = v)
+                                  (classical.prop_decidable (v = v))
+                                  value value.true value.false, by unfold binop.apply,
+  show binop.apply binop.eq v v =  value.true, by simp[this]
