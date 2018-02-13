@@ -1,4 +1,4 @@
-import .syntax .etc
+import .syntax .notations
 
 def unop.apply: unop → value → option value
 | unop.not value.true                  := value.false
@@ -12,9 +12,7 @@ def unop.apply: unop → value → option value
 | unop.isFunc _                        := value.false
 | _ _                                  := none
 
-instance : has_coe_to_fun unop := ⟨λ _, value → option value, unop.apply⟩
-
-def binop.apply: binop → value → value → option value
+noncomputable def binop.apply: binop → value → value → option value
 | binop.plus (value.num n₁) (value.num n₂)  := value.num (n₁ + n₂)
 | binop.minus (value.num n₁) (value.num n₂) := value.num (n₁ - n₂)
 | binop.times (value.num n₁) (value.num n₂) := value.num (n₁ * n₂)
@@ -27,15 +25,11 @@ def binop.apply: binop → value → value → option value
 | binop.or value.true value.false           := value.true
 | binop.or value.false value.true           := value.true
 | binop.or value.false value.false          := value.false
-| binop.eq (value.num n₁) (value.num n₂)    := if n₁ = n₂ then value.true else value.false
-| binop.eq value.true value.true            := value.true
-| binop.eq value.true value.false           := value.false
-| binop.eq value.false value.true           := value.false
-| binop.eq value.false value.false          := value.true
+| binop.eq v₁ v₂                            := @ite (v₁ = v₂)
+                                               (classical.prop_decidable (v₁ = v₂))
+                                               value value.true value.false
 | binop.lt (value.num n₁) (value.num n₂)    := if n₁ < n₂ then value.true else value.false
 | _ _ _                                     := none
-
-instance : has_coe_to_fun binop := ⟨λ _, value → value → option value, binop.apply⟩
 
 inductive step : stack → option call → stack → Prop
 notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
@@ -65,7 +59,7 @@ notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 | binop {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
     (σ x = v₁) →
     (σ y = v₂) →
-    (op v₁ v₂ = v) →
+    (binop.apply op v₁ v₂ = v) →
     ((σ, letop2 z = op [x, y] in e) ⟶ none, (σ[z↦v], e))
 
 | app {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {v: value}:
@@ -96,3 +90,29 @@ notation s `⟶*` s':100 := trans_step s s'
 | trans {s s' s'': stack} {c: call} : (s ⟶ c, s') → (s' ⟶* s'') → (s ⟶* s'')
 
 notation s `⟶*` s':100 := trans_step s s'
+
+-- lemmas
+
+lemma binop.eq_of_equal_values {v: value}: binop.eq v v = value.true :=
+begin
+  cases v with n f x R S e σ,
+  show (binop.eq value.true value.true = value.true), by begin
+    have : (binop.apply binop.eq value.true value.true = value.true), by unfold binop.apply,
+    assumption
+  end,
+  show (binop.eq value.true value.true = value.true), by begin
+    have : (binop.apply binop.eq value.false value.false = value.true), by unfold binop.apply,
+    assumption
+  end,
+  show (binop.eq (value.num n) (value.num n) = value.true), by begin
+    have : (binop.apply binop.eq (value.num n) (value.num n) = (if n = n then value.true else value.false)),
+    by unfold binop.apply,
+    have : (binop.apply binop.eq (value.num n) (value.num n) = value.true), by simp[this],
+    assumption
+  end,
+  show (binop.eq (value.func f x R S e σ) (value.func f x R S e σ) = value.true), by begin
+    have : (binop.apply binop.eq (value.func f x R S e σ) (value.func f x R S e σ) = value.true),
+    by unfold binop.apply,
+    assumption
+  end
+end
