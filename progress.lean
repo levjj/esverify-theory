@@ -611,6 +611,38 @@ lemma simple_equality_valid {σ: env} {x: var} {v: value}:
   have ⊨ vc.term (v ≡ v), from valid.refl,
   show (σ[x↦v]) ⊨ prop.erased (x ≡ v), from h8.symm ▸ this
 
+lemma simple_equality_env_valid {P: prop} {σ: env} {x: var} {v: value}:
+                                   (⊢ σ: P) → x ∉ σ → σ ⊨ P.erased → (σ[x↦v]) ⊨ (P && (x ≡ v)).erased :=
+  assume σ_verified: ⊢ σ: P,
+  assume x_not_free_in_σ: x ∉ σ,
+  assume ih: σ ⊨ P.erased,
+  have σ.apply x = none, from env.contains_apply_equiv.left.mpr x_not_free_in_σ,
+  have h1: (σ[x↦v]) ⊨ (prop.term (x ≡ v)).erased,
+  from simple_equality_valid x_not_free_in_σ,
+  have h2: ⊨ vc.subst_env σ P.erased, from ih,
+  have x_not_in_q: x ∉ FV (vc.subst_env σ P.erased), from (
+    assume : x ∈ FV (vc.subst_env σ P.erased),
+    have x ∈ FV P.erased, from free_in_vc.subst_env this,
+    have x ∈ FV P, from free_of_erased_free (or.inl this),
+    have ∃v, σ x = some v, from val_of_free_in_env σ_verified this,
+    have x ∈ σ, from env.contains_apply_equiv.right.mp this,
+    show «false», from x_not_free_in_σ this
+  ),
+  have vc.subst x v (vc.subst_env σ P.erased) = vc.subst_env σ P.erased,
+  from unchanged_of_subst_nonfree_vc x_not_in_q,
+  have h: ⊨ vc.subst x v (vc.subst_env σ P.erased),
+  from @eq.subst vc (λa, ⊨ a) (vc.subst_env σ P.erased)
+          (vc.subst x v (vc.subst_env σ P.erased)) this.symm h2,
+  have vc.subst x v (vc.subst_env σ P.erased)
+      = vc.subst_env (σ[x↦v]) P.erased, by unfold vc.subst_env, 
+  have ⊨ vc.subst_env (σ[x↦v]) P.erased, from this ▸ h,
+  have h2: (σ[x↦v]) ⊨ P.erased, from this,
+  have h3: (σ[x↦v]) ⊨ (P.erased && (prop.term (x ≡ v)).erased),
+  from valid_env.and h2 h1,
+  have prop.erased (prop.and P (prop.term (x ≡ v))) = P.erased && (prop.term (x ≡ v)).erased,
+  by unfold prop.erased,
+  show (σ[x↦v]) ⊨ prop.erased (P && (x ≡ v)), from this.symm ▸ h3
+
 lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P.erased :=
   assume env_verified: (⊢ σ : P),
   begin
@@ -623,49 +655,65 @@ lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P
       )
     },
     case env.vcgen.tru σ' x' Q x_not_free_in_σ' σ'_verified ih {
-      show (σ'[x'↦value.true]) ⊨ prop.erased (Q && (x' ≡ value.true)), from (
-        have σ'.apply x' = none, from env.contains_apply_equiv.left.mpr x_not_free_in_σ',
-        have h1: (σ'[x'↦value.true]) ⊨ (prop.term (x' ≡ value.true)).erased,
-        from simple_equality_valid x_not_free_in_σ',
-        have σ' ⊨ Q.erased, from ih,
-        have h2: ⊨ vc.subst_env σ' Q.erased, from this,
-        have x_not_in_q: x' ∉ FV (vc.subst_env σ' Q.erased), from (
-          assume : x' ∈ FV (vc.subst_env σ' Q.erased),
-          have x' ∈ FV Q.erased, from free_in_vc.subst_env this,
-          have x' ∈ FV Q, from free_of_erased_free (or.inl this),
-          have ∃v, σ' x' = some v, from val_of_free_in_env σ'_verified this,
-          have x' ∈ σ', from env.contains_apply_equiv.right.mp this,
-          show «false», from x_not_free_in_σ' this
-        ),
-        have vc.subst x' value.true (vc.subst_env σ' Q.erased) = vc.subst_env σ' Q.erased,
-        from unchanged_of_subst_nonfree_vc x_not_in_q,
-        have h: ⊨ vc.subst x' value.true (vc.subst_env σ' Q.erased),
-        from @eq.subst vc (λa, ⊨ a) (vc.subst_env σ' Q.erased)
-                (vc.subst x' value.true (vc.subst_env σ' Q.erased)) this.symm h2,
-        have vc.subst x' value.true (vc.subst_env σ' Q.erased)
-           = vc.subst_env (σ'[x'↦value.true]) Q.erased, by unfold vc.subst_env, 
-        have ⊨ vc.subst_env (σ'[x'↦value.true]) Q.erased, from this ▸ h,
-        have h2: (σ'[x'↦value.true]) ⊨ Q.erased, from this,
-        have h3: (σ'[x'↦value.true]) ⊨ (Q.erased && (prop.term (x' ≡ value.true)).erased),
-        from valid_env.and h2 h1,
-        have prop.erased (prop.and Q (prop.term (x' ≡ value.true))) = Q.erased && (prop.term (x' ≡ value.true)).erased,
-        by unfold prop.erased,
-        show (σ'[x'↦value.true]) ⊨ prop.erased (Q && (x' ≡ value.true)), from this.symm ▸ h3
-      )
+      show (σ'[x'↦value.true]) ⊨ prop.erased (Q && (x' ≡ value.true)),
+      from simple_equality_env_valid σ'_verified x_not_free_in_σ' ih
     },
-    case env.vcgen.fls σ' x' Q σ'_verified ih { from
-      show (σ'[x'↦value.false]) ⊨ prop.erased (Q && (x' ≡ value.false)), from (
-        sorry
-      )
+    case env.vcgen.fls σ' x' Q x_not_free_in_σ' σ'_verified ih { from
+      show (σ'[x'↦value.false]) ⊨ prop.erased (Q && (x' ≡ value.false)),
+      from simple_equality_env_valid σ'_verified x_not_free_in_σ' ih
     },
-    case env.vcgen.num n σ' x' Q σ'_verified ih { from
-      show (σ'[x'↦value.num n]) ⊨ prop.erased (Q && (x' ≡ value.num n)), from (
-        sorry
-      )
+    case env.vcgen.num n σ' x' Q x_not_free_in_σ' σ'_verified ih { from
+      show (σ'[x'↦value.num n]) ⊨ prop.erased (Q && (x' ≡ value.num n)),
+      from simple_equality_env_valid σ'_verified x_not_free_in_σ' ih
     },
-    case env.vcgen.func σ₁ σ₂ f g fx R S e Q₁ Q₂ Q₃ σ₁_verified σ₂_verified R_fv S_fv func_verified S_valid { from
-      sorry
-    }
+    case env.vcgen.func σ₁ σ₂ f g gx R S e Q₁ Q₂ Q₃
+      x_not_free_in_σ₁ σ₁_verified σ₂_verified R_fv S_fv func_verified S_valid ih₁ ih₂ { from (
+      have h1: (σ₁[f↦value.func g gx R S e σ₂]) ⊨ prop.erased (Q₁ && (f ≡ value.func g gx R S e σ₂)),
+      from simple_equality_env_valid σ₁_verified x_not_free_in_σ₁ ih₁,
+
+
+      have h2: (σ₁[f↦value.func g gx R S e σ₂]) ⊨ 
+            prop.erased (spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                         (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S)), from sorry,
+      have h3: ⊨ (
+           (vc.subst_env (σ₁[f↦value.func g gx R S e σ₂])
+            (prop.erased (Q₁ && ↑(↑f ≡ ↑(value.func g gx R S e σ₂)))))
+        && (vc.subst_env (σ₁[f↦value.func g gx R S e σ₂])
+            (prop.erased ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                           (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S))))),
+      from valid.and.mp ⟨h1, h2⟩,
+      have
+        vc.subst_env (σ₁[f↦value.func g gx R S e σ₂])
+           ((prop.erased (Q₁ && ↑(↑f ≡ ↑(value.func g gx R S e σ₂))))
+         && (prop.erased ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                           (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S))))
+        =  (vc.subst_env (σ₁[f↦value.func g gx R S e σ₂])
+            (prop.erased (Q₁ && ↑(↑f ≡ ↑(value.func g gx R S e σ₂)))))
+        && (vc.subst_env (σ₁[f↦value.func g gx R S e σ₂])
+            (prop.erased ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                           (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S)))),
+      from vc.subst_env.and,
+      have h4: (σ₁[f↦value.func g gx R S e σ₂]) ⊨ 
+           ((prop.erased (Q₁ && ↑(↑f ≡ ↑(value.func g gx R S e σ₂))))
+         && (prop.erased ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                           (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S)))),
+      from this.symm ▸ h3,
+      have prop.erased (prop.and (Q₁
+                        && ↑(↑f ≡ ↑(value.func g gx R S e σ₂)))
+                        ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                             (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S)))
+         = prop.erased (Q₁
+                        && ↑(↑f ≡ ↑(value.func g gx R S e σ₂)))
+        && prop.erased ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                         (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S)),
+      by unfold prop.erased,
+      show (σ₁[f↦value.func g gx R S e σ₂]) ⊨ 
+           prop.erased (Q₁
+                        && ↑(↑f ≡ ↑(value.func g gx R S e σ₂))
+                        && ↑(spec.func ↑f gx (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R)
+                                             (spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S))),
+      from this.symm ▸ h4
+    )}
   end
 
 lemma env_translation_valid {H: list call} {P: prop} {σ: env}:
