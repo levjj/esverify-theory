@@ -286,7 +286,7 @@ lemma val_of_free_in_nonempty_env {P: prop} {σ: env} {x y: var} {v: value}:
   --     ) ( 
   --       assume : ¬(option.is_none (env.apply σ y)),
   --       have ¬(option.is_none (σ y)), from this,
-  --       show ∃v', σ y = some v', from not_is_none.inv2 (σ y) this
+  --       show ∃v', σ y = some v', from not_is_none.rinv.mpr this
   --     )
   --   ),
   --   let ⟨v', σ_has_y⟩ := this in
@@ -595,23 +595,21 @@ lemma simple_equality_valid {σ: env} {x: var} {v: value}:
   have term.subst x v (term.var x) = v, by simp[this],
   have h3: term.subst_env (σ[x↦v]) x = v, from eq.trans h2 this,
   have h4: term.subst_env (σ[x↦v]) v = v, from term.subst_env.value,
-  have h5: term.subst_env σ (term.binop binop.eq x v) = term.binop binop.eq (term.subst_env σ x) (term.subst_env σ v),
+  have term.subst_env (σ[x↦v]) (x ≡ v) = (term.subst_env (σ[x↦v]) x ≡ term.subst_env (σ[x↦v]) v),
   from term.subst_env.binop,
-  have h6: prop.erased (prop.term (x ≡ v)) = vc.term (x ≡ v), by unfold prop.erased,
-
-  have binop.apply binop.eq v v = value.true, from binop.eq_of_equal_values,
-  have ⊨ term.binop binop.eq (term.binop binop.eq v v) value.true) value.true,
-
-
-  have ⊨ value.true, from valid.tru,
-  have ⊨ vc.term (binop.apply binop.eq v v), from h7.symm ▸ this,
-
-
-
-
-  have (σ[x↦v]) ⊨ (x ≡ value.true), from sorry,
-
-  show (σ[x↦v]) ⊨ prop.erased (x ≡ v), from sorry
+  have term.subst_env (σ[x↦v]) (x ≡ v) = (v ≡ term.subst_env (σ[x↦v]) v),
+  from @eq.subst term (λa, term.subst_env (σ[x↦v]) (x ≡ v) = (a ≡ term.subst_env (σ[x↦v]) v))
+                      (term.subst_env (σ[x↦v]) x) v h3 this,
+  have h5: term.subst_env (σ[x↦v]) (x ≡ v) = (v ≡ v),
+  from @eq.subst term (λa, term.subst_env (σ[x↦v]) (x ≡ v) = (v ≡ a))
+                      (term.subst_env (σ[x↦v]) v) v h4 this,
+  have h6: vc.term (term.subst_env (σ[x↦v]) (x ≡ v)) = vc.term (v ≡ v), by simp[h5],
+  have vc.subst_env (σ[x↦v]) (x ≡ v) = vc.term (term.subst_env (σ[x↦v]) (x ≡ v)), from vc.subst_env.term,
+  have h7: vc.subst_env (σ[x↦v]) (vc.term (x ≡ v)) = vc.term (v ≡ v), from eq.trans this h6,
+  have prop.erased (prop.term (x ≡ v)) = vc.term (x ≡ v), by unfold prop.erased,
+  have h8: vc.subst_env (σ[x↦v]) (prop.term (x ≡ v)).erased = vc.term (v ≡ v), from this.symm ▸ h7,
+  have ⊨ vc.term (v ≡ v), from valid.refl,
+  show (σ[x↦v]) ⊨ prop.erased (x ≡ v), from h8.symm ▸ this
 
 lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P.erased :=
   assume env_verified: (⊢ σ : P),
@@ -626,15 +624,33 @@ lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P
     },
     case env.vcgen.tru σ' x' Q x_not_free_in_σ' σ'_verified ih {
       show (σ'[x'↦value.true]) ⊨ prop.erased (Q && (x' ≡ value.true)), from (
-
         have σ'.apply x' = none, from env.contains_apply_equiv.left.mpr x_not_free_in_σ',
-        have 
-
-
-
-
-
-        sorry
+        have h1: (σ'[x'↦value.true]) ⊨ (prop.term (x' ≡ value.true)).erased,
+        from simple_equality_valid x_not_free_in_σ',
+        have σ' ⊨ Q.erased, from ih,
+        have h2: ⊨ vc.subst_env σ' Q.erased, from this,
+        have x_not_in_q: x' ∉ FV (vc.subst_env σ' Q.erased), from (
+          assume : x' ∈ FV (vc.subst_env σ' Q.erased),
+          have x' ∈ FV Q.erased, from free_in_vc.subst_env this,
+          have x' ∈ FV Q, from free_of_erased_free (or.inl this),
+          have ∃v, σ' x' = some v, from val_of_free_in_env σ'_verified this,
+          have x' ∈ σ', from env.contains_apply_equiv.right.mp this,
+          show «false», from x_not_free_in_σ' this
+        ),
+        have vc.subst x' value.true (vc.subst_env σ' Q.erased) = vc.subst_env σ' Q.erased,
+        from unchanged_of_subst_nonfree_vc x_not_in_q,
+        have h: ⊨ vc.subst x' value.true (vc.subst_env σ' Q.erased),
+        from @eq.subst vc (λa, ⊨ a) (vc.subst_env σ' Q.erased)
+                (vc.subst x' value.true (vc.subst_env σ' Q.erased)) this.symm h2,
+        have vc.subst x' value.true (vc.subst_env σ' Q.erased)
+           = vc.subst_env (σ'[x'↦value.true]) Q.erased, by unfold vc.subst_env, 
+        have ⊨ vc.subst_env (σ'[x'↦value.true]) Q.erased, from this ▸ h,
+        have h2: (σ'[x'↦value.true]) ⊨ Q.erased, from this,
+        have h3: (σ'[x'↦value.true]) ⊨ (Q.erased && (prop.term (x' ≡ value.true)).erased),
+        from valid_env.and h2 h1,
+        have prop.erased (prop.and Q (prop.term (x' ≡ value.true))) = Q.erased && (prop.term (x' ≡ value.true)).erased,
+        by unfold prop.erased,
+        show (σ'[x'↦value.true]) ⊨ prop.erased (Q && (x' ≡ value.true)), from this.symm ▸ h3
       )
     },
     case env.vcgen.fls σ' x' Q σ'_verified ih { from

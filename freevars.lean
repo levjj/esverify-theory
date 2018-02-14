@@ -11,15 +11,15 @@ inductive free_in_term (x: var) : term → Prop
 | app₂ {t₁ t₂: term}               : free_in_term t₂ → free_in_term (term.app t₁ t₂)
 
 inductive free_in_prop (x: var) : prop → Prop
-| term {t: term}                        : free_in_term x t → free_in_prop t
-| not {p: prop}                         : free_in_prop p → free_in_prop (prop.not p)
-| and₁ {p₁ p₂: prop}                    : free_in_prop p₁ → free_in_prop (prop.and p₁ p₂)
-| and₂ {p₁ p₂: prop}                    : free_in_prop p₂ → free_in_prop (prop.and p₁ p₂)
-| or₁ {p₁ p₂: prop}                     : free_in_prop p₁ → free_in_prop (prop.or p₁ p₂)
-| or₂ {p₁ p₂: prop}                     : free_in_prop p₂ → free_in_prop (prop.or p₁ p₂)
+| term {t: term}                        : free_in_term x t  → free_in_prop t
+| not {p: prop}                         : free_in_prop p    → free_in_prop (prop.not p)
+| and₁ {p₁ p₂: prop}                    : free_in_prop p₁   → free_in_prop (prop.and p₁ p₂)
+| and₂ {p₁ p₂: prop}                    : free_in_prop p₂   → free_in_prop (prop.and p₁ p₂)
+| or₁ {p₁ p₂: prop}                     : free_in_prop p₁   → free_in_prop (prop.or p₁ p₂)
+| or₂ {p₁ p₂: prop}                     : free_in_prop p₂   → free_in_prop (prop.or p₁ p₂)
 | pre₁ {t₁ t₂: term}                    : free_in_term x t₁ → free_in_prop (prop.pre t₁ t₂)
 | pre₂ {t₁ t₂: term}                    : free_in_term x t₂ → free_in_prop (prop.pre t₁ t₂)
-| preop {t: term} {op: unop}            : free_in_term x t → free_in_prop (prop.pre₁ op t)
+| preop {t: term} {op: unop}            : free_in_term x t  → free_in_prop (prop.pre₁ op t)
 | preop₁ {t₁ t₂: term} {op: binop}      : free_in_term x t₁ → free_in_prop (prop.pre₂ op t₁ t₂)
 | preop₂ {t₁ t₂: term} {op: binop}      : free_in_term x t₂ → free_in_prop (prop.pre₂ op t₁ t₂)
 | post₁ {t₁ t₂: term}                   : free_in_term x t₁ → free_in_prop (prop.post t₁ t₂)
@@ -30,19 +30,38 @@ inductive free_in_prop (x: var) : prop → Prop
 | forallc₂ {y: var} {t: term} {p: prop} : (x ≠ y) → free_in_prop p → free_in_prop (prop.forallc y t p)
 | exis {y: var} {p: prop}               : (x ≠ y) → free_in_prop p → free_in_prop (prop.exis y p)
 
+inductive free_in_vc (x: var) : vc → Prop
+| term {t: term}                        : free_in_term x t  → free_in_vc t
+| not {P: vc}                           : free_in_vc P      → free_in_vc (vc.not P)
+| and₁ {P₁ P₂: vc}                      : free_in_vc P₁     → free_in_vc (vc.and P₁ P₂)
+| and₂ {P₁ P₂: vc}                      : free_in_vc P₂     → free_in_vc (vc.and P₁ P₂)
+| or₁ {P₁ P₂: vc}                       : free_in_vc P₁     → free_in_vc (vc.or P₁ P₂)
+| or₂ {P₁ P₂: vc}                       : free_in_vc P₂     → free_in_vc (vc.or P₁ P₂)
+| pre₁ {t₁ t₂: term}                    : free_in_term x t₁ → free_in_vc (vc.pre t₁ t₂)
+| pre₂ {t₁ t₂: term}                    : free_in_term x t₂ → free_in_vc (vc.pre t₁ t₂)
+| preop {t: term} {op: unop}            : free_in_term x t  → free_in_vc (vc.pre₁ op t)
+| preop₁ {t₁ t₂: term} {op: binop}      : free_in_term x t₁ → free_in_vc (vc.pre₂ op t₁ t₂)
+| preop₂ {t₁ t₂: term} {op: binop}      : free_in_term x t₂ → free_in_vc (vc.pre₂ op t₁ t₂)
+| post₁ {t₁ t₂: term}                   : free_in_term x t₁ → free_in_vc (vc.post t₁ t₂)
+| post₂ {t₁ t₂: term}                   : free_in_term x t₂ → free_in_vc (vc.post t₁ t₂)
+| univ {y: var} {P: vc}                 : (x ≠ y) → free_in_vc P → free_in_vc (vc.univ y P)
+
 -- notation x ∈ FV t/p
 
 inductive freevars
 | term: term → freevars
 | prop: prop → freevars
+| vc:   vc   → freevars
 
 class has_fv (α: Type) := (fv : α → freevars)
 instance : has_fv term := ⟨freevars.term⟩
 instance : has_fv prop := ⟨freevars.prop⟩
+instance : has_fv vc   := ⟨freevars.vc⟩
 
 def freevars.to_set: freevars → set var
 | (freevars.term t) := λx, free_in_term x t
 | (freevars.prop P) := λx, free_in_prop x P
+| (freevars.vc P)   := λx, free_in_vc x P
 
 def FV {α: Type} [h: has_fv α] (a: α): set var := (has_fv.fv a).to_set
 
@@ -168,6 +187,98 @@ lemma free_in_prop.implies.inv {P₁ P₂: prop} {x: var}: free_in_prop x (prop.
     }
   end
 
+lemma free_in_vc.term.inv {t: term} {x: var}: free_in_vc x t → free_in_term x t :=
+  assume x_free_in_t: free_in_vc x t,
+  begin
+    cases x_free_in_t,
+    case free_in_vc.term free_in_t { from free_in_t }
+  end
+
+lemma free_in_vc.not.inv {P: vc} {x: var}: free_in_vc x P.not → free_in_vc x P :=
+  assume x_free_in_not: free_in_vc x P.not,
+  begin
+    cases x_free_in_not,
+    case free_in_vc.not free_in_P { from free_in_P }
+  end
+
+lemma free_in_vc.and.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ && P₂) → free_in_vc x P₁ ∨ free_in_vc x P₂ :=
+  assume x_free_in_and: free_in_vc x (P₁ && P₂),
+  begin
+    cases x_free_in_and,
+    case free_in_vc.and₁ free_in_P₁ {
+      show free_in_vc x P₁ ∨ free_in_vc x P₂, from or.inl free_in_P₁
+    },
+    case free_in_vc.and₂ free_in_P₂ {
+      show free_in_vc x P₁ ∨ free_in_vc x P₂, from or.inr free_in_P₂
+    }
+  end
+
+lemma free_in_vc.or.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ || P₂) → free_in_vc x P₁ ∨ free_in_vc x P₂ :=
+  assume x_free_in_or: free_in_vc x (P₁ || P₂),
+  begin
+    cases x_free_in_or,
+    case free_in_vc.or₁ free_in_P₁ {
+      show free_in_vc x P₁ ∨ free_in_vc x P₂, from or.inl free_in_P₁
+    },
+    case free_in_vc.or₂ free_in_P₂ {
+      show free_in_vc x P₁ ∨ free_in_vc x P₂, from or.inr free_in_P₂
+    }
+  end
+
+lemma free_in_vc.pre.inv {t₁ t₂: term} {x: var}:
+      free_in_vc x (vc.pre t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_pre: free_in_vc x (vc.pre t₁ t₂),
+  begin
+    cases x_free_in_pre,
+    case free_in_vc.pre₁ free_in_t₁ { from or.inl free_in_t₁ },
+    case free_in_vc.pre₂ free_in_t₂ { from or.inr free_in_t₂ } 
+  end
+
+lemma free_in_vc.pre₁.inv {t: term} {op: unop} {x: var}:
+      free_in_vc x (vc.pre₁ op t) → free_in_term x t :=
+  assume x_free_in_pre: free_in_vc x (vc.pre₁ op t),
+  begin
+    cases x_free_in_pre,
+    case free_in_vc.preop free_in_t { from free_in_t }
+  end
+
+lemma free_in_vc.pre₂.inv {t₁ t₂: term} {op: binop} {x: var}:
+      free_in_vc x (vc.pre₂ op t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_pre: free_in_vc x (vc.pre₂ op t₁ t₂),
+  begin
+    cases x_free_in_pre,
+    case free_in_vc.preop₁ free_in_t₁ { from or.inl free_in_t₁ },
+    case free_in_vc.preop₂ free_in_t₂ { from or.inr free_in_t₂ } 
+  end
+
+lemma free_in_vc.post.inv {t₁ t₂: term} {x: var}:
+      free_in_vc x (vc.post t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
+  assume x_free_in_post: free_in_vc x (vc.post t₁ t₂),
+  begin
+    cases x_free_in_post,
+    case free_in_vc.post₁ free_in_t₁ { from or.inl free_in_t₁ },
+    case free_in_vc.post₂ free_in_t₂ { from or.inr free_in_t₂ } 
+  end
+
+lemma free_in_vc.univ.inv {P: vc} {x y: var}:
+      free_in_vc x (vc.univ y P) → (x ≠ y) ∧ free_in_vc x P :=
+  assume x_free: free_in_vc x (vc.univ y P),
+  begin
+    cases x_free,
+    case free_in_vc.univ x_neq_y free_in_P {
+      from ⟨x_neq_y, free_in_P⟩ 
+    }
+  end
+
+lemma free_in_vc.univ.same.inv {P: vc} {x: var}: ¬ free_in_vc x (vc.univ x P) :=
+  assume x_free: free_in_vc x (vc.univ x P),
+  begin
+    cases x_free,
+    case free_in_vc.univ x_neq_y free_in_P {
+      contradiction
+    }
+  end
+
 lemma call_history_closed (H: list call) (x: var): ¬ free_in_prop x (calls_to_prop H) :=
   list.rec_on H
   ( -- empty history
@@ -283,16 +394,17 @@ lemma call_history_closed (H: list call) (x: var): ¬ free_in_prop x (calls_to_p
   )
 
 lemma env.contains.same.inv {σ: env} {x y: var} {v: value}: x ∉ (σ[y↦v]) → ¬ (x = y ∨ x ∈ σ) :=
-  (@not_imp_not (x ∈ (σ[y↦v])) (x = y ∨ x ∈ σ) (classical.prop_decidable (x ∈ (σ[y↦v])))).mpr (
-    assume : x = y ∨ x ∈ σ,
-    this.elim (
-      assume x_is_y: x = y,
-      have x ∈ (σ[x↦v]), from env.contains.same,
-      show x ∈ (σ[y↦v]), from @eq.subst var (λa, x ∈ (σ[a↦v])) x y x_is_y this
-    ) (
-      assume : x ∈ σ,
-      show x ∈ (σ[y↦v]), from env.contains.rest this
-    )
+  assume x_not_in: x ∉ (σ[y↦v]),
+  assume : (x = y ∨ x ∈ σ),
+  this.elim (
+    assume x_is_y: x = y,
+    have x ∈ (σ[x↦v]), from env.contains.same,
+    have x ∈ (σ[y↦v]), from @eq.subst var (λa, x ∈ (σ[a↦v])) x y x_is_y this,
+    show «false», from x_not_in this
+  ) (
+    assume : x ∈ σ,
+    have x ∈ (σ[y↦v]), from env.contains.rest this,
+    show «false», from x_not_in this
   )
 
 lemma env.contains_apply_equiv {σ: env} {x: var}:
