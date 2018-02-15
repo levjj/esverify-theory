@@ -55,8 +55,8 @@ with prop.erased_n: prop → vc
 inductive no_instantiations: prop -> Prop
 | term {t: term}                 : no_instantiations t
 | not {P: prop}                  : no_instantiations P → no_instantiations (prop.not P)
-| and {P₁ P₂: prop}              : no_instantiations P₁ → no_instantiations (prop.and P₁ P₂)
-| or {P₁ P₂: prop}               : no_instantiations P₂ → no_instantiations (prop.or P₁ P₂)
+| and {P₁ P₂: prop}              : no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.and P₁ P₂)
+| or {P₁ P₂: prop}               : no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.or P₁ P₂)
 | pre {t₁ t₂: term}              : no_instantiations (prop.pre t₁ t₂)
 | pre₁ {t: term} {op: unop}      : no_instantiations (prop.pre₁ op t)
 | pre₂ {t₁ t₂: term} {op: binop} : no_instantiations (prop.pre₂ op t₁ t₂)

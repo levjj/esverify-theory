@@ -312,7 +312,7 @@ lemma free_of_subst_term {t: term} {x y: var} {v: value}:
         have term.subst y v (term.var z) = z, by simp * at *,
         have free_in_term x z, from this ▸ x_free_in_subst,
         have x_is_z: x = z, from free_in_term.var.inv this,
-        have x ≠ y, from x_is_z.symm ▸ (neq_symm y_is_z),
+        have x ≠ y, from x_is_z.symm ▸ (ne.symm y_is_z),
         show x ≠ y ∧ free_in_term x (term.var z), from ⟨this, x_is_z ▸ free_in_term.var x⟩
     ),
     show x ≠ y ∧ free_in_term x (term.unop unop t₁), from (
@@ -865,7 +865,7 @@ lemma term.subst_env.var.inv {x: var} {σ: env}:
           show (term.subst_env (σ'[y↦v']) x = x) ∨ (∃v:value, term.subst_env (σ'[y↦v']) x = v), from or.inr this
         ) (
           assume : ¬(x = y),
-          have ¬(y = x), from neq_symm this,
+          have ¬(y = x), from ne.symm this,
           have term.subst y v' (term.var x) = x, by simp * at *,
           have term.subst_env (σ'[y↦v']) x = x, from eq.trans h this,
           show (term.subst_env (σ'[y↦v']) x = x) ∨ (∃v:value, term.subst_env (σ'[y↦v']) x = v), from or.inl this
@@ -982,7 +982,7 @@ begin
             show (σ'[y↦v']) x = none, by contradiction
           ) (
             assume : ¬(x = y),
-            have ¬(y = x), from neq_symm this,
+            have ¬(y = x), from ne.symm this,
             have (σ'[y↦v']).apply x = σ'.apply x, by simp * at *,
             show (σ'[y↦v']).apply x = none, from eq.trans this σ'_x_is_none
           )
@@ -1059,7 +1059,7 @@ begin
             show (σ'[y↦v']) x = some v, from @eq.subst value (λa, (σ'[y↦v']) x = some a) v' v v_is_v'.symm this
           ) (
             assume : ¬(x = y),
-            have ¬(y = x), from neq_symm this,
+            have ¬(y = x), from ne.symm this,
             have term.subst y v' (term.var x) = x, by { simp[this] at h4, assumption },
             have ↑v = ↑x, from eq.trans (eq.trans h.symm h3) this,
             show ((σ'[y↦v']) x = some v), by contradiction
@@ -1087,39 +1087,57 @@ begin
   end
 end
 
+lemma term.subst_env.unop {σ: env} {op: unop} {t: term}:
+      term.subst_env σ (term.unop op t) = term.unop op (term.subst_env σ t) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (term.subst_env env.empty (term.unop op t) = term.unop op (term.subst_env env.empty t)),
+  by calc
+        term.subst_env env.empty (term.unop op t)
+      = (term.unop op t) : by unfold term.subst_env
+  ... = (term.unop op (term.subst_env env.empty t)) : by unfold term.subst_env,
+
+  show (term.subst_env (σ'[x↦v]) (term.unop op t) = (term.unop op (term.subst_env (σ'[x↦v]) t))),
+  by calc
+        term.subst_env (σ'[x↦v]) (term.unop op t)
+      = term.subst x v (term.subst_env σ' (term.unop op t)) : by unfold term.subst_env
+  ... = term.subst x v (term.unop op (term.subst_env σ' t)) : by rw[ih]
+  ... = term.unop op (term.subst x v (term.subst_env σ' t)) : by unfold term.subst
+  ... = term.unop op (term.subst_env (σ'[x↦v]) t) : by unfold term.subst_env
+end
+
 lemma term.subst_env.binop {σ: env} {op: binop} {t₁ t₂: term}:
       term.subst_env σ (term.binop op t₁ t₂) = term.binop op (term.subst_env σ t₁) (term.subst_env σ t₂) :=
 begin
   induction σ with x v σ' ih,
+
   show (term.subst_env env.empty (term.binop op t₁ t₂)
-      = term.binop op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)), by begin
-    have h1: (term.subst_env env.empty t₁ = t₁), by unfold term.subst_env,
-    have h2: (term.subst_env env.empty t₂ = t₂), by unfold term.subst_env,
-    calc
-      term.subst_env env.empty (term.binop op t₁ t₂)
-                       = (term.binop op t₁ t₂) : by unfold term.subst_env
-                   ... = (term.binop op (term.subst_env env.empty t₁) t₂) : by rw[h1]
-                   ... = (term.binop op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by rw[h2]
-  end,
+      = term.binop op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        term.subst_env env.empty (term.binop op t₁ t₂)
+      = (term.binop op t₁ t₂) : by unfold term.subst_env
+  ... = (term.binop op (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (term.binop op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
   show (term.subst_env (σ'[x↦v]) (term.binop op t₁ t₂)
-     = (term.binop op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂))), by begin
-    have h1: (term.subst x v (term.subst_env σ' t₁) = term.subst_env (σ'[x↦v]) t₁), by unfold term.subst_env,
-    calc
-    term.subst_env (σ'[x↦v]) (term.binop op t₁ t₂)
-             = term.subst x v (term.subst_env σ' (term.binop op t₁ t₂)) : by unfold term.subst_env
-         ... = term.subst x v (term.binop op (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
-         ... = term.binop op (term.subst x v (term.subst_env σ' t₁))
-                             (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst
-         ... = term.binop op (term.subst_env (σ'[x↦v]) t₁)
-                             (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
-         ... = term.binop op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
-  end
+      = (term.binop op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂))),
+  by calc
+        term.subst_env (σ'[x↦v]) (term.binop op t₁ t₂)
+      = term.subst x v (term.subst_env σ' (term.binop op t₁ t₂)) : by unfold term.subst_env
+  ... = term.subst x v (term.binop op (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = term.binop op (term.subst x v (term.subst_env σ' t₁))
+                      (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst
+  ... = term.binop op (term.subst_env (σ'[x↦v]) t₁)
+                      (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = term.binop op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end
 
 lemma vc.subst_env.term {σ: env} {t: term}:
   vc.subst_env σ t = vc.term (term.subst_env σ t) :=
 begin
   induction σ with x v σ' ih,
+
   show (vc.subst_env env.empty t = vc.term (term.subst_env env.empty t)), by begin
     have : (term.subst_env env.empty t = t), by unfold term.subst_env,
     have h2: (vc.term (term.subst_env env.empty t) = vc.term t), by simp[this],
@@ -1128,98 +1146,119 @@ begin
                            ... = vc.term t : by refl
                            ... = vc.term (term.subst_env env.empty t) : by rw[←h2]
   end,
-  show (vc.subst_env (σ'[x↦v]) t = vc.term (term.subst_env (σ'[x↦v]) t)), by begin
-    calc
-    vc.subst_env (σ'[x↦v]) t = vc.subst x v (vc.subst_env σ' t) : by unfold vc.subst_env
-                         ... = vc.subst x v (vc.term (term.subst_env σ' t)) : by rw[ih]
-                         ... = term.subst x v (term.subst_env σ' t) : by unfold vc.subst
-                         ... = term.subst_env (σ'[x↦v]) t : by unfold term.subst_env
-  end
+
+  show (vc.subst_env (σ'[x↦v]) t = vc.term (term.subst_env (σ'[x↦v]) t)),
+  by calc
+        vc.subst_env (σ'[x↦v]) t = vc.subst x v (vc.subst_env σ' t) : by unfold vc.subst_env
+                             ... = vc.subst x v (vc.term (term.subst_env σ' t)) : by rw[ih]
+                             ... = term.subst x v (term.subst_env σ' t) : by unfold vc.subst
+                             ... = term.subst_env (σ'[x↦v]) t : by unfold term.subst_env
 end
 
 lemma vc.subst_env.not {σ: env} {P: vc}:
       vc.subst_env σ P.not = (vc.subst_env σ P).not :=
 begin
   induction σ with x v σ' ih,
-  show (vc.subst_env env.empty P.not = (vc.subst_env env.empty P).not), by begin
-    calc
-      vc.subst_env env.empty P.not = P.not : by unfold vc.subst_env
-                               ... = (vc.subst_env env.empty P).not : by unfold vc.subst_env
-  end,
-  show (vc.subst_env (σ'[x↦v]) P.not = (vc.subst_env (σ'[x↦v]) P).not), by begin
-    calc
-    vc.subst_env (σ'[x↦v]) P.not = vc.subst x v (vc.subst_env σ' P.not) : by unfold vc.subst_env
-                             ... = vc.subst x v (vc.subst_env σ' P).not : by rw[ih]
-                             ... = (vc.subst x v (vc.subst_env σ' P)).not : by unfold vc.subst
-                             ... = (vc.subst_env (σ'[x↦v]) P).not : by unfold vc.subst_env
-  end
+
+  show (vc.subst_env env.empty P.not = (vc.subst_env env.empty P).not),
+  by calc
+        vc.subst_env env.empty P.not = P.not : by unfold vc.subst_env
+                                 ... = (vc.subst_env env.empty P).not : by unfold vc.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) P.not = (vc.subst_env (σ'[x↦v]) P).not),
+  by calc
+        vc.subst_env (σ'[x↦v]) P.not = vc.subst x v (vc.subst_env σ' P.not) : by unfold vc.subst_env
+                                 ... = vc.subst x v (vc.subst_env σ' P).not : by rw[ih]
+                                 ... = (vc.subst x v (vc.subst_env σ' P)).not : by unfold vc.subst
+                                 ... = (vc.subst_env (σ'[x↦v]) P).not : by unfold vc.subst_env
 end
 
 lemma vc.subst_env.and {σ: env} {P Q: vc}:
       vc.subst_env σ (P && Q) = (vc.subst_env σ P && vc.subst_env σ Q) :=
 begin
   induction σ with x v σ' ih,
-  show (vc.subst_env env.empty (P && Q) = (vc.subst_env env.empty P && vc.subst_env env.empty Q)), by begin
-    have h1: (vc.subst_env env.empty P = P), by unfold vc.subst_env,
-    have h2: (vc.subst_env env.empty Q = Q), by unfold vc.subst_env,
-    calc
-      vc.subst_env env.empty (P && Q) = (P && Q) : by unfold vc.subst_env
-                                  ... = (vc.subst_env env.empty P && Q) : by rw[h1]
-                                  ... = (vc.subst_env env.empty P && vc.subst_env env.empty Q) : by rw[h2]
-  end,
-  show (vc.subst_env (σ'[x↦v]) (P && Q) = (vc.subst_env (σ'[x↦v]) P && vc.subst_env (σ'[x↦v]) Q)), by begin
-    have h1: (vc.subst x v (vc.subst_env σ' P) = vc.subst_env (σ'[x↦v]) P), by unfold vc.subst_env,
-    calc
-    vc.subst_env (σ'[x↦v]) (P && Q) = vc.subst x v (vc.subst_env σ' (P && Q)) : by unfold vc.subst_env
-                                ... = vc.subst x v (vc.subst_env σ' P && vc.subst_env σ' Q) : by rw[ih]
-                                ... = (vc.subst x v (vc.subst_env σ' P) &&
-                                       vc.subst x v (vc.subst_env σ' Q)) : by refl
-                                ... = (vc.subst_env (σ'[x↦v]) P &&
-                                       vc.subst x v (vc.subst_env σ' Q)) : by unfold vc.subst_env
-                                ... = (vc.subst_env (σ'[x↦v]) P && vc.subst_env (σ'[x↦v]) Q) : by unfold vc.subst_env
-  end
+
+  show (vc.subst_env env.empty (P && Q) = (vc.subst_env env.empty P && vc.subst_env env.empty Q)),
+  by calc
+        vc.subst_env env.empty (P && Q) = (P && Q) : by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P && Q) : by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P && vc.subst_env env.empty Q)
+                                                   : by unfold vc.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (P && Q) = (vc.subst_env (σ'[x↦v]) P && vc.subst_env (σ'[x↦v]) Q)),
+  by calc
+        vc.subst_env (σ'[x↦v]) (P && Q) = vc.subst x v (vc.subst_env σ' (P && Q)) : by unfold vc.subst_env
+                                    ... = vc.subst x v (vc.subst_env σ' P && vc.subst_env σ' Q) : by rw[ih]
+                                    ... = (vc.subst x v (vc.subst_env σ' P) &&
+                                           vc.subst x v (vc.subst_env σ' Q)) : by refl
+                                    ... = (vc.subst_env (σ'[x↦v]) P &&
+                                           vc.subst x v (vc.subst_env σ' Q)) : by unfold vc.subst_env
+                                    ... = (vc.subst_env (σ'[x↦v]) P && vc.subst_env (σ'[x↦v]) Q)
+                                                                             : by unfold vc.subst_env
 end
 
 lemma vc.subst_env.or {σ: env} {P Q: vc}:
       vc.subst_env σ (P || Q) = (vc.subst_env σ P || vc.subst_env σ Q) :=
 begin
   induction σ with x v σ' ih,
-  show (vc.subst_env env.empty (P || Q) = (vc.subst_env env.empty P || vc.subst_env env.empty Q)), by begin
-    have h1: (vc.subst_env env.empty P = P), by unfold vc.subst_env,
-    have h2: (vc.subst_env env.empty Q = Q), by unfold vc.subst_env,
-    calc
-      vc.subst_env env.empty (P || Q) = (P || Q) : by unfold vc.subst_env
-                                  ... = (vc.subst_env env.empty P || Q) : by rw[h1]
-                                  ... = (vc.subst_env env.empty P || vc.subst_env env.empty Q) : by rw[h2]
-  end,
-  show (vc.subst_env (σ'[x↦v]) (P || Q) = (vc.subst_env (σ'[x↦v]) P || vc.subst_env (σ'[x↦v]) Q)), by begin
-    have h1: (vc.subst x v (vc.subst_env σ' P) = vc.subst_env (σ'[x↦v]) P), by unfold vc.subst_env,
-    calc
-    vc.subst_env (σ'[x↦v]) (P || Q) = vc.subst x v (vc.subst_env σ' (P || Q)) : by unfold vc.subst_env
-                                ... = vc.subst x v (vc.subst_env σ' P || vc.subst_env σ' Q) : by rw[ih]
-                                ... = (vc.subst x v (vc.subst_env σ' P) ||
-                                       vc.subst x v (vc.subst_env σ' Q)) : by refl
-                                ... = (vc.subst_env (σ'[x↦v]) P ||
-                                       vc.subst x v (vc.subst_env σ' Q)) : by unfold vc.subst_env
-                                ... = (vc.subst_env (σ'[x↦v]) P || vc.subst_env (σ'[x↦v]) Q) : by unfold vc.subst_env
-  end
+
+  show (vc.subst_env env.empty (P || Q) = (vc.subst_env env.empty P || vc.subst_env env.empty Q)),
+  by calc
+        vc.subst_env env.empty (P || Q) = (P || Q) : by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P || Q) : by by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P || vc.subst_env env.empty Q)
+                                                   : by unfold vc.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (P || Q) = (vc.subst_env (σ'[x↦v]) P || vc.subst_env (σ'[x↦v]) Q)),
+  by calc
+        vc.subst_env (σ'[x↦v]) (P || Q) = vc.subst x v (vc.subst_env σ' (P || Q)) : by unfold vc.subst_env
+                                    ... = vc.subst x v (vc.subst_env σ' P || vc.subst_env σ' Q) : by rw[ih]
+                                    ... = (vc.subst x v (vc.subst_env σ' P) ||
+                                           vc.subst x v (vc.subst_env σ' Q)) : by refl
+                                    ... = (vc.subst_env (σ'[x↦v]) P ||
+                                           vc.subst x v (vc.subst_env σ' Q)) : by unfold vc.subst_env
+                                    ... = (vc.subst_env (σ'[x↦v]) P || vc.subst_env (σ'[x↦v]) Q)
+                                             : by unfold vc.subst_env
 end
 
 lemma vc.subst_env.pre₁ {σ: env} {op: unop} {t: term}:
       vc.subst_env σ (vc.pre₁ op t) = vc.pre₁ op (term.subst_env σ t) :=
 begin
   induction σ with x v σ' ih,
-  show (vc.subst_env env.empty (vc.pre₁ op t) = vc.pre₁ op (term.subst_env env.empty t)), by begin
-    have h1: (term.subst_env env.empty t = t), by unfold term.subst_env,
-    calc
-      vc.subst_env env.empty (vc.pre₁ op t) = (vc.pre₁ op t) : by unfold vc.subst_env
-                                        ... = (vc.pre₁ op (term.subst_env env.empty t)) : by rw[h1]
-  end,
-  show (vc.subst_env (σ'[x↦v]) (vc.pre₁ op t) = vc.pre₁ op (term.subst_env (σ'[x↦v]) t)), by begin
-    calc
-    vc.subst_env (σ'[x↦v]) (vc.pre₁ op t) = vc.subst x v (vc.subst_env σ' (vc.pre₁ op t)) : by unfold vc.subst_env
-                             ... = vc.subst x v (vc.pre₁ op (term.subst_env σ' t)) : by rw[ih]
-                             ... = vc.pre₁ op (term.subst x v (term.subst_env σ' t)) : by unfold vc.subst
-                             ... = vc.pre₁ op (term.subst_env (σ'[x↦v]) t) : by unfold term.subst_env
-  end
+
+  show (vc.subst_env env.empty (vc.pre₁ op t) = vc.pre₁ op (term.subst_env env.empty t)),
+  by calc
+        vc.subst_env env.empty (vc.pre₁ op t) = (vc.pre₁ op t) : by unfold vc.subst_env
+                                          ... = (vc.pre₁ op (term.subst_env env.empty t)) : by unfold term.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (vc.pre₁ op t) = vc.pre₁ op (term.subst_env (σ'[x↦v]) t)),
+  by calc
+        vc.subst_env (σ'[x↦v]) (vc.pre₁ op t) = vc.subst x v (vc.subst_env σ' (vc.pre₁ op t)) : by unfold vc.subst_env
+                                          ... = vc.subst x v (vc.pre₁ op (term.subst_env σ' t)) : by rw[ih]
+                                          ... = vc.pre₁ op (term.subst x v (term.subst_env σ' t)) : by unfold vc.subst
+                                          ... = vc.pre₁ op (term.subst_env (σ'[x↦v]) t) : by unfold term.subst_env
+end
+
+lemma vc.subst_env.pre₂ {σ: env} {op: binop} {t₁ t₂: term}:
+      vc.subst_env σ (vc.pre₂ op t₁ t₂) = vc.pre₂ op (term.subst_env σ t₁) (term.subst_env σ t₂) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (vc.subst_env env.empty (vc.pre₂ op t₁ t₂)
+      = vc.pre₂ op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        vc.subst_env env.empty (vc.pre₂ op t₁ t₂)
+      = (vc.pre₂ op t₁ t₂) : by unfold vc.subst_env
+  ... = (vc.pre₂ op (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (vc.pre₂ op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (vc.pre₂ op t₁ t₂)
+      = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),
+  by calc
+        vc.subst_env (σ'[x↦v]) (vc.pre₂ op t₁ t₂)
+      = vc.subst x v (vc.subst_env σ' (vc.pre₂ op t₁ t₂)) : by unfold vc.subst_env
+  ... = vc.subst x v (vc.pre₂ op (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = vc.pre₂ op (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold vc.subst
+  ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end

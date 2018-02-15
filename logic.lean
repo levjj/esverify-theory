@@ -51,13 +51,13 @@ axiom valid.pre {vₓ: value} {σ: env} {f x y: var} {R S: spec} {e: exp}:
   ↔
   ⊨ vc.pre (value.func f x R S e σ) vₓ
 
-axiom valid.pre₁ {vₓ v: value} {op: unop}:
+axiom valid.pre₁ {vₓ: value} {op: unop}:
   (∃v, unop.apply op vₓ = some v)
   ↔
   ⊨ vc.pre₁ op vₓ
 
-axiom valid.pre₂ {v₁ v₂ v: value} {op: binop}:
-  (∃v, binop.apply op v₁ v₂ = v)
+axiom valid.pre₂ {v₁ v₂: value} {op: binop}:
+  (∃v, binop.apply op v₁ v₂ = some v)
   ↔
   ⊨ vc.pre₂ op v₁ v₂
 
@@ -72,33 +72,56 @@ axiom valid.univ {x: var} {P: vc}:
   ↔
   ⊨ vc.univ x P
 
-axiom valid.subst {t₁ t₂: term} (Q: propctx):
-  ⊨ (t₁ ≡ t₂) →
-  ⊨ (Q t₁).instantiated →
-  ⊨ (Q t₂).instantiated
+axiom valid.eq.true {t: term}:
+  ⊨ (t ≡ value.true)
+  ↔
+  ⊨ t
 
-axiom valid.eq.symm {t₁ t₂: term}:
-  ⊨ (t₁ ≡ t₂) →
-  ⊨ (t₂ ≡ t₁)
+axiom instantiated_of_erased {σ: env} {P: prop}:
+  σ ⊨ P.erased →
+  σ ⊨ P.instantiated
 
-axiom instantiated_of_erased {P: prop}:
-  ⊨ P.erased →
-  ⊨ P.instantiated
+axiom instantiated_n_of_instantiated {σ: env} {P: prop}:
+  σ ⊨ P.instantiated →
+  σ ⊨ P.instantiated_n
 
-axiom instantiated_n_of_instantiated {P: prop}:
-  ⊨ P.instantiated →
-  ⊨ P.instantiated_n
+axiom erased_n_of_instantiated_n {σ: env} {P: prop}:
+  σ ⊨ P.instantiated_n →
+  σ ⊨ P.erased_n
 
-axiom erased_n_of_instantiated_n {P: prop}:
-  ⊨ P.instantiated_n → ⊨ P.erased_n
+axiom instantiated_and {σ: env} {P Q: prop}:
+  σ ⊨ (P.instantiated && Q.instantiated) →
+  σ ⊨ (P && Q).instantiated
 
-axiom instantiated_and {P Q: prop}:
-  ⊨ (P.instantiated && Q.instantiated) → ⊨ (P && Q).instantiated
-
-axiom instantiated_or {P Q: prop}:
-  ⊨ (P.instantiated || Q.instantiated) → ⊨ (P || Q).instantiated
+axiom instantiated_or {σ: env} {P Q: prop}:
+  σ ⊨ (P.instantiated || Q.instantiated) →
+  σ ⊨ (P || Q).instantiated
 
 -- lemmas
+
+lemma instantiated_of_erased_no_env {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
+  assume h: ⊨ P.erased,
+  have P.erased = vc.subst_env env.empty P.erased, by unfold vc.subst_env,
+  have env.empty ⊨ P.erased, from this ▸ h,
+  have h2: env.empty ⊨ P.instantiated, from instantiated_of_erased this,
+  have  vc.subst_env env.empty P.instantiated = P.instantiated, by unfold vc.subst_env,
+  show ⊨ P.instantiated, from this ▸ h2
+
+lemma instantiated_n_of_instantiated_no_env {P: prop}: ⊨ P.instantiated → ⊨ P.instantiated_n :=
+  assume h: ⊨ P.instantiated,
+  have P.instantiated = vc.subst_env env.empty P.instantiated, by unfold vc.subst_env,
+  have env.empty ⊨ P.instantiated, from this ▸ h,
+  have h2: env.empty ⊨ P.instantiated_n, from instantiated_n_of_instantiated this,
+  have  vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
+  show ⊨ P.instantiated_n, from this ▸ h2
+
+lemma erased_n_of_instantiated_n_no_env {P: prop}: ⊨ P.instantiated_n → ⊨ P.erased_n :=
+  assume h: ⊨ P.instantiated_n,
+  have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
+  have env.empty ⊨ P.instantiated_n, from this ▸ h,
+  have h2: env.empty ⊨ P.erased_n, from erased_n_of_instantiated_n this,
+  have vc.subst_env env.empty P.erased_n = P.erased_n, by unfold vc.subst_env,
+  show ⊨ P.erased_n, from this ▸ h2
 
 lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
   have binop.apply binop.eq v v = @ite (v = v)
@@ -106,21 +129,7 @@ lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
                                   value value.true value.false, by unfold binop.apply,
   have binop.apply binop.eq v v = value.true, by simp[this],
   have ⊨ ((v ≡ v) ≡ value.true), from valid.binop.mp this,
-  have h: ⊨ (value.true ≡ (v ≡ v)), from valid.eq.symm this,
-  have h2: ⊨ vc.term value.true, from valid.tru,
-  let Q:propctx := propctx.term • in
-  have h3: Q value.true = value.true, by refl,
-  have (prop.term value.true).erased = vc.term value.true, by unfold prop.erased,
-  have (Q value.true).erased = vc.term value.true, from h3 ▸ this,
-  have ⊨ (Q value.true).erased, from this ▸ h2,
-  have ⊨ (Q value.true).instantiated, from instantiated_of_erased this,
-  have ⊨ (Q (v ≡ v)).instantiated, from valid.subst Q h this,
-  have ⊨ (Q (v ≡ v)).instantiated_n, from instantiated_n_of_instantiated this,
-  have h7: ⊨ (Q (v ≡ v)).erased_n, from erased_n_of_instantiated_n this,
-  have Q (v ≡ v) = prop.term (v ≡ v), by refl,
-  have h8: ⊨ (prop.term (v ≡ v)).erased_n, from this ▸ h7,
-  have (prop.term (v ≡ v)).erased = vc.term (v ≡ v), by unfold prop.erased,
-  show ⊨ (v ≡ v), from this ▸ h8
+  show ⊨ (v ≡ v), from valid.eq.true.mp this
 
 lemma valid_env.and {σ: env} {P Q: vc}: σ ⊨ P → σ ⊨ Q → σ ⊨ (P && Q) :=
   assume p_valid: ⊨ vc.subst_env σ P,
@@ -137,3 +146,26 @@ lemma valid_env.mp {σ: env} {P Q: vc}: σ ⊨ vc.implies P Q → σ ⊨ P → �
   have ⊨ ((vc.subst_env σ P).not || vc.subst_env σ Q), from this ▸ h,
   have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from this,
   show σ ⊨ Q, from valid.mp.mpr this p
+
+lemma empty_history_valid: ⟪calls_to_prop list.nil⟫ :=
+  assume σ: env,
+  have h1: ⊨ value.true, from valid.tru,
+  have (prop.term value.true).erased = vc.term value.true, by unfold prop.erased,
+  have ⊨ (prop.term value.true).erased, from this ▸ h1,
+  have ⊨ (prop.term value.true).instantiated, from instantiated_of_erased_no_env this,
+
+
+  
+  have term.subst_env σ value.true = value.true, from term.subst_env.value,
+  have ⊨ term.subst_env σ value.true, from this.symm ▸ h1,
+  have vc.subst_env σ value.true = vc.term (term.subst_env σ value.true), from vc.subst_env.term,
+  have \si⊨ term.subst_env σ value.true, from this.symm ▸ h1,
+
+
+
+
+  have calls_to_prop list.nil = value.true, by unfold calls_to_prop,
+  have h1: ⊨ prop.term (calls_to_prop list.nil), from valid.tru,
+
+
+  show σ ⊨ (calls_to_prop list.nil).instantiated, from sorry

@@ -43,7 +43,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     z ∉ FV P →
     (P && (z ≡ term.binop op x y) ⊢ e : Q) →
     ⟪ prop.implies P (prop.pre₂ op x y) ⟫ →
-    (P ⊢ letop2 y = op [x, y] in e : propctx.exis y ((z ≡ term.binop op x y) && Q))
+    (P ⊢ letop2 z = op [x, y] in e : propctx.exis y ((z ≡ term.binop op x y) && Q))
 
 | app {P: prop} {e: exp} {y f x: var} {Q: propctx}:
     f ∈ FV P →
@@ -95,11 +95,7 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
     (Q₂ && spec.func g x R S && R ⊢ e : Q₃) →
     ⟪prop.implies (Q₂ && spec.func g x R S && R && Q₃ (term.app g x)) S⟫ →
-    (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) :
-      (Q₁
-       && (f ≡ value.func g x R S e σ₂)
-       && spec.func f x (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) R)
-                        (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) S)))
+    (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) : (Q₁ && (f ≡ value.func g x R S e σ₂)))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 

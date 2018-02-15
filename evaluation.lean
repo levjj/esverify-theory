@@ -66,7 +66,7 @@ notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
     (σ f = value.func g z R S e σ') →
     (σ x = v) →
     ((σ, letapp y = f[x] in e') ⟶ none,
-    ((σ[g↦value.func g z R S e σ'][z↦v], e) · [σ, let y = f[x] in e']))
+    ((σ'[g↦value.func g z R S e σ'][z↦v], e) · [σ, let y = f[x] in e']))
 
 | return {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R S: spec} {e e': exp} {v vₓ: value}:
     (σ₁ z = v) →
@@ -98,3 +98,69 @@ lemma binop.eq_of_equal_values {v: value}: binop.apply binop.eq v v = value.true
                                   (classical.prop_decidable (v = v))
                                   value value.true value.false, by unfold binop.apply,
   show binop.apply binop.eq v v =  value.true, by simp[this]
+
+lemma unop.isFunc.inv {v: value}: unop.apply unop.isFunc v = value.true → 
+      ∃ (f x: var) (R S: spec) (e: exp) (σ: env), v = value.func f x R S e σ :=
+  assume isFunc_is_true: unop.apply unop.isFunc v = value.true,
+  begin
+    cases v with n f x R S e σ,
+
+    show ∃ (f x: var) (R S: spec) (e: exp) (σ: env), value.true = value.func f x R S e σ, from (
+      have h1: (unop.apply unop.isFunc value.true = value.true), from isFunc_is_true,
+      have h2: (unop.apply unop.isFunc value.true = value.false), by unfold unop.apply,
+      have some value.true = some value.false, from eq.trans h1.symm h2,
+      have value.true = value.false, from option.some.inj this,
+      false.elim (value._mut_.no_confusion this)
+    ),
+
+    show ∃ (f x: var) (R S: spec) (e: exp) (σ: env), value.false = value.func f x R S e σ, from (
+      have h1: (unop.apply unop.isFunc value.false = value.true), from isFunc_is_true,
+      have h2: (unop.apply unop.isFunc value.false = value.false), by unfold unop.apply,
+      have some value.true = some value.false, from eq.trans h1.symm h2,
+      have value.true = value.false, from option.some.inj this,
+      false.elim (value._mut_.no_confusion this)
+    ),
+
+    show ∃ (f x: var) (R S: spec) (e: exp) (σ: env), value.num n = value.func f x R S e σ, from (
+      have h1: (unop.apply unop.isFunc (value.num n) = value.true), from isFunc_is_true,
+      have h2: (unop.apply unop.isFunc (value.num n) = value.false), by unfold unop.apply,
+      have some value.true = some value.false, from eq.trans h1.symm h2,
+      have value.true = value.false, from option.some.inj this,
+      false.elim (value._mut_.no_confusion this)
+    ),
+
+    show ∃ (f_1 x_1: var) (R_1 S_1: spec) (e_1: exp) (σ_1: env),
+        value.func f x R S e σ = value.func f_1 x_1 R_1 S_1 e_1 σ_1, from (
+      exists.intro f (exists.intro x (exists.intro R (exists.intro S (exists.intro e (exists.intro σ rfl)))))
+    )
+  end
+
+lemma unop.isBool.inv {v: value}: unop.apply unop.isBool v = value.true → (v = value.true) ∨ (v = value.false) :=
+  assume isBool_is_true: unop.apply unop.isBool v = value.true,
+  begin
+    cases v with n f x R S e σ,
+
+    show ((value.true = value.true) ∨ (value.true = value.false)), from (
+      or.inl rfl
+    ),
+
+    show ((value.false = value.true) ∨ (value.false = value.false)), from (
+      or.inr rfl
+    ),
+
+    show (value.num n = value.true ∨ (value.num n = value.false)), from (
+      have h1: unop.apply unop.isBool (value.num n) = ↑value.true, from isBool_is_true,
+      have h2: (unop.apply unop.isBool (value.num n) = value.false), by unfold unop.apply,
+      have some value.true = some value.false, from eq.trans h1.symm h2,
+      have value.true = value.false, from option.some.inj this,
+      false.elim (value._mut_.no_confusion this)
+    ),
+
+    show (value.func f x R S e σ = value.true ∨ (value.func f x R S e σ = value.false)), from (
+      have h1: unop.apply unop.isBool (value.func f x R S e σ) = ↑value.true, from isBool_is_true,
+      have h2: (unop.apply unop.isBool (value.func f x R S e σ) = value.false), by unfold unop.apply,
+      have some value.true = some value.false, from eq.trans h1.symm h2,
+      have value.true = value.false, from option.some.inj this,
+      false.elim (value._mut_.no_confusion this)
+    )
+  end

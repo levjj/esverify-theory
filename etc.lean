@@ -24,6 +24,10 @@ lemma lt_of_add {n m: ℕ}: n < n + m + 1 ∧ m < n + m + 1 :=
 
 -- other auxiliary lemmas
 
+lemma some.inj.inv {α: Type} {a b: α}: a = b → (some a = some b) :=
+  assume : a = b,
+  by simp * at *
+
 lemma is_none.inv {α: Type} (a: option α): option.is_none a ↔ (a = none) :=
   begin
     cases a,
@@ -78,11 +82,6 @@ lemma not_is_none.rinv {α: Type} {a: option α}: (∃b, a = some b) ↔ ¬ opti
       contradiction
     }
   end
-
-lemma neq_symm {α: Type} {a b: α}: a ≠ b → b ≠ a :=
-  assume a_neq_b: ¬ (a = b),
-  assume b_eq_a: b = a,
-  by simp * at *
 
 lemma mem_of_2set {α: Type} {a b c: α}:
   a ∈ ({b, c}: set α) -> (a = b) ∨ (a = c) :=

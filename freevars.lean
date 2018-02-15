@@ -489,7 +489,7 @@ begin
         assume : (x ∉ (σ'[y↦v'])),
         have h7: ¬ (x = y ∨ x ∈ σ'), from env.contains.same.inv this,
         have : x ≠ y, from (not_or_distrib.mp h7).left,
-        have h8: y ≠ x, from neq_symm this,
+        have h8: y ≠ x, from ne.symm this,
         have h9: x ∉ σ', from (not_or_distrib.mp h7).right,
         have h10: (σ'.apply x = none), from ih.left.mpr h9,
         have h11: (env.apply (σ'[y↦v']) x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
