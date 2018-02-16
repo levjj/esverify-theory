@@ -73,6 +73,12 @@ axiom and_dist_of_no_instantiations {P Q: prop}:
 axiom or_dist_of_no_instantiations {P Q: prop}:
   no_instantiations Q → ((P || Q).instantiated = P.instantiated || Q.erased)
 
+axiom and_dist_of_no_instantiations_n {P Q: prop}:
+  no_instantiations Q → ((P && Q).instantiated_n = P.instantiated_n && Q.erased)
+
+axiom or_dist_of_no_instantiations_n {P Q: prop}:
+  no_instantiations Q → ((P || Q).instantiated_n = P.instantiated_n || Q.erased)
+
 -- lemmas
 
 lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.erased_n) → x ∈ FV P :=

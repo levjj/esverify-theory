@@ -144,6 +144,12 @@ lemma valid_env.and {σ: env} {P Q: vc}: σ ⊨ P → σ ⊨ Q → σ ⊨ (P && 
   have vc.subst_env σ (P && Q) = (vc.subst_env σ P && vc.subst_env σ Q), from vc.subst_env.and,
   show σ ⊨ (P && Q), from this.symm ▸ valid.and.mp ⟨p_valid, q_valid⟩
 
+lemma valid_env.and.elim {σ: env} {P Q: vc}: σ ⊨ (P && Q) → σ ⊨ P ∧ σ ⊨ Q :=
+  assume p_and_q_valid: ⊨ vc.subst_env σ (P && Q),
+  have vc.subst_env σ (P && Q) = (vc.subst_env σ P && vc.subst_env σ Q), from vc.subst_env.and,
+  have ⊨ (vc.subst_env σ P && vc.subst_env σ Q), from this ▸ p_and_q_valid,
+  show σ ⊨ P ∧ σ ⊨ Q, from valid.and.mpr this
+
 lemma valid_env.mp {σ: env} {P Q: vc}: σ ⊨ vc.implies P Q → σ ⊨ P → σ ⊨ Q :=
   assume impl: σ ⊨ (vc.implies P Q),
   assume p: σ ⊨ P,

@@ -331,7 +331,7 @@ lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
 :=
   assume env_verified: (⊢ σ : P),
   assume e_verified: (H && P ⊢ e : Q),
-  show is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s', from begin
+  show is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s', by begin
     cases e_verified,
     case exp.vcgen.tru x e' { from
       let s: stack := (σ, lett x = true in e') in
