@@ -335,26 +335,26 @@ lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
     cases e_verified,
     case exp.vcgen.tru x e' { from
       let s: stack := (σ, lett x = true in e') in
-      have s ⟶ none, (σ[x↦value.true], e'), from step.tru,
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ[x↦value.true], e') this),
+      have s ⟶ nop, (σ[x↦value.true], e'), from step.tru,
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ[x↦value.true], e') this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.fals x e' { from
       let s: stack := (σ, letf x = false in e') in
-      have s ⟶ none, (σ[x↦value.false], e'), from step.fals,
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ[x↦value.false], e') this),
+      have s ⟶ nop, (σ[x↦value.false], e'), from step.fals,
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ[x↦value.false], e') this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.num x n e' { from
       let s: stack := (σ, letn x = n in e') in
-      have s ⟶ none, (σ[x↦value.num n], e'), from step.num,
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ[x↦value.num n], e') this),
+      have s ⟶ nop, (σ[x↦value.num n], e'), from step.num,
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ[x↦value.num n], e') this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.func f x R S e₁ e₂ { from
       let s: stack := (σ, letf f[x] req R ens S {e₁} in e₂) in
-      have s ⟶ none, (σ[f↦value.func f x R S e₁ σ], e₂), from step.closure,
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ[f↦value.func f x R S e₁ σ], e₂) this),
+      have s ⟶ nop, (σ[f↦value.func f x R S e₁ σ], e₂), from step.closure,
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ[f↦value.func f x R S e₁ σ], e₂) this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.unop op x y e' Q' x_free_in_P _ e'_verified vc_valid { from
@@ -369,8 +369,8 @@ lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have ⊨ vc.pre₁ op v, from x_from_env ▸ this,
       have (∃v', unop.apply op v = some v'), from valid.pre₁.mpr this,
       let ⟨v', op_v_is_v'⟩ := this in
-      have s ⟶ none, (σ[y↦v'], e'), from step.unop env_has_x op_v_is_v',
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ[y↦v'], e') this),
+      have s ⟶ nop, (σ[y↦v'], e'), from step.unop env_has_x op_v_is_v',
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ[y↦v'], e') this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.binop op x y z e' Q' x_free_in_P y_free_in_P _ e'_verified vc_valid { from
@@ -389,8 +389,8 @@ lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have ⊨ vc.pre₂ op vx vy, from this ▸ h3,
       have (∃v', binop.apply op vx vy = some v'), from valid.pre₂.mpr this,
       let ⟨v', op_v_is_v'⟩ := this in
-      have s ⟶ none, (σ[z↦v'], e'), from step.binop env_has_x env_has_y op_v_is_v',
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ[z↦v'], e') this),
+      have s ⟶ nop, (σ[z↦v'], e'), from step.binop env_has_x env_has_y op_v_is_v',
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ[z↦v'], e') this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.app y f x e' Q' f_free_in_P x_free_in_P _ e'_verified vc_valid { from
@@ -431,8 +431,8 @@ lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have some_vf_is_g: some vf = ↑(value.func g gx gR gS ge gσ), from some.inj.inv vf_is_g,
       have σ f = value.func g gx gR gS ge gσ, from eq.trans env_has_f some_vf_is_g,
       let s': stack := (gσ[g↦value.func g gx gR gS ge gσ][gx↦vx], ge) · [σ, let y = f[x] in e'] in
-      have s ⟶ none, s', from step.app this env_has_x,
-      have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro s' this),
+      have s ⟶ nop, s', from step.app this env_has_x,
+      have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro s' this),
       show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
     },
     case exp.vcgen.ite x e₂ e₁ Q₁ Q₂ x_free_in_P _ _ vc_valid { from
@@ -459,15 +459,15 @@ lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
         assume : v = value.true,
         have some v = some value.true, from some.inj.inv this,
         have σ x = value.true, from eq.trans env_has_x this,
-        have s ⟶ none, (σ, e₁), from step.ite_true this,
-        have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ, e₁) this),
+        have s ⟶ nop, (σ, e₁), from step.ite_true this,
+        have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ, e₁) this),
         show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
       ) (
         assume : v = value.false,
         have some v = some value.false, from some.inj.inv this,
         have σ x = value.false, from eq.trans env_has_x this,
-        have s ⟶ none, (σ, e₂), from step.ite_false this,
-        have ∃c s', s ⟶ c, s', from exists.intro none (exists.intro (σ, e₂) this),
+        have s ⟶ nop, (σ, e₂), from step.ite_false this,
+        have ∃c s', s ⟶ c, s', from exists.intro nop (exists.intro (σ, e₂) this),
         show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
       )
     },
