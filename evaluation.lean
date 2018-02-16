@@ -31,63 +31,63 @@ noncomputable def binop.apply: binop → value → value → option value
 | binop.lt (value.num n₁) (value.num n₂)    := if n₁ < n₂ then value.true else value.false
 | _ _ _                                     := none
 
-inductive step : stack → option call → stack → Prop
+inductive step : stack → historyitem → stack → Prop
 notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 
-| ctx {s s': stack} {c: option call} {σ: env} {y f x: var} {e: exp}:
+| ctx {s s': stack} {c: historyitem} {σ: env} {y f x: var} {e: exp}:
     (s ⟶ c, s') →
     (s · [σ, let y = f[x] in e] ⟶ c, (s' · [σ, let y = f[x] in e]))
 
 | tru {σ: env} {x: var} {e: exp}:
-    (σ, lett x = true in e) ⟶ none, (σ[x↦value.true], e)
+    (σ, lett x = true in e) ⟶ nop, (σ[x↦value.true], e)
 
 | fals {σ: env} {x: var} {e: exp}:
-    (σ, letf x = false in e) ⟶ none, (σ[x↦value.false], e)
+    (σ, letf x = false in e) ⟶ nop, (σ[x↦value.false], e)
 
 | num {σ: env} {x: var} {e: exp} {n: ℤ}:
-    (σ, letn x = n in e) ⟶ none, (σ[x↦value.num n], e)
+    (σ, letn x = n in e) ⟶ nop, (σ[x↦value.num n], e)
 
 | closure {σ: env} {R S: spec} {f x: var} {e₁ e₂: exp}:
-    (σ, letf f[x] req R ens S {e₁} in e₂) ⟶ none,
+    (σ, letf f[x] req R ens S {e₁} in e₂) ⟶ nop,
     (σ[f↦value.func f x R S e₁ σ], e₂)
 
 | unop {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
     (σ x = v₁) →
     (unop.apply op v₁ = v) →
-    ((σ, letop y = op [x] in e) ⟶ none, (σ[y↦v], e))
+    ((σ, letop y = op [x] in e) ⟶ nop, (σ[y↦v], e))
 
 | binop {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
     (σ x = v₁) →
     (σ y = v₂) →
     (binop.apply op v₁ v₂ = v) →
-    ((σ, letop2 z = op [x, y] in e) ⟶ none, (σ[z↦v], e))
+    ((σ, letop2 z = op [x, y] in e) ⟶ nop, (σ[z↦v], e))
 
 | app {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {v: value}:
     (σ f = value.func g z R S e σ') →
     (σ x = v) →
-    ((σ, letapp y = f[x] in e') ⟶ none,
+    ((σ, letapp y = f[x] in e') ⟶ nop,
     ((σ'[g↦value.func g z R S e σ'][z↦v], e) · [σ, let y = f[x] in e']))
 
 | return {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R S: spec} {e e': exp} {v vₓ: value}:
     (σ₁ z = v) →
     (σ₂ f = value.func g gx R S e σ₃) →
     (σ₂ x = vₓ) →
-    ((σ₁, exp.return z) · [σ₂, let y = f[x] in e'] ⟶ some ⟨g, gx, R, S, e, σ₃, vₓ, v⟩, (σ₂[y↦v], e'))
+    ((σ₁, exp.return z) · [σ₂, let y = f[x] in e'] ⟶ call g gx R S e σ₃ vₓ, (σ₂[y↦v], e'))
 
 | ite_true {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.true) →
-    ((σ, exp.ite x e₁ e₂) ⟶ none, (σ, e₁))
+    ((σ, exp.ite x e₁ e₂) ⟶ nop, (σ, e₁))
 
 | ite_false {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.false) →
-    ((σ, exp.ite x e₁ e₂) ⟶ none, (σ, e₂))
+    ((σ, exp.ite x e₁ e₂) ⟶ nop, (σ, e₂))
 
 notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 
 inductive trans_step : stack → stack → Prop
 notation s `⟶*` s':100 := trans_step s s'
-| rfl {s: stack}                    : s ⟶* s
-| trans {s s' s'': stack} {c: call} : (s ⟶ c, s') → (s' ⟶* s'') → (s ⟶* s'')
+| rfl {s: stack}                                  : s ⟶* s
+| trans {s s' s'': stack} {c: historyitem} : (s ⟶ c, s') → (s' ⟶* s'') → (s ⟶* s'')
 
 notation s `⟶*` s':100 := trans_step s s'
 

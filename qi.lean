@@ -54,7 +54,7 @@ with prop.erased_n: prop → vc
  -- propositions without quantifiers or call triggers do not participate in instantiations
 inductive no_instantiations: prop -> Prop
 | term {t: term}                 : no_instantiations t
-| not {P: prop}                  : no_instantiations P → no_instantiations (prop.not P)
+| not {P: prop}                  : no_instantiations P  → no_instantiations (prop.not P)
 | and {P₁ P₂: prop}              : no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.and P₁ P₂)
 | or {P₁ P₂: prop}               : no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.or P₁ P₂)
 | pre {t₁ t₂: term}              : no_instantiations (prop.pre t₁ t₂)
@@ -72,6 +72,8 @@ axiom and_dist_of_no_instantiations {P Q: prop}:
 
 axiom or_dist_of_no_instantiations {P Q: prop}:
   no_instantiations Q → ((P || Q).instantiated = P.instantiated || Q.erased)
+
+-- lemmas
 
 lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.erased_n) → x ∈ FV P :=
   assume x_free_in_erased_or_erased_n: x ∈ FV P.erased ∨ x ∈ FV P.erased_n,

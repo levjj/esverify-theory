@@ -77,49 +77,49 @@ axiom valid.eq.true {t: term}:
   ↔
   ⊨ t
 
-axiom instantiated_of_erased {σ: env} {P: prop}:
+axiom valid_env.instantiated_of_erased {σ: env} {P: prop}:
   σ ⊨ P.erased →
   σ ⊨ P.instantiated
 
-axiom instantiated_n_of_instantiated {σ: env} {P: prop}:
+axiom valid_env.instantiated_n_of_instantiated {σ: env} {P: prop}:
   σ ⊨ P.instantiated →
   σ ⊨ P.instantiated_n
 
-axiom erased_n_of_instantiated_n {σ: env} {P: prop}:
+axiom valid_env.erased_n_of_instantiated_n {σ: env} {P: prop}:
   σ ⊨ P.instantiated_n →
   σ ⊨ P.erased_n
 
-axiom instantiated_and {σ: env} {P Q: prop}:
+axiom valid_env.instantiated_and {σ: env} {P Q: prop}:
   σ ⊨ (P.instantiated && Q.instantiated) →
   σ ⊨ (P && Q).instantiated
 
-axiom instantiated_or {σ: env} {P Q: prop}:
+axiom valid_env.instantiated_or {σ: env} {P Q: prop}:
   σ ⊨ (P.instantiated || Q.instantiated) →
   σ ⊨ (P || Q).instantiated
 
 -- lemmas
 
-lemma instantiated_of_erased_no_env {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
+lemma instantiated_of_erased {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
   assume h: ⊨ P.erased,
   have P.erased = vc.subst_env env.empty P.erased, by unfold vc.subst_env,
   have env.empty ⊨ P.erased, from this ▸ h,
-  have h2: env.empty ⊨ P.instantiated, from instantiated_of_erased this,
+  have h2: env.empty ⊨ P.instantiated, from valid_env.instantiated_of_erased this,
   have  vc.subst_env env.empty P.instantiated = P.instantiated, by unfold vc.subst_env,
   show ⊨ P.instantiated, from this ▸ h2
 
-lemma instantiated_n_of_instantiated_no_env {P: prop}: ⊨ P.instantiated → ⊨ P.instantiated_n :=
+lemma instantiated_n_of_instantiated {P: prop}: ⊨ P.instantiated → ⊨ P.instantiated_n :=
   assume h: ⊨ P.instantiated,
   have P.instantiated = vc.subst_env env.empty P.instantiated, by unfold vc.subst_env,
   have env.empty ⊨ P.instantiated, from this ▸ h,
-  have h2: env.empty ⊨ P.instantiated_n, from instantiated_n_of_instantiated this,
+  have h2: env.empty ⊨ P.instantiated_n, from valid_env.instantiated_n_of_instantiated this,
   have  vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
   show ⊨ P.instantiated_n, from this ▸ h2
 
-lemma erased_n_of_instantiated_n_no_env {P: prop}: ⊨ P.instantiated_n → ⊨ P.erased_n :=
+lemma erased_n_of_instantiated_n {P: prop}: ⊨ P.instantiated_n → ⊨ P.erased_n :=
   assume h: ⊨ P.instantiated_n,
   have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
   have env.empty ⊨ P.instantiated_n, from this ▸ h,
-  have h2: env.empty ⊨ P.erased_n, from erased_n_of_instantiated_n this,
+  have h2: env.empty ⊨ P.erased_n, from valid_env.erased_n_of_instantiated_n this,
   have vc.subst_env env.empty P.erased_n = P.erased_n, by unfold vc.subst_env,
   show ⊨ P.erased_n, from this ▸ h2
 
@@ -130,6 +130,13 @@ lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
   have binop.apply binop.eq v v = value.true, by simp[this],
   have ⊨ ((v ≡ v) ≡ value.true), from valid.binop.mp this,
   show ⊨ (v ≡ v), from valid.eq.true.mp this
+
+lemma valid_env.true {σ: env}: σ ⊨ value.true :=
+  have h1: ⊨ value.true, from valid.tru,
+  have term.subst_env σ value.true = value.true, from term.subst_env.value,
+  have h2: ⊨ term.subst_env σ value.true, from this.symm ▸ h1,
+  have vc.subst_env σ value.true = vc.term (term.subst_env σ value.true), from vc.subst_env.term,
+  show σ ⊨ value.true, from this.symm ▸ h2
 
 lemma valid_env.and {σ: env} {P Q: vc}: σ ⊨ P → σ ⊨ Q → σ ⊨ (P && Q) :=
   assume p_valid: ⊨ vc.subst_env σ P,
@@ -147,25 +154,50 @@ lemma valid_env.mp {σ: env} {P Q: vc}: σ ⊨ vc.implies P Q → σ ⊨ P → �
   have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from this,
   show σ ⊨ Q, from valid.mp.mpr this p
 
-lemma empty_history_valid: ⟪calls_to_prop list.nil⟫ :=
+lemma valid_env.mpr {σ: env} {P Q: vc}: (σ ⊨ P → σ ⊨ Q) → σ ⊨ vc.implies P Q :=
+  assume : (σ ⊨ P → σ ⊨ Q),
+  have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from valid.mp.mp this,
+  have h1: ⊨ vc.or (vc.subst_env σ P).not (vc.subst_env σ Q), from this,
+  have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+  have h2: ⊨ vc.or (vc.subst_env σ P.not) (vc.subst_env σ Q), from this.symm ▸ h1,
+  have vc.subst_env σ (P.not || Q) = vc.subst_env σ P.not || vc.subst_env σ Q,
+  from vc.subst_env.or,
+  have ⊨ vc.subst_env σ (P.not || Q), from this.symm ▸ h2,
+  show σ ⊨ vc.implies P Q, from this
+
+lemma history_valid {H: callhistory}: ⟪calls_to_prop H⟫ :=
   assume σ: env,
-  have h1: ⊨ value.true, from valid.tru,
-  have (prop.term value.true).erased = vc.term value.true, by unfold prop.erased,
-  have ⊨ (prop.term value.true).erased, from this ▸ h1,
-  have ⊨ (prop.term value.true).instantiated, from instantiated_of_erased_no_env this,
-
-
-  
-  have term.subst_env σ value.true = value.true, from term.subst_env.value,
-  have ⊨ term.subst_env σ value.true, from this.symm ▸ h1,
-  have vc.subst_env σ value.true = vc.term (term.subst_env σ value.true), from vc.subst_env.term,
-  have \si⊨ term.subst_env σ value.true, from this.symm ▸ h1,
-
-
-
-
-  have calls_to_prop list.nil = value.true, by unfold calls_to_prop,
-  have h1: ⊨ prop.term (calls_to_prop list.nil), from valid.tru,
-
-
-  show σ ⊨ (calls_to_prop list.nil).instantiated, from sorry
+  begin
+    induction H,
+    case list.nil { from (
+      have h1: σ ⊨ value.true, from valid_env.true,
+      have (prop.term value.true).erased = vc.term value.true, by unfold prop.erased,
+      have σ ⊨ (prop.term value.true).erased, from this ▸ h1,
+      have h2: σ ⊨ (prop.term value.true).instantiated, from valid_env.instantiated_of_erased this,
+      have calls_to_prop list.nil = value.true, by unfold calls_to_prop,
+      show σ ⊨ (calls_to_prop list.nil).instantiated, from this ▸ h2
+    )},
+    case list.cons h rest ih {
+      cases h,
+      case historyitem.nop { from (
+        have h2: σ ⊨ (calls_to_prop rest).instantiated, from ih,
+        have calls_to_prop (historyitem.nop :: rest) = calls_to_prop rest, by unfold calls_to_prop,
+        show σ ⊨ (calls_to_prop (historyitem.nop :: rest)).instantiated, from this.symm ▸ h2
+      )},
+      case historyitem.call f x R S e σ₂ v { from (
+        have h1: σ ⊨ value.true, from valid_env.true,
+        have (prop.call (value.func f x R S e σ₂) v).erased = vc.term value.true, by unfold prop.erased,
+        have σ ⊨ (prop.call (value.func f x R S e σ₂) v).erased, from this ▸ h1,
+        have h2: σ ⊨ (prop.call (value.func f x R S e σ₂) v).instantiated, from valid_env.instantiated_of_erased this,
+        have h3: σ ⊨ (calls_to_prop rest).instantiated, from ih,
+        have σ ⊨ ((prop.call (value.func f x R S e σ₂) v).instantiated && (calls_to_prop rest).instantiated),
+        from valid_env.and h2 h3,
+        have h4: σ ⊨ (prop.call (value.func f x R S e σ₂) v && calls_to_prop rest).instantiated,
+        from valid_env.instantiated_and this,
+        have calls_to_prop (call f x R S e σ₂ v :: rest)
+          = prop.call (value.func f x R S e σ₂) v && calls_to_prop rest,
+        by unfold calls_to_prop,
+        show σ ⊨ (calls_to_prop (call f x R S e σ₂ v :: rest)).instantiated, from this ▸ h4
+      )}
+    }
+  end

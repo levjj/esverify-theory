@@ -67,8 +67,14 @@ inductive stack
 | top  : env → exp → stack
 | cons : stack → env → var → var → var → exp → stack
 
- -- H ∈ CallHistory := f(vₓ)=v (all values closed)
- structure call := (f: var) (x: var) (R: spec) (S: spec) (e: exp) (σ: env) (vₓ: value) (v: value)
+ -- h ∈ HistoryItem := call((func f(x) R S e σ), v)
+inductive historyitem
+| nop  : historyitem
+| call : var → var → spec → spec → exp → env → value → historyitem
+
+-- H ∈ CallHistories := ∅ | h • H
+@[reducible]
+def callhistory := list historyitem
 
 -- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
 --                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P

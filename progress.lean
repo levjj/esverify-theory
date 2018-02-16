@@ -12,7 +12,7 @@ lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x 
     }
   end
 
-lemma stack.vcgen.top.inv {H: list call} {σ: env} {e: exp}: (H ⊩ (σ, e)) → ∃P Q, (⊢ σ: P) ∧ (H && P ⊢ e: Q) :=
+lemma stack.vcgen.top.inv {H: callhistory} {σ: env} {e: exp}: (H ⊩ (σ, e)) → ∃P Q, (⊢ σ: P) ∧ (H && P ⊢ e: Q) :=
   assume top_verified: H ⊩ (σ, e),
   begin
     cases top_verified,
@@ -73,7 +73,7 @@ lemma not_free_of_subst_env {P: prop} {σ: env} {x: var}:
       from not_free_of_subst_env_val x_free_in_P ih
     },
     case env.vcgen.func f σ₁ σ₂ g gx R' S' e Q₁ Q₂ Q₃ _ _ _ fv_R fv_S _ _ ih₁ ih₂ { from
-      show ∀R: spec, ¬(free_in_prop x (spec.subst_env (σ₂[f↦value.func g gx R' S' e σ₁]) R)),
+      show ∀R: spec, ¬(free_in_prop x (spec.subst_env (σ₂[g↦value.func f gx R' S' e σ₁]) R)),
       from not_free_of_subst_env_val x_free_in_P ih₁
     }
   end
@@ -160,11 +160,11 @@ lemma val_of_free_in_env {P: prop} {σ: env} {x: var}: (⊢ σ : P) → x ∈ FV
       show ∃v, σ'[x'↦value.num n] x = some v, from val_of_free_in_env_value σ'_verified x_free_in_P ih
     },
     case env.vcgen.func σ₁ σ₂ f g fx R S e Q₁ Q₂ Q₃ _ σ₁_verified σ₂_verified R_fv S_fv func_verified S_valid {
-      show ∃v, σ₁[f↦value.func g fx R S e σ₂] x = some v, from val_of_free_in_env_value σ₁_verified x_free_in_P ih_1
+      show ∃v, σ₁[g↦value.func f fx R S e σ₂] x = some v, from val_of_free_in_env_value σ₁_verified x_free_in_P ih_1
     }
   end
 
-lemma val_of_free_in_hist_env {H: list call} {σ: env} {P: prop} {x: var}:
+lemma val_of_free_in_hist_env {H: callhistory} {σ: env} {P: prop} {x: var}:
                               (⊢ σ : P) → x ∈ FV (↑H && P) → ∃v, σ x = some v :=
   assume σ_verified: ⊢ σ : P,
   assume x_free_in_H_P: x ∈ FV (↑H && P),
@@ -261,25 +261,23 @@ lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P
     },
     case env.vcgen.func σ₁ σ₂ f g gx R S e Q₁ Q₂ Q₃
       x_not_free_in_σ₁ σ₁_verified σ₂_verified R_fv S_fv func_verified S_valid ih₁ ih₂ {
-      show (σ₁[f↦value.func g gx R S e σ₂]) ⊨ prop.erased (Q₁ && (f ≡ value.func g gx R S e σ₂)),
+      show (σ₁[g↦value.func f gx R S e σ₂]) ⊨ prop.erased (Q₁ && (g ≡ value.func f gx R S e σ₂)),
       from simple_equality_env_valid σ₁_verified x_not_free_in_σ₁ ih₁
     }
   end
 
-lemma env_translation_valid {H: list call} {P: prop} {σ: env}:
-  ⟪H⟫ → (⊢ σ: P) → σ ⊨ (↑H && P).instantiated_n :=
-  assume h_valid: ⟪H⟫,
+lemma env_translation_valid {H: callhistory} {P: prop} {σ: env}:
+  (⊢ σ: P) → σ ⊨ (↑H && P).instantiated_n :=
   assume env_verified: (⊢ σ : P),
-  have h1: σ ⊨ prop.instantiated ↑H, from h_valid σ,
+  have h1: σ ⊨ prop.instantiated ↑H, from history_valid σ,
   have σ ⊨ P.erased, from env_translation_erased_valid env_verified,
-  have h2: σ ⊨ P.instantiated, from instantiated_of_erased this,
+  have h2: σ ⊨ P.instantiated, from valid_env.instantiated_of_erased this,
   have σ ⊨ (prop.instantiated ↑H && P.instantiated), from valid_env.and h1 h2,
-  have σ ⊨ (↑H && P).instantiated, from instantiated_and this,
-  show σ ⊨ (↑H && P).instantiated_n, from instantiated_n_of_instantiated this
+  have σ ⊨ (↑H && P).instantiated, from valid_env.instantiated_and this,
+  show σ ⊨ (↑H && P).instantiated_n, from valid_env.instantiated_n_of_instantiated this
 
-lemma consequent_of_H_P {H: list call} {σ: env} {P Q: prop}:
-  ⟪H⟫ → (⊢ σ: P) → ⟪prop.implies (↑H && P) Q⟫ → no_instantiations Q → σ ⊨ Q.erased :=
-  assume h_valid: ⟪H⟫,
+lemma consequent_of_H_P {H: callhistory} {σ: env} {P Q: prop}:
+  (⊢ σ: P) → ⟪prop.implies (↑H && P) Q⟫ → no_instantiations Q → σ ⊨ Q.erased :=
   assume env_verified: (⊢ σ : P),
   assume impl_vc: ⟪prop.implies (↑H && P) Q⟫,
   assume : no_instantiations Q,
@@ -289,18 +287,17 @@ lemma consequent_of_H_P {H: list call} {σ: env} {P Q: prop}:
   have σ ⊨ (prop.implies (↑H && P) Q).instantiated, from impl_vc σ,
   have σ ⊨ vc.or (↑H && P).instantiated_n.not Q.erased, from h2 ▸ h1 ▸ this,
   have h4: σ ⊨ vc.implies (↑H && P).instantiated_n Q.erased, from this,
-  have σ ⊨ (↑H && P).instantiated_n, from env_translation_valid h_valid env_verified,
+  have σ ⊨ (↑H && P).instantiated_n, from env_translation_valid env_verified,
   show σ ⊨ Q.erased, from valid_env.mp h4 this
 
-lemma env_translation_call_valid {H: list call} {P: prop} {σ: env} {f x: var}:
-  ⟪H⟫ → (⊢ σ: P) → σ ⊨ (↑H && P && prop.call f x).instantiated_n :=
-  assume h_valid: ⟪H⟫,
+lemma env_translation_call_valid {H: callhistory} {P: prop} {σ: env} {f x: var}:
+  (⊢ σ: P) → σ ⊨ (↑H && P && prop.call f x).instantiated_n :=
   assume env_verified: (⊢ σ : P),
-  have h1: σ ⊨ prop.instantiated ↑H, from h_valid σ,
+  have h1: σ ⊨ prop.instantiated ↑H, from history_valid σ,
   have σ ⊨ P.erased, from env_translation_erased_valid env_verified,
-  have h2: σ ⊨ P.instantiated, from instantiated_of_erased this,
+  have h2: σ ⊨ P.instantiated, from valid_env.instantiated_of_erased this,
   have σ ⊨ (prop.instantiated ↑H && P.instantiated), from valid_env.and h1 h2,
-  have h3: σ ⊨ (↑H && P).instantiated, from instantiated_and this,
+  have h3: σ ⊨ (↑H && P).instantiated, from valid_env.instantiated_and this,
   have h4: ⊨ value.true, from valid.tru,
   have term.subst_env σ value.true = value.true, from term.subst_env.value,
   have h5: ⊨ term.subst_env σ value.true, from this.symm ▸ h4,
@@ -308,14 +305,13 @@ lemma env_translation_call_valid {H: list call} {P: prop} {σ: env} {f x: var}:
   have h6: σ ⊨ value.true, from this.symm ▸ h5,
   have (prop.call f x).erased = vc.term value.true, by unfold prop.erased,
   have σ ⊨ (prop.call f x).erased, from this.symm ▸ h6,
-  have σ ⊨ (prop.call f x).instantiated, from instantiated_of_erased this,
+  have σ ⊨ (prop.call f x).instantiated, from valid_env.instantiated_of_erased this,
   have σ ⊨ ((↑H && P).instantiated && (prop.call f x).instantiated), from valid_env.and h3 this,
-  have σ ⊨ (↑H && P && prop.call f x).instantiated, from instantiated_and this,
-  show σ ⊨ (↑H && P && prop.call f x).instantiated_n, from instantiated_n_of_instantiated this
+  have σ ⊨ (↑H && P && prop.call f x).instantiated, from valid_env.instantiated_and this,
+  show σ ⊨ (↑H && P && prop.call f x).instantiated_n, from valid_env.instantiated_n_of_instantiated this
 
-lemma consequent_of_H_P_call {H: list call} {σ: env} {P Q: prop} {f x: var}:
-  ⟪H⟫ → (⊢ σ: P) → ⟪prop.implies (↑H && P && prop.call f x) Q⟫ → no_instantiations Q → σ ⊨ Q.erased :=
-  assume h_valid: ⟪H⟫,
+lemma consequent_of_H_P_call {H: callhistory} {σ: env} {P Q: prop} {f x: var}:
+  (⊢ σ: P) → ⟪prop.implies (↑H && P && prop.call f x) Q⟫ → no_instantiations Q → σ ⊨ Q.erased :=
   assume env_verified: (⊢ σ : P),
   assume impl_vc: ⟪prop.implies (↑H && P && prop.call f x) Q⟫,
   assume : no_instantiations Q,
@@ -327,13 +323,12 @@ lemma consequent_of_H_P_call {H: list call} {σ: env} {P Q: prop} {f x: var}:
   have σ ⊨ (prop.implies (↑H && P && prop.call f x) Q).instantiated, from impl_vc σ,
   have σ ⊨ vc.or (↑H && P && prop.call f x).instantiated_n.not Q.erased, from h2 ▸ h1 ▸ this,
   have h4: σ ⊨ vc.implies (↑H && P && prop.call f x).instantiated_n Q.erased, from this,
-  have σ ⊨ (↑H && P && prop.call f x).instantiated_n, from env_translation_call_valid h_valid env_verified,
+  have σ ⊨ (↑H && P && prop.call f x).instantiated_n, from env_translation_call_valid env_verified,
   show σ ⊨ Q.erased, from valid_env.mp h4 this
 
-lemma exp.progress {H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
-                   ⟪H⟫ → (⊢ σ: P) → (H && P ⊢ e: Q) → is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s'
+lemma exp.progress {H: callhistory} {P: prop} {Q: propctx} {e: exp} {σ: env}:
+                   (⊢ σ: P) → (H && P ⊢ e: Q) → is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s'
 :=
-  assume h_valid: ⟪H⟫,
   assume env_verified: (⊢ σ : P),
   assume e_verified: (H && P ⊢ e : Q),
   show is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s', from begin
@@ -366,7 +361,7 @@ lemma exp.progress {H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       let s: stack := (σ, letop y = op[x] in e') in
       let ⟨v, env_has_x⟩ := (val_of_free_in_hist_env env_verified x_free_in_P) in
       have no_instantiations (prop.pre₁ op x), from no_instantiations.pre₁,
-      have σ ⊨ (prop.pre₁ op x).erased, from consequent_of_H_P h_valid env_verified vc_valid this,
+      have σ ⊨ (prop.pre₁ op x).erased, from consequent_of_H_P env_verified vc_valid this,
       have h1: ⊨ vc.subst_env σ (vc.pre₁ op x), from this,
       have vc.subst_env σ (vc.pre₁ op x) = vc.pre₁ op (term.subst_env σ x), from vc.subst_env.pre₁,
       have ⊨ vc.pre₁ op (term.subst_env σ x), from this ▸ h1,
@@ -383,7 +378,7 @@ lemma exp.progress {H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       let ⟨vx, env_has_x⟩ := (val_of_free_in_hist_env env_verified x_free_in_P) in
       let ⟨vy, env_has_y⟩ := (val_of_free_in_hist_env env_verified y_free_in_P) in
       have no_instantiations (prop.pre₂ op x y), from no_instantiations.pre₂,
-      have σ ⊨ (prop.pre₂ op x y).erased, from consequent_of_H_P h_valid env_verified vc_valid this,
+      have σ ⊨ (prop.pre₂ op x y).erased, from consequent_of_H_P env_verified vc_valid this,
       have h1: ⊨ vc.subst_env σ (vc.pre₂ op x y), from this,
       have vc.subst_env σ (vc.pre₂ op x y) = vc.pre₂ op (term.subst_env σ x) (term.subst_env σ y),
       from vc.subst_env.pre₂,
@@ -406,7 +401,7 @@ lemma exp.progress {H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have h2: no_instantiations (prop.pre f x), from no_instantiations.pre,
       have no_instantiations (↑(term.unop unop.isFunc f) && prop.pre f x), from no_instantiations.and h1 h2,
       have h3: σ ⊨ (↑(term.unop unop.isFunc f) && prop.pre f x).erased,
-      from consequent_of_H_P_call h_valid env_verified vc_valid this,
+      from consequent_of_H_P_call env_verified vc_valid this,
       have (prop.and (prop.term (term.unop unop.isFunc f)) (prop.pre f x)).erased
          = (prop.term (term.unop unop.isFunc f)).erased && (prop.pre f x).erased, by unfold prop.erased,
       have σ ⊨ ((prop.term (term.unop unop.isFunc f)).erased && (prop.pre f x).erased), from this ▸ h3,
@@ -445,7 +440,7 @@ lemma exp.progress {H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       let ⟨v, env_has_x⟩ := (val_of_free_in_hist_env env_verified x_free_in_P) in
       have no_instantiations (term.unop unop.isBool x), from no_instantiations.term,
       have h1: σ ⊨ (prop.term (term.unop unop.isBool x)).erased,
-      from consequent_of_H_P h_valid env_verified vc_valid this,
+      from consequent_of_H_P env_verified vc_valid this,
       have (prop.term (term.unop unop.isBool x)).erased = vc.term (term.unop unop.isBool x),
       by unfold prop.erased,
       have h2: σ ⊨ vc.term (term.unop unop.isBool x), from this ▸ h1,
@@ -489,34 +484,33 @@ lemma exp.progress {H: list call} {P: prop} {Q: propctx} {e: exp} {σ: env}:
     }
   end
 
-theorem progress(H: list call) (s: stack): ⟪H⟫ → (H ⊩ s) → is_value s ∨ ∃c s', s ⟶ c, s'
+theorem progress(H: callhistory) (s: stack): (H ⊩ s) → is_value s ∨ ∃c s', s ⟶ c, s'
 :=
-  assume h_valid: ⟪H⟫,
   assume s_verified: H ⊩ s,
   begin
     induction s_verified,
     case stack.vcgen.top σ e Q P H env_verified e_verified { from
-      show is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s', from exp.progress h_valid env_verified e_verified
+      show is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s', from exp.progress env_verified e_verified
     },
-    case stack.vcgen.cons H P s' σ σ' f g x y gx R S e vₓ Q s'_verified env_verified f_is_func x_is_v _ cont ih { from
-      let s := (s' · [σ, let y = f[x] in e]) in
-      have s_cons: s = (s' · [σ, let y = f[x] in e]), from rfl,
-      (ih h_valid).elim
+    case stack.vcgen.cons H P s' σ σ' f g x y fx R S e vₓ Q s'_verified _ g_is_func x_is_v _ cont _ _ ih { from
+      let s := (s' · [σ, let y = g[x] in e]) in
+      have s_cons: s = (s' · [σ, let y = g[x] in e]), from rfl,
+      or.elim ih
       ( -- step return
         assume s'_is_value: is_value s',
         let ⟨σ₂, z, v, ⟨s'_return, env2_has_z⟩⟩ := s'_is_value in
-        have s_return_cons: s = ((σ₂, exp.return z) · [σ, let y = f[x] in e]), from s'_return ▸ s_cons,
-        have s ⟶ some ⟨g, gx, R, S, e, σ', vₓ, v⟩, (σ[y↦v], e),
-        from s_return_cons.symm ▸ (step.return env2_has_z f_is_func x_is_v),
-        have ∃s', s ⟶ some ⟨g, gx, R, S, e, σ', vₓ, v⟩, s', from exists.intro (σ[y↦v], e) this,
-        have ∃c s', s ⟶ c, s', from exists.intro (some ⟨g, gx, R, S, e, σ', vₓ, v⟩) this,
+        have s_return_cons: s = ((σ₂, exp.return z) · [σ, let y = g[x] in e]), from s'_return ▸ s_cons,
+        have s ⟶ call f fx R S e σ' vₓ, (σ[y↦v], e),
+        from s_return_cons.symm ▸ (step.return env2_has_z g_is_func x_is_v),
+        have ∃s', s ⟶ call f fx R S e σ' vₓ, s', from exists.intro (σ[y↦v], e) this,
+        have ∃c s', s ⟶ c, s', from exists.intro (call f fx R S e σ' vₓ) this,
         show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
       )
       ( -- step ctx
         assume s'_can_step: ∃c s'', s' ⟶ c, s'',
         let ⟨c, s'', s'_steps⟩ := s'_can_step in
-        have s ⟶ c, (s'' · [σ, let y = f[x] in e]), from step.ctx s'_steps,
-        have ∃s', s ⟶ c, s', from exists.intro (s'' · [σ, let y = f[x] in e]) this,
+        have s ⟶ c, (s'' · [σ, let y = g[x] in e]), from step.ctx s'_steps,
+        have ∃s', s ⟶ c, s', from exists.intro (s'' · [σ, let y = g[x] in e]) this,
         have ∃c s', s ⟶ c, s', from exists.intro c this,
         show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
       )
