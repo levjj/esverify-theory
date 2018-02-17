@@ -127,8 +127,8 @@ axiom valid_env.instantiated_or {σ: env} {P Q: prop}:
 -- so if (P') implies (P) without cross-instantiations,
 -- then (P' ∧ Q) implies (P ∧ Q) without cross-instantiations
 axiom valid_env.strengthen_without_instantiations {σ: env} {P P' Q: prop}:
-  (calls P = calls P') →
-  (quantifiers P = quantifiers P') →
+  (calls P' = calls P) →
+  (quantifiers P' = quantifiers P) →
   σ ⊨ vc.implies P'.instantiated_n P.instantiated_n →
   σ ⊨ vc.implies (P' && Q).instantiated_n (P && Q).instantiated_n
 
