@@ -98,23 +98,43 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
-inductive stack.vcgen : callhistory → stack → Prop
-notation H `⊩` s : 10 := stack.vcgen H s
+inductive stack.vcgen : stack → Prop
+notation `⊢ₛ` s : 10 := stack.vcgen s
 
-| top {H: callhistory} {P: prop} {σ: env} {e: exp} {Q: propctx}:
+| top {P: prop} {σ: env} {e: exp} {Q: propctx}:
     (⊢ σ : P) →
-    (H && P ⊢ e : Q) →
-    (H ⊩ (σ, e))
+    (P ⊢ e : Q) →
+    (⊢ₛ (σ, e))
 
-| cons {H: callhistory} {P: prop} {s: stack} {σ₁ σ₂: env} {f fx g x y: var} {R S: spec} {e: exp} {v: value} {Q: propctx}:
-    (H ⊩ s) →
+| cons {P: prop} {s: stack} {σ₁ σ₂: env} {f fx g x y: var} {R S: spec} {e: exp} {v: value} {Q: propctx}:
+    (⊢ₛ s) →
     (⊢ σ₁ : P) →
     (σ₁ g = value.func f fx R S e σ₂) →
     (σ₁ x = v) →
     y ∉ σ₁ →
-    (H && P && prop.call g x && prop.post g x && (y ≡ term.app g x) ⊢ e : Q) →
-    ⟪ prop.implies (H && P && prop.call g x) (term.unop unop.isFunc g && prop.pre g x) ⟫ →
+    (P && prop.call g x && prop.post g x && (y ≡ term.app g x) ⊢ e : Q) →
+    ⟪ prop.implies (P && prop.call g x) (term.unop unop.isFunc g && prop.pre g x) ⟫ →
     ((σ₂[f↦value.func f fx R S e σ₂][fx↦v], e) ⟶* s) →
-    (H ⊩ (s · [σ₁, let y = g[x] in e]))
+    (⊢ₛ (s · [σ₁, let y = g[x] in e]))
 
-notation P `⊩` s : 10 := stack.vcgen P s
+notation `⊢ₛ` s : 10 := stack.vcgen s
+
+-- lemmas
+
+lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x : Q) → x ∈ FV P :=
+  assume return_verified: P ⊢ exp.return x : Q,
+  begin
+    cases return_verified,
+    case exp.vcgen.return x_free {
+      show x ∈ FV P, from x_free
+    }
+  end
+
+lemma stack.vcgen.top.inv {σ: env} {e: exp}: (⊢ₛ (σ, e)) → ∃P Q, (⊢ σ: P) ∧ (P ⊢ e: Q) :=
+  assume top_verified: ⊢ₛ (σ, e),
+  begin
+    cases top_verified,
+    case stack.vcgen.top P Q env_verified e_verified {
+      show ∃P Q, (⊢ σ: P) ∧ (P ⊢ e: Q), from exists.intro P (exists.intro Q ⟨env_verified, e_verified⟩)
+    }
+  end

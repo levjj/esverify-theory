@@ -42,13 +42,20 @@ lemma free_and_left {P P' Q: prop}:
     show x ∈ FV (P && Q), from free_in_prop.and₂ this
   )
 
-lemma strengthen_pre_exp {P P' Q: prop} {e: exp} {t: term}:
-  (P ⊢ e : Q) → FV P' ⊆ FV P → (∀σ, σ ⊨ vc.implies P'.instantiated_n P.instantiated_n) →
-  () → P' && (x ≡ value.true) ⊢ e': Q :=
+lemma same_calls_P_and_t {P: prop} {t: term}: (calls (P && t) = calls P) :=
+  sorry
+
+lemma same_quantifiers_P_and_t {P: prop} {t: term}: (quantifiers (P && t) = quantifiers P) :=
+  sorry
+
+lemma strengthen_P_and_t {P: prop} {t: term} {σ: env}: σ ⊨ vc.implies (P && t).instantiated_n P.instantiated_n :=
   sorry
 
 lemma strengthen_pre_exp {P: prop} {Q: propctx} {e: exp}:
-  (P ⊢ e : Q) → ∀P': prop, FV P' ⊆ FV P → (∀σ, σ ⊨ vc.implies P'.instantiated_n P.instantiated_n) → (P' ⊢ e: Q) :=
+  (P ⊢ e : Q) →
+  ∀P': prop, FV P' ⊆ FV P → (calls P' = calls P) → (quantifiers P' = quantifiers P) →
+       (∀σ, σ ⊨ vc.implies P'.instantiated_n P.instantiated_n) →
+       (P' ⊢ e: Q) :=
   assume e_verified: (P ⊢ e : Q),
   begin
     induction e_verified,
@@ -83,7 +90,7 @@ lemma strengthen_pre_exp {P: prop} {Q: propctx} {e: exp}:
     },
     case exp.vcgen.return x x_free_in_P { from
     }
+  end
 
-theorem preservation {H: callhistory} {h: historyitem} {s s': stack}:
-  (H ⊩ s) → (s ⟶ h, s') → (h :: H ⊩ s')
+theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → ⊢ₛ s'
 := sorry

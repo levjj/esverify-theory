@@ -33,13 +33,6 @@ infix `||` := has_or.or
 -- use • as hole
 notation `•` := termctx.hole
 
--- history items
-@[reducible]
-def nop := historyitem.nop
-
-@[reducible]
-def call := historyitem.call
-
 -- simple coercions
 instance value_to_term : has_coe value term := ⟨term.value⟩
 instance var_to_term : has_coe var term := ⟨term.var⟩
@@ -213,12 +206,3 @@ def propctx.apply: propctx → term → prop
 | (propctx.exis x P) t       := prop.exis x (P.apply t)
 
 instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
-
--- call history to prop coercion
-
-def calls_to_prop: callhistory → prop
-| list.nil                                  := value.true
-| (historyitem.nop :: rest)                 := calls_to_prop rest
-| (historyitem.call f x R S e σ vₓ :: rest) := prop.call (value.func f x R S e σ) vₓ && calls_to_prop rest
-
-instance call_to_prop: has_coe callhistory prop := ⟨calls_to_prop⟩

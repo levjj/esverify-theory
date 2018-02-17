@@ -62,6 +62,14 @@ lemma not_is_none.inv {α: Type} (a: option α): ¬ option.is_none a → (a ≠ 
     }
   end
 
+lemma exists_of_is_some {α: Type} {a: option α}: option.is_some a → (∃b, a = some b) :=
+  assume h: option.is_some a,
+  begin
+    cases a,
+    case option.none { contradiction },
+    case option.some b { exact exists.intro b rfl }
+  end
+
 lemma not_is_none.rinv {α: Type} {a: option α}: (∃b, a = some b) ↔ ¬ option.is_none a :=
   begin
     split,
@@ -102,3 +110,6 @@ lemma mem_of_2set {α: Type} {a b c: α}:
       show (a = b) ∨ (a = c), from absurd this (set.not_mem_empty a)
     )
   )
+
+lemma set.forall_not_mem_of_eq_empty {α: Type} {s: set α}: s = ∅ → ∀ x, x ∉ s :=
+  by simp[set.set_eq_def]

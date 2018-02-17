@@ -67,15 +67,6 @@ inductive stack
 | top  : env → exp → stack
 | cons : stack → env → var → var → var → exp → stack
 
- -- h ∈ HistoryItem := call((func f(x) R S e σ), v)
-inductive historyitem
-| nop  : historyitem
-| call : var → var → spec → spec → exp → env → value → historyitem
-
--- H ∈ CallHistories := ∅ | h • H
-@[reducible]
-def callhistory := list historyitem
-
 -- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
 --                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P
 inductive prop
@@ -115,6 +106,12 @@ inductive propctx
 | call    : termctx → termctx → propctx
 | forallc : var → termctx → propctx → propctx
 | exis    : var → propctx → propctx
+
+-- call(f, x) ∈ CallTriggers
+structure calltrigger := (f: term) (x: term)
+
+-- (∀x {call(f, x)} ⇒ P) ∈ CallQuantifiers
+structure callquantifier := (f: term) (x: var) (P: prop)
 
 -- P,Q ∈ VerificationCondition := ...
 inductive vc: Type
