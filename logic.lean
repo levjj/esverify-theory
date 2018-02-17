@@ -205,3 +205,40 @@ lemma valid_env.mpr {σ: env} {P Q: vc}: (σ ⊨ P → σ ⊨ Q) → σ ⊨ vc.i
   from vc.subst_env.or,
   have ⊨ vc.subst_env σ (P.not || Q), from this.symm ▸ h2,
   show σ ⊨ vc.implies P Q, from this
+
+lemma history_valid {H: callhistory}: ⟪calls_to_prop H⟫ :=
+  assume σ: env,
+  begin
+    induction H,
+    case list.nil { from (
+      have h1: σ ⊨ value.true, from valid_env.true,
+      have (prop.term value.true).erased = vc.term value.true, by unfold prop.erased,
+      have σ ⊨ (prop.term value.true).erased, from this ▸ h1,
+      have h2: σ ⊨ (prop.term value.true).instantiated, from valid_env.instantiated_of_erased this,
+      have calls_to_prop list.nil = value.true, by unfold calls_to_prop,
+      show σ ⊨ (calls_to_prop list.nil).instantiated, from this ▸ h2
+    )},
+    case list.cons h rest ih {
+      cases h,
+      case historyitem.nop { from (
+        have h2: σ ⊨ (calls_to_prop rest).instantiated, from ih,
+        have calls_to_prop (historyitem.nop :: rest) = calls_to_prop rest, by unfold calls_to_prop,
+        show σ ⊨ (calls_to_prop (historyitem.nop :: rest)).instantiated, from this.symm ▸ h2
+      )},
+      case historyitem.call f x R S e σ₂ v { from (
+        have h1: σ ⊨ value.true, from valid_env.true,
+        have (prop.call (value.func f x R S e σ₂) v).erased = vc.term value.true, by unfold prop.erased,
+        have σ ⊨ (prop.call (value.func f x R S e σ₂) v).erased, from this ▸ h1,
+        have h2: σ ⊨ (prop.call (value.func f x R S e σ₂) v).instantiated, from valid_env.instantiated_of_erased this,
+        have h3: σ ⊨ (calls_to_prop rest).instantiated, from ih,
+        have σ ⊨ ((prop.call (value.func f x R S e σ₂) v).instantiated && (calls_to_prop rest).instantiated),
+        from valid_env.and h2 h3,
+        have h4: σ ⊨ (prop.call (value.func f x R S e σ₂) v && calls_to_prop rest).instantiated,
+        from valid_env.instantiated_and this,
+        have calls_to_prop (call f x R S e σ₂ v :: rest)
+          = prop.call (value.func f x R S e σ₂) v && calls_to_prop rest,
+        by unfold calls_to_prop,
+        show σ ⊨ (calls_to_prop (call f x R S e σ₂ v :: rest)).instantiated, from this ▸ h4
+      )}
+    }
+end

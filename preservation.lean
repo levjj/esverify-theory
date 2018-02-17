@@ -144,5 +144,5 @@ lemma strengthen_pre_exp {P: prop} {Q: propctx} {e: exp}:
     }
   end
 
-theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → ⊢ₛ s'
-:= sorry
+theorem preservation {H: callhistory} {h: historyitem} {s s': stack}: (H ⊢ₛ s) → (s ⟶ h, s') → (h :: H ⊢ₛ s') :=
+  sorry

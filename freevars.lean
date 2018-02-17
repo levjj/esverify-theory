@@ -279,6 +279,64 @@ lemma free_in_vc.univ.same.inv {P: vc} {x: var}: ¬ free_in_vc x (vc.univ x P) :
     }
   end
 
+lemma call_history_closed (H: callhistory) (x: var): ¬ free_in_prop x (calls_to_prop H) :=
+  list.rec_on H
+  ( -- empty history
+    assume x_free: free_in_prop x (calls_to_prop list.nil),
+    have calls_to_prop list.nil = value.true, from rfl,
+    have x_free_in_true: free_in_prop x value.true, from this ▸ x_free,
+    show «false», by begin
+      cases x_free_in_true,
+      case free_in_prop.term x_free_in_term {
+        cases x_free_in_term
+      }
+    end
+  )
+  ( -- hist :: rest
+    assume h: historyitem,
+    assume rest: callhistory,
+    assume ih: ¬ free_in_prop x (calls_to_prop rest),
+    historyitem.cases_on h
+    ( -- <nop> :: rest
+      have h2: ¬ free_in_prop x (calls_to_prop rest), from ih,
+      have calls_to_prop (historyitem.nop :: rest) = calls_to_prop rest, by unfold calls_to_prop,
+      show ¬ free_in_prop x (historyitem.nop :: rest), from this.symm ▸ h2
+    )
+    ( -- <call> :: rest
+      assume f x' R S e σ vₓ,
+      assume x_free: free_in_prop x (calls_to_prop (call f x' R S e σ vₓ :: rest)),
+      have calls_to_prop (call f x' R S e σ vₓ :: rest) =
+        (prop.call (value.func f x' R S e σ) vₓ && calls_to_prop rest), by unfold calls_to_prop,
+      have x_free_in_prop: free_in_prop x (
+        prop.call (value.func f x' R S e σ) vₓ &&
+        calls_to_prop rest), from this ▸ x_free,
+      have x_not_free_in_vₓ: ¬ free_in_term x vₓ, from (
+        assume x_free_in_vₓ: free_in_term x vₓ,
+        show «false», by cases x_free_in_vₓ
+      ),
+      have x_not_free_in_f: ¬ free_in_term x (value.func f x' R S e σ), from (
+        assume x_free_in_f: free_in_term x (value.func f x' R S e σ),
+        show «false», by cases x_free_in_f
+      ),
+      have
+        free_in_prop x (calls_to_prop rest) ∨
+        free_in_prop x (prop.call (value.func f x' R S e σ) vₓ),
+      from (free_in_prop.and.inv x_free_in_prop).symm,
+      or.elim this ih (
+        assume x_free_in_call: free_in_prop x (prop.call (value.func f x' R S e σ) vₓ),
+        show «false», by begin
+          cases x_free_in_call,
+          case free_in_prop.call₁ x_free_in_f {
+            show «false», from x_not_free_in_f x_free_in_f
+          },
+          case free_in_prop.call₂ x_free_in_vₓ {
+            show «false», from x_not_free_in_vₓ x_free_in_vₓ
+          }
+        end
+      )
+    )
+  )
+
 lemma env.contains.same.inv {σ: env} {x y: var} {v: value}: x ∉ (σ[y↦v]) → ¬ (x = y ∨ x ∈ σ) :=
   assume x_not_in: x ∉ (σ[y↦v]),
   assume : (x = y ∨ x ∈ σ),
