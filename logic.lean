@@ -173,6 +173,37 @@ lemma valid_env.true {σ: env}: σ ⊨ value.true :=
   have vc.subst_env σ value.true = vc.term (term.subst_env σ value.true), from vc.subst_env.term,
   show σ ⊨ value.true, from this.symm ▸ h2
 
+lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (t ≡ value.true) :=
+  iff.intro (
+    assume t_valid: ⊨ vc.subst_env σ t,
+    have vc.subst_env σ t = vc.term (term.subst_env σ t), from vc.subst_env.term,
+    have ⊨ vc.term (term.subst_env σ t), from this ▸ t_valid,
+    have h: ⊨ vc.term ((term.subst_env σ t) ≡ value.true), from valid.eq.true.mp this,
+    have term.subst_env σ value.true = value.true, from term.subst_env.value,
+    have h2: ⊨ vc.term ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    from this.symm ▸ h,
+    have (term.subst_env σ (t ≡ value.true)) = ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    from term.subst_env.binop,
+    have h3: ⊨ term.subst_env σ (t ≡ value.true),
+    from this.symm ▸ h2,
+    have vc.subst_env σ (t ≡ value.true) = vc.term (term.subst_env σ (t ≡ value.true)), from vc.subst_env.term,
+    show σ ⊨ (t ≡ value.true), from this.symm ▸ h3
+  ) (
+    assume t_valid: ⊨ vc.subst_env σ (t ≡ value.true),
+    have vc.subst_env σ (t ≡ value.true) = vc.term (term.subst_env σ (t ≡ value.true)), from vc.subst_env.term,
+    have h: ⊨ vc.term (term.subst_env σ (t ≡ value.true)),
+    from this ▸ t_valid,
+    have (term.subst_env σ (t ≡ value.true)) = ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    from term.subst_env.binop,
+    have h2: ⊨ vc.term ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    from this ▸ h,
+    have term.subst_env σ value.true = value.true, from term.subst_env.value,
+    have ⊨ vc.term ((term.subst_env σ t) ≡ value.true), from this ▸ h2,
+    have h3: ⊨ vc.term (term.subst_env σ t), from valid.eq.true.mpr this,
+    have vc.subst_env σ t = vc.term (term.subst_env σ t), from vc.subst_env.term,
+    show ⊨ vc.subst_env σ t, from this.symm ▸ h3
+  )
+
 lemma valid_env.and {σ: env} {P Q: vc}: σ ⊨ P → σ ⊨ Q → σ ⊨ (P && Q) :=
   assume p_valid: ⊨ vc.subst_env σ P,
   assume q_valid: ⊨ vc.subst_env σ Q,

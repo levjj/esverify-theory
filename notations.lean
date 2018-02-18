@@ -119,7 +119,7 @@ def spec.to_prop : spec → prop
     have S.size < (R && S).size, from lt_of_add.right,
     (term.unop unop.isFunc f) &&
     (prop.forallc x f (prop.implies R.to_prop (prop.pre f x)
-                    && prop.implies (R.to_prop && prop.post f x) S.to_prop))
+                    && prop.implies (prop.post f x) S.to_prop))
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
 

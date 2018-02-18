@@ -26,7 +26,7 @@ lemma lt_of_add {n m: ℕ}: n < n + m + 1 ∧ m < n + m + 1 :=
 
 lemma some.inj.inv {α: Type} {a b: α}: a = b → (some a = some b) :=
   assume : a = b,
-  by simp * at *
+  by simp *
 
 lemma is_none.inv {α: Type} (a: option α): option.is_none a ↔ (a = none) :=
   begin
@@ -94,7 +94,7 @@ lemma not_is_none.rinv {α: Type} {a: option α}: (∃b, a = some b) ↔ ¬ opti
 lemma mem_of_2set {α: Type} {a b c: α}:
   a ∈ ({b, c}: set α) -> (a = b) ∨ (a = c) :=
   assume a_in_bc: a ∈ {b, c},
-  have a_in_bc: a ∈ insert b (insert c (∅: set α)), by { simp * at * },
+  have a_in_bc: a ∈ insert b (insert c (∅: set α)), by { simp at a_in_bc, simp[a_in_bc] },
   have a = b ∨ a ∈ insert c ∅, from set.eq_or_mem_of_mem_insert a_in_bc,
   or.elim this (
     assume : a = b,

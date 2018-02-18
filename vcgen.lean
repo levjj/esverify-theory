@@ -87,14 +87,19 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     (⊢ (σ[x ↦ value.num n]) : (Q && (x ≡ value.num n)))
 
 | func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
-    g ∉ σ₁ →
+    f ∉ σ₁ →
     (⊢ σ₁ : Q₁) →
     (⊢ σ₂ : Q₂) →
-    FV R.to_prop ⊆ FV Q₂ ∪ { f, x } →
-    FV S.to_prop ⊆ FV Q₂ ∪ { f, x } →
-    (Q₂ && spec.func f x R S && R ⊢ e : Q₃) →
-    ⟪prop.implies (Q₂ && spec.func f x R S && R && Q₃ (term.app f x)) S⟫ →
-    (⊢ (σ₁[g ↦ value.func f x R S e σ₂]) : (Q₁ && (g ≡ value.func f x R S e σ₂)))
+    FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
+    FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
+    (Q₂ && spec.func g x R S && R ⊢ e : Q₃) →
+    ⟪prop.implies (Q₂ && spec.func g x R S && R && Q₃ (term.app g x)) S⟫ →
+    (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) :
+      (Q₁
+       && (f ≡ value.func g x R S e σ₂)
+       && spec.func (value.func g x R S e σ₂) x
+                        (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) R)
+                        (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) S)))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
