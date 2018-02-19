@@ -59,11 +59,11 @@ def vc.subst_env: env → vc → vc
     have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
     vc.subst x v (vc.subst_env σ P)
 
-def env.without: env → var → env
-| env.empty y := env.empty
-| (σ[x↦v]) y  :=
-    have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
-    if x = y then σ.without x else (σ.without x)[x↦v]
+-- notation
+
+notation σ `⊨` p: 100 := valid (vc.subst_env σ p)
+
+notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated P)
 
 -- lemmas
 
@@ -939,7 +939,7 @@ begin
           have ¬(y = x) ∨ ¬(option.is_none (env.apply σ' x)) , from not_and_distrib.mp h,
           have ¬(y = x), from this.elim id ( 
             assume : ¬(option.is_none (env.apply σ' x)),
-            have (env.apply σ' x) ≠ none, from not_is_none.inv (env.apply σ' x) this,
+            have (env.apply σ' x) ≠ none, from option.is_none.ninv.mpr this,
             show ¬(y = x), from absurd σ'_x_is_none this
           ),
           have term.subst y v' (term.var x) = x, by { simp[this] at h3, from h3 },
@@ -993,7 +993,7 @@ begin
           have some v' = some v, from eq.trans this.symm env_has_x,
           have v'_is_v: v' = v, by injection this,
           have option.is_none (σ'.apply x), from h.right,
-          have σ'.apply x = none, from (is_none.inv (σ'.apply x)).mp this,
+          have σ'.apply x = none, from option.is_none.inv.mpr this,
           have σ'_x_is_x: term.subst_env σ' x = x, from ih.left.mp this,
           have term.subst_env (σ'[y↦v']) x = term.subst y v' (term.subst_env σ' x),
           by unfold term.subst_env,
@@ -1033,7 +1033,7 @@ begin
             have term.subst_env (σ'[y↦v']) x = v', from eq.trans h3 this,
             have ↑v = ↑v', from eq.trans h.symm this,
             have v_is_v': v = v', by injection this,
-            have opt_is_none: option.is_none (env.apply σ' x), from (is_none.inv (σ' x)).mpr σ'_x_is_none,
+            have opt_is_none: option.is_none (env.apply σ' x), from option.is_none.inv.mp σ'_x_is_none,
             have (if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = v',
             by { simp[x_is_y.symm], simp[opt_is_none] },
             have (σ'[y↦v']).apply x = v', from eq.trans app this,
@@ -1058,7 +1058,7 @@ begin
           from @eq.subst term (λa, term.subst_env σ' x = a) v'' v v_is_v''.symm σ'_x_is_v'',
           have σ'_x_app_is_v: env.apply σ' x = some v, from (ih.right v).mpr this,
           have opt_is_not_none: ¬ option.is_none (env.apply σ' x),
-          from not_is_none.rinv.mp (exists.intro v σ'_x_app_is_v),
+          from option.some_iff_not_none.mp (option.is_some_iff_exists.mpr (exists.intro v σ'_x_app_is_v)),
           have (if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x,
           by { simp[opt_is_not_none] },
           have (σ'[y↦v']) x = σ'.apply x, from eq.trans app this,
@@ -1233,29 +1233,6 @@ begin
       = (vc.pre₂ op t₁ t₂) : by unfold vc.subst_env
   ... = (vc.pre₂ op (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
   ... = (vc.pre₂ op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
-
-  show (vc.subst_env (σ'[x↦v]) (vc.pre₂ op t₁ t₂)
-      = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),
-  by calc
-        vc.subst_env (σ'[x↦v]) (vc.pre₂ op t₁ t₂)
-      = vc.subst x v (vc.subst_env σ' (vc.pre₂ op t₁ t₂)) : by unfold vc.subst_env
-  ... = vc.subst x v (vc.pre₂ op (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
-  ... = vc.pre₂ op (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold vc.subst
-  ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
-  ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
-end
-
-lemma vc.subst_env.univ {σ: env} {y: var} {P: term}:
-      vc.subst_env σ (vc.univ y P) = vc.univ y (vc.subst_env (σ.without y) P) :=
-begin
-  induction σ with x v σ' ih,
-
-  show (vc.subst_env env.empty (vc.univ y P)
-      = vc.univ y (vc.subst_env (env.empty.without y) P)), by calc
-        vc.subst_env env.empty (vc.univ y P)
-      = (vc.univ y P) : by unfold vc.subst_env
-  ... = (vc.univ y (term.subst_env env.empty t₁) t₂) : by unfold vc.subst_env
-  ... = (vc.univ y (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
 
   show (vc.subst_env (σ'[x↦v]) (vc.pre₂ op t₁ t₂)
       = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),

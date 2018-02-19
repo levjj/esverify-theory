@@ -1,3 +1,5 @@
+-- syntax for values. expressions, terms, propositions, etc.
+
 -- x ∈ VariableNames
 @[reducible]
 def var := ℕ

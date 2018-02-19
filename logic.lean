@@ -1,17 +1,5 @@
 import .syntax .notations .evaluation .substitution .qi
 
--- validity is axiomatized instead of specified
-
-constant valid : vc → Prop
-notation `⊨` p: 100 := valid p
-notation σ `⊨` p: 100 := valid (vc.subst_env σ p)
-
--- notation ⟪ P ⟫
-
-@[reducible]
-def VC(P: prop) := ∀ (σ: env), σ ⊨ P.instantiated
-notation `⟪` P `⟫`: 100 := VC P
-
 -- simple axioms for logical reasoning
 
 axiom valid.tru:

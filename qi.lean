@@ -2,10 +2,6 @@
 
 import .syntax .notations .freevars
 
-constant prop.instantiated: prop → vc
-
-constant prop.instantiated_n: prop → vc
-
 mutual def prop.erased, prop.erased_n
 
 with prop.erased: prop → vc

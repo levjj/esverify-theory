@@ -1,4 +1,4 @@
-import .syntax .notations .evaluation .logic
+import .syntax .notations .evaluation .freevars .substitution
 
 reserve infix `⊢`:10
 
@@ -25,9 +25,9 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     FV R.to_prop ⊆ FV P ∪ { f, x } →
     FV S.to_prop ⊆ FV P ∪ { f, x } →
     (P && spec.func f x R S && R ⊢ e₁ : Q₁) →
-    (P && spec.func f x R S ⊢ e₂ : Q₂) →
+    (P && prop.func f x R (Q₁ (term.app f x) && S) ⊢ e₂ : Q₂) →
     ⟪prop.implies (P && spec.func f x R S && R && Q₁ (term.app f x)) S⟫ →
-    (P ⊢ letf f[x] req R ens S {e₁} in e₂ : propctx.exis f (spec.func f x R S && Q₂))
+    (P ⊢ letf f[x] req R ens S {e₁} in e₂ : propctx.exis f (prop.func f x R (Q₁ (term.app f x) && S) && Q₂))
 
 | unop {P: prop} {op: unop} {e: exp} {x y: var} {Q: propctx}:
     x ∈ FV P →
@@ -97,9 +97,10 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) :
       (Q₁
        && (f ≡ value.func g x R S e σ₂)
-       && spec.func (value.func g x R S e σ₂) x
-                        (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) R)
-                        (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) S)))
+       && prop.func (value.func g x R S e σ₂) x
+                    (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) R)
+                    ((Q₃ (term.app (value.func g x R S e σ₂) x)) &&
+                     (spec.subst_env (σ₂[g↦value.func g x R S e σ₂]) S))))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 

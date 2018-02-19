@@ -101,6 +101,12 @@ def spec.size: spec → ℕ := spec.rec (λ_, ℕ)
 
 instance : has_sizeof spec := ⟨spec.size⟩
 
+@[reducible]
+def prop.func (f: term) (x: var) (P: prop) (Q: prop): prop := 
+  (term.unop unop.isFunc f) &&
+  (prop.forallc x f (prop.implies P (prop.pre f x)
+                  && prop.implies (prop.post f x) Q))
+
 def spec.to_prop : spec → prop
 | (spec.term t)       := prop.term t
 | (spec.not S)        :=
@@ -117,9 +123,7 @@ def spec.to_prop : spec → prop
 | (spec.func f x R S) :=
     have R.size < (R && S).size, from lt_of_add.left,
     have S.size < (R && S).size, from lt_of_add.right,
-    (term.unop unop.isFunc f) &&
-    (prop.forallc x f (prop.implies R.to_prop (prop.pre f x)
-                    && prop.implies (prop.post f x) S.to_prop))
+    prop.func f x R.to_prop S.to_prop
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
 
@@ -204,7 +208,7 @@ def propctx.apply: propctx → term → prop
 | (propctx.not P) t          := prop.not (P.apply t)
 | (propctx.and P₁ P₂) t      := P₁.apply t && P₂.apply t
 | (propctx.or P₁ P₂) t       := P₁.apply t || P₂.apply t
-| (propctx.pre t₁ t₂) t      := prop.or (t₁ t) (t₂ t)
+| (propctx.pre t₁ t₂) t      := prop.pre (t₁ t) (t₂ t)
 | (propctx.pre₁ op t₁) t     := prop.pre₁ op (t₁ t)
 | (propctx.pre₂ op t₁ t₂) t  := prop.pre₂ op (t₁ t) (t₂ t)
 | (propctx.post t₁ t₂) t     := prop.post (t₁ t) (t₂ t)
@@ -222,3 +226,14 @@ def calls_to_prop: callhistory → prop
 | (historyitem.call f x R S e σ vₓ :: rest) := prop.call (value.func f x R S e σ) vₓ && calls_to_prop rest
 
 instance call_to_prop: has_coe callhistory prop := ⟨calls_to_prop⟩
+
+-- instantiation is axiomatized in qi.lean
+
+constant prop.instantiated: prop → vc
+
+constant prop.instantiated_n: prop → vc
+
+-- validity is axiomatized in logic.lean
+
+constant valid : vc → Prop
+notation `⊨` p: 100 := valid p
