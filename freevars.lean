@@ -622,6 +622,12 @@ begin
   end
 end
 
+lemma free_in_termctx.hole.inv {x: var} {t: term}:
+      x ∈ FV (• t) → x ∈ FV t :=
+  assume x_free_in_t: x ∈ FV (• t),
+  have (termctx.apply • t) = t, by unfold termctx.apply,
+  show x ∈ FV t, from this ▸ x_free_in_t
+
 lemma free_in_termctx.binop.inv {x: var} {op: binop} {t₁ t₂: termctx} {t': term}:
       x ∈ FV ((termctx.binop op t₁ t₂) t') → x ∈ FV (t₁ t') ∨ x ∈ FV (t₂ t') :=
   assume x_free_in_t: x ∈ FV ((termctx.binop op t₁ t₂) t'),
@@ -875,12 +881,39 @@ lemma free_in_propctx.term.inv {x: var} {t: termctx} {t': term}:
   have x ∈ FV (prop.term (t t')), from this ▸ x_free_in_t,
   show x ∈ FV (t t'), from free_in_prop.term.inv this
 
+lemma free_in_propctx.not.inv {x: var} {Q: propctx} {t: term}:
+      x ∈ FV (Q.not t) → x ∈ FV (Q t) :=
+  assume x_free_in_Qn: x ∈ FV (Q.not t),
+  have (propctx.apply (propctx.not Q) t) = prop.not (Q.apply t), by unfold propctx.apply,
+  have x ∈ FV (prop.not (Q.apply t)), from this ▸ x_free_in_Qn,
+  show x ∈ FV (Q t), from free_in_prop.not.inv this
+
 lemma free_in_propctx.and.inv {x: var} {Q₁ Q₂: propctx} {t: term}:
       x ∈ FV ((Q₁ && Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
   assume x_free_in_Q12: x ∈ FV ((Q₁ && Q₂) t),
   have (propctx.apply (propctx.and Q₁ Q₂) t) = Q₁.apply t && Q₂.apply t, by unfold propctx.apply,
   have x ∈ FV (Q₁.apply t && Q₂.apply t), from this ▸ x_free_in_Q12,
   show x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t), from free_in_prop.and.inv this
+
+lemma free_in_propctx.or.inv {x: var} {Q₁ Q₂: propctx} {t: term}:
+      x ∈ FV ((Q₁ || Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
+  assume x_free_in_Q12: x ∈ FV ((Q₁ || Q₂) t),
+  have (propctx.apply (propctx.or Q₁ Q₂) t) = Q₁.apply t || Q₂.apply t, by unfold propctx.apply,
+  have x ∈ FV (Q₁.apply t || Q₂.apply t), from this ▸ x_free_in_Q12,
+  show x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t), from free_in_prop.or.inv this
+
+lemma free_in_propctx.implies.inv {x: var} {Q₁ Q₂: propctx} {t: term}:
+      x ∈ FV ((propctx.implies Q₁ Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
+  assume : x ∈ FV ((propctx.implies Q₁ Q₂) t),
+  have x ∈ FV (Q₁.not t) ∨ x ∈ FV (Q₂ t), from free_in_propctx.or.inv this,
+  or.elim this (
+    assume : x ∈ FV (Q₁.not t),
+    have x ∈ FV (Q₁ t), from free_in_propctx.not.inv this,
+    show x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t), from or.inl this
+  ) (
+    assume : x ∈ FV (Q₂ t),
+    show x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t), from or.inr this
+  )
 
 lemma free_in_propctx.exis.inv {x fx: var} {Q: propctx} {t: term}:
       x ∈ FV ((propctx.exis fx Q) t) → x ≠ fx ∧ x ∈ FV (Q t) :=

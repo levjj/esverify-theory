@@ -42,7 +42,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     z ∉ FV P →
     (P && (z ≡ term.binop op x y) ⊢ e : Q) →
     ⟪ prop.implies P (prop.pre₂ op x y) ⟫ →
-    (P ⊢ letop2 z = op [x, y] in e : propctx.exis y ((z ≡ term.binop op x y) && Q))
+    (P ⊢ letop2 z = op [x, y] in e : propctx.exis z ((z ≡ term.binop op x y) && Q))
 
 | app {P: prop} {e: exp} {y f x: var} {Q: propctx}:
     f ∈ FV P →
