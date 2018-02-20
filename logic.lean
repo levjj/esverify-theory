@@ -1,4 +1,4 @@
-import .syntax .notations .evaluation .substitution .qi
+import .syntax .notations .evaluation .substitution .qi .vcgen
 
 -- simple axioms for logical reasoning
 
@@ -75,9 +75,11 @@ axiom valid.pre {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
   ↔
   ⊨ vc.pre (value.func f x R S e σ) vₓ
 
-axiom valid.post {vₓ: value} {σ σ': env} {f x y: var} {R S: spec} {e: exp}:
-  ⊨ vc.subst_env (σ[x↦vₓ][f↦value.func f x R S e σ]) S.to_prop.instantiated
-  ↔
+axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp}:
+  (⊢ σ : Q) →
+  (Q && spec.func f x R S && R ⊢ e : Q₂) →
+  ⊨ vc.subst_env (σ[x↦vₓ][f↦value.func f x R S e σ]) (Q₂ (term.app f x) && S.to_prop).instantiated
+  →
   ⊨ vc.post (value.func f x R S e σ) vₓ
 
 -- axioms about instantiations

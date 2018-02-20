@@ -455,6 +455,10 @@ lemma call_history_closed (H: callhistory) (x: var): ¬ free_in_prop x (calls_to
     )
   )
 
+lemma env.contains.inv {σ: env} {x y: var} {v: value}: x ∈ (σ[y↦v]) → (x = y ∨ x ∈ σ) :=
+  assume x_in: x ∈ (σ[y↦v]),
+  show x = y ∨ x ∈ σ, by { cases x_in, left, refl, right, from a }
+
 lemma env.contains.same.inv {σ: env} {x y: var} {v: value}: x ∉ (σ[y↦v]) → ¬ (x = y ∨ x ∈ σ) :=
   assume x_not_in: x ∉ (σ[y↦v]),
   assume : (x = y ∨ x ∈ σ),
