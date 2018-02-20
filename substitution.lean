@@ -295,6 +295,21 @@ lemma unchanged_of_subst_nonfree_vc {P: vc} {x: var} {v: value}:
     )}
   end
 
+lemma unchanged_of_subst_env_nonfree_vc {P: vc}:
+    (∀x, x ∉ FV P) → (∀σ, vc.subst_env σ P = P) :=
+  assume x_not_free: (∀x, x ∉ FV P),
+  assume σ: env,
+  begin
+    induction σ with x v σ' ih,
+
+    show (vc.subst_env env.empty P = P), by unfold vc.subst_env,
+
+    show (vc.subst_env (σ'[x↦v]) P = P), by calc
+        vc.subst_env (σ'[x↦v]) P = vc.subst x v (vc.subst_env σ' P) : by unfold vc.subst_env
+                             ... = vc.subst x v P : by rw[ih]
+                             ... = P : unchanged_of_subst_nonfree_vc (x_not_free x)
+  end
+
 lemma free_of_subst_term {t: term} {x y: var} {v: value}:
           free_in_term x (term.subst y v t) → x ≠ y ∧ free_in_term x t :=
   assume x_free_in_subst: free_in_term x (term.subst y v t),
@@ -1304,4 +1319,31 @@ begin
   ... = vc.pre₂ op (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold vc.subst
   ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
   ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
+end
+
+lemma vc.subst_env.univ {σ: env} {x: var} {P: vc}:
+      (x ∉ σ) → (vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env σ P)) :=
+begin
+  assume x_not_in_σ,
+  induction σ with y v σ' ih,
+
+  show (vc.subst_env env.empty (vc.univ x P) = vc.univ x (vc.subst_env env.empty P)),
+  by calc
+        vc.subst_env env.empty (vc.univ x P) = (vc.univ x P) : by unfold vc.subst_env
+                                         ... = vc.univ x (vc.subst_env env.empty P) : by unfold vc.subst_env,
+
+  show (vc.subst_env (σ'[y↦v]) (vc.univ x P) = vc.univ x (vc.subst_env (σ'[y↦v]) P)), from (
+    have ¬ (x = y ∨ x ∈ σ'), from env.contains.same.inv x_not_in_σ,
+    have x_neq_y: x ≠ y, from (not_or_distrib.mp this).left,
+    have x ∉ σ', from (not_or_distrib.mp this).right,
+    have h: vc.subst_env σ' (vc.univ x P) = vc.univ x (vc.subst_env σ' P), from ih this,
+
+    calc
+        vc.subst_env (σ'[y↦v]) (vc.univ x P)
+           = vc.subst y v (vc.subst_env σ' (vc.univ x P)) : by unfold vc.subst_env
+       ... = vc.subst y v (vc.univ x (vc.subst_env σ' P)) : by rw[h]
+       ... = vc.univ x (if y = x then vc.subst_env σ' P else (vc.subst_env σ' P).subst y v) : by unfold vc.subst
+       ... = vc.univ x ((vc.subst_env σ' P).subst y v) : by simp[x_neq_y.symm]
+       ... = vc.univ x (vc.subst_env (σ'[y↦v]) P) : by unfold vc.subst_env
+  )
 end

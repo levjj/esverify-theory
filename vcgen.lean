@@ -22,6 +22,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
 
 | func {P: prop} {f x: var} {R S: spec} {e₁ e₂: exp} {Q₁ Q₂: propctx}:
     f ∉ FV P →
+    x ∉ FV P →
     FV R.to_prop ⊆ FV P ∪ { f, x } →
     FV S.to_prop ⊆ FV P ∪ { f, x } →
     (P && spec.func f x R S && R ⊢ e₁ : Q₁) →
@@ -88,6 +89,7 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
 | func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
     f ∉ σ₁ →
+    x ∉ σ₂ →
     (⊢ σ₁ : Q₁) →
     (⊢ σ₂ : Q₂) →
     FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
@@ -97,7 +99,7 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) :
       (Q₁
        && (f ≡ value.func g x R S e σ₂)
-       && prop.subst_env (σ₂[g↦value.func g x R S e σ₂]) (prop.func f x R (Q₃ (term.app f x) && S))))
+       && prop.subst_env (σ₂[g↦value.func g x R S e σ₂]) (prop.func g x R (Q₃ (term.app g x) && S))))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 

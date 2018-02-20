@@ -134,7 +134,7 @@ lemma exp.post_free {P: prop} {e: exp} {Q: propctx} {x: var}:
         )
       )
     },
-    case exp.vcgen.func P f fx R S e₁ e₂ Q₁ Q₂ f_not_in_P fv_R fv_S _ _ func_vc ih₁ ih₂ { from
+    case exp.vcgen.func P f fx R S e₁ e₂ Q₁ Q₂ f_not_in_P _ fv_R fv_S _ _ func_vc ih₁ ih₂ { from
       assume t: term,
       assume x_free_in_Qt: x ∈ FV ((propctx.exis f ((prop.func f fx R (Q₁ (term.app f fx) && S)) && Q₂)) t),
       have x_neq_f: x ≠ f, from (free_in_propctx.exis.inv x_free_in_Qt).left,
@@ -663,13 +663,13 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
     case env.vcgen.num n σ' y Q _ _ ih { from
       show x ∈ (σ'[y↦value.num n]), from contains_of_free_eq_value x_free_in_P ih
     },
-    case env.vcgen.func f σ₂ σ₁ g gx R S e Q₁ Q₂ Q₃ _ _ _ fv_R fv_S e_verified _ ih₁ ih₂ { from
+    case env.vcgen.func f σ₂ σ₁ g gx R S e Q₁ Q₂ Q₃ _ _ _ _ fv_R fv_S e_verified _ ih₁ ih₂ { from
       contains_of_free_in_nonempty_env (
         assume : f ≠ x,
         have x_neq_f: x ≠ f, from this.symm,
         let vf := value.func g gx R S e σ₂ in
         have free_in_prop x (Q₁ && (f ≡ vf))
-           ∨ free_in_prop x (prop.subst_env (σ₂[g↦vf]) (prop.func f gx R (Q₃ (term.app f gx) && S))),
+           ∨ free_in_prop x (prop.subst_env (σ₂[g↦vf]) (prop.func g gx R (Q₃ (term.app g gx) && S))),
         from free_in_prop.and.inv x_free_in_P,
         or.elim this (
           assume : free_in_prop x (Q₁ && (f ≡ vf)),
@@ -694,29 +694,29 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
             end
           )
         ) (
-          assume x_free_in_sFunc: free_in_prop x (prop.subst_env (σ₂[g↦vf]) (prop.func f gx R (Q₃ (term.app f gx) && S))),
-          have x ≠ g ∧ free_in_prop x (prop.subst_env σ₂ (prop.func f gx R (Q₃ (term.app f gx) && S))),
+          assume x_free_in_sFunc: free_in_prop x (prop.subst_env (σ₂[g↦vf]) (prop.func g gx R (Q₃ (term.app g gx) && S))),
+          have x ≠ g ∧ free_in_prop x (prop.subst_env σ₂ (prop.func g gx R (Q₃ (term.app g gx) && S))),
           from free_of_subst_env_prop x_free_in_sFunc,
           have x_neq_g: x ≠ g, from this.left,
-          have x_free_in_sFunc': free_in_prop x (prop.subst_env σ₂ (prop.func f gx R (Q₃ (term.app f gx) && S))), from this.right,
-          have x_free_in_func: free_in_prop x (prop.func f gx R (Q₃ (term.app f gx) && S)),
+          have x_free_in_sFunc': free_in_prop x (prop.subst_env σ₂ (prop.func g gx R (Q₃ (term.app g gx) && S))), from this.right,
+          have x_free_in_func: free_in_prop x (prop.func g gx R (Q₃ (term.app g gx) && S)),
           from free_of_subst_env x_free_in_sFunc',
-          let forallp := (prop.implies R.to_prop (prop.pre f gx)
-                      && prop.implies (prop.post f gx) (Q₃ (term.app f gx) && S.to_prop)) in
-          have h: prop.func f gx R.to_prop (Q₃ (term.app f gx) && S.to_prop)
-              = (term.unop unop.isFunc f && prop.forallc gx f forallp),
+          let forallp := (prop.implies R.to_prop (prop.pre g gx)
+                      && prop.implies (prop.post g gx) (Q₃ (term.app g gx) && S.to_prop)) in
+          have h: prop.func g gx R.to_prop (Q₃ (term.app g gx) && S.to_prop)
+              = (term.unop unop.isFunc g && prop.forallc gx g forallp),
           by unfold prop.func,
-          have free_in_prop x (term.unop unop.isFunc f && prop.forallc gx f forallp), from h ▸ x_free_in_func,
-          have free_in_prop x (term.unop unop.isFunc f) ∨ free_in_prop x (prop.forallc gx f forallp),
+          have free_in_prop x (term.unop unop.isFunc g && prop.forallc gx g forallp), from h ▸ x_free_in_func,
+          have free_in_prop x (term.unop unop.isFunc g) ∨ free_in_prop x (prop.forallc gx g forallp),
           from free_in_prop.and.inv this,
           or.elim this (
-            assume : free_in_prop x (term.unop unop.isFunc f),
-            have free_in_term x (term.unop unop.isFunc f), from free_in_prop.term.inv this,
-            have free_in_term x f, from free_in_term.unop.inv this,
-            have x = f, from free_in_term.var.inv this,
-            show x ∈ σ₁, from absurd this x_neq_f
+            assume : free_in_prop x (term.unop unop.isFunc g),
+            have free_in_term x (term.unop unop.isFunc g), from free_in_prop.term.inv this,
+            have free_in_term x g, from free_in_term.unop.inv this,
+            have x = g, from free_in_term.var.inv this,
+            show x ∈ σ₁, from absurd this x_neq_g
           ) (
-            assume x_free_in_forallp: free_in_prop x (prop.forallc gx f forallp),
+            assume x_free_in_forallp: free_in_prop x (prop.forallc gx g forallp),
             have x_neq_gx: x ≠ gx, from (free_in_prop.forallc.inv x_free_in_forallp).left,
 
             have x_not_in_R: x ∉ FV R.to_prop, from (
@@ -726,7 +726,7 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
               or.elim this (
                 assume : x ∈ FV Q₂,
                 have x ∈ σ₂, from ih₂ this,
-                have ¬ free_in_prop x (prop.subst_env σ₂ (prop.func f gx R (Q₃ (term.app f gx) && S))),
+                have ¬ free_in_prop x (prop.subst_env σ₂ (prop.func g gx R (Q₃ (term.app g gx) && S))),
                 from prop.not_free_of_subst_env this,
                 show «false», from this x_free_in_sFunc'
               ) (
@@ -749,7 +749,7 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
               or.elim this (
                 assume : x ∈ FV Q₂,
                 have x ∈ σ₂, from ih₂ this,
-                have ¬ free_in_prop x (prop.subst_env σ₂ (prop.func f gx R (Q₃ (term.app f gx) && S))),
+                have ¬ free_in_prop x (prop.subst_env σ₂ (prop.func g gx R (Q₃ (term.app g gx) && S))),
                 from prop.not_free_of_subst_env this,
                 show «false», from this x_free_in_sFunc'
               ) (
@@ -826,25 +826,25 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
               )
             ),
 
-            have free_in_term x f ∨ free_in_prop x forallp, from (free_in_prop.forallc.inv x_free_in_forallp).right,
+            have free_in_term x g ∨ free_in_prop x forallp, from (free_in_prop.forallc.inv x_free_in_forallp).right,
             or.elim this (
-              assume : free_in_term x f,
-              have x = f, from free_in_term.var.inv this,
-              show x ∈ σ₁, from absurd this x_neq_f
+              assume : free_in_term x g,
+              have x = g, from free_in_term.var.inv this,
+              show x ∈ σ₁, from absurd this x_neq_g
             ) (
               assume : free_in_prop x forallp,
               or.elim (free_in_prop.and.inv this) (
-                assume : free_in_prop x (prop.implies R.to_prop (prop.pre f gx)),
+                assume : free_in_prop x (prop.implies R.to_prop (prop.pre g gx)),
                 or.elim (free_in_prop.implies.inv this) (
                   assume : x ∈ FV R.to_prop,
                   show x ∈ σ₁, from absurd this x_not_in_R
                 ) (
-                  assume : free_in_prop x (prop.pre f gx),
-                  have free_in_term x f ∨ free_in_term x gx, from free_in_prop.pre.inv this,
+                  assume : free_in_prop x (prop.pre g gx),
+                  have free_in_term x g ∨ free_in_term x gx, from free_in_prop.pre.inv this,
                   or.elim this (
-                    assume : free_in_term x f,
-                    have x = f, from free_in_term.var.inv this,
-                    show x ∈ σ₁, from absurd this x_neq_f
+                    assume : free_in_term x g,
+                    have x = g, from free_in_term.var.inv this,
+                    show x ∈ σ₁, from absurd this x_neq_g
                   ) (
                     assume : free_in_term x gx,
                     have x = gx, from free_in_term.var.inv this,
@@ -852,35 +852,35 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
                   )
                 )
               ) (
-                assume : free_in_prop x (prop.implies (prop.post f gx) (Q₃ (term.app f gx) && S.to_prop)),
+                assume : free_in_prop x (prop.implies (prop.post g gx) (Q₃ (term.app g gx) && S.to_prop)),
                 or.elim (free_in_prop.implies.inv this) (
-                  assume : free_in_prop x (prop.post f gx),
-                  have free_in_term x f ∨ free_in_term x gx, from free_in_prop.post.inv this,
+                  assume : free_in_prop x (prop.post g gx),
+                  have free_in_term x g ∨ free_in_term x gx, from free_in_prop.post.inv this,
                   or.elim this (
-                    assume : free_in_term x f,
-                    have x = f, from free_in_term.var.inv this,
-                    show x ∈ σ₁, from absurd this x_neq_f
+                    assume : free_in_term x g,
+                    have x = g, from free_in_term.var.inv this,
+                    show x ∈ σ₁, from absurd this x_neq_g
                   ) (
                     assume : free_in_term x gx,
                     have x = gx, from free_in_term.var.inv this,
                     show x ∈ σ₁, from absurd this x_neq_gx
                   )
                 ) (
-                  assume : free_in_prop x (Q₃ (term.app f gx) && S.to_prop),
-                  have free_in_prop x (Q₃ (term.app f gx)) ∨ free_in_prop x S.to_prop, from free_in_prop.and.inv this,
+                  assume : free_in_prop x (Q₃ (term.app g gx) && S.to_prop),
+                  have free_in_prop x (Q₃ (term.app g gx)) ∨ free_in_prop x S.to_prop, from free_in_prop.and.inv this,
                   or.elim this.symm (
                     assume : x ∈ FV S.to_prop,
                     show x ∈ σ₁, from absurd this x_not_in_S
                   ) (
-                    assume : free_in_prop x (Q₃ (term.app f gx)),
-                    have x ∈ FV (term.app f gx) ∨ x ∈ FV (Q₂ && (spec.func g gx R S) && R),
-                    from exp.post_free e_verified (term.app f gx) this,
+                    assume : free_in_prop x (Q₃ (term.app g gx)),
+                    have x ∈ FV (term.app g gx) ∨ x ∈ FV (Q₂ && (spec.func g gx R S) && R),
+                    from exp.post_free e_verified (term.app g gx) this,
                     or.elim this (
-                      assume : x ∈ FV (term.app f gx),
+                      assume : x ∈ FV (term.app g gx),
                       or.elim (free_in_term.app.inv this) (
-                        assume : free_in_term x f,
-                        have x = f, from free_in_term.var.inv this,
-                        show x ∈ σ₁, from absurd this x_neq_f
+                        assume : free_in_term x g,
+                        have x = g, from free_in_term.var.inv this,
+                        show x ∈ σ₁, from absurd this x_neq_g
                       ) (
                       assume : free_in_term x gx,
                       have x = gx, from free_in_term.var.inv this,
@@ -896,7 +896,7 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
                         or.elim (free_in_prop.and.inv this) (
                           assume : x ∈ FV Q₂,
                           have x ∈ σ₂, from ih₂ this,
-                          have ¬ free_in_prop x (prop.subst_env σ₂ (prop.func f gx R (Q₃ (term.app f gx) && S))),
+                          have ¬ free_in_prop x (prop.subst_env σ₂ (prop.func g gx R (Q₃ (term.app g gx) && S))),
                           from prop.not_free_of_subst_env this,
                           show x ∈ σ₁, from absurd x_free_in_sFunc' this
                         ) (
@@ -914,6 +914,27 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
       )
    }
  end
+
+lemma prop_func_closed {P: prop} {Q: propctx} {σ: env} {f fx: var} {R S: spec} {e: exp}:
+  (P && spec.func f fx R S && R ⊢ e : Q) →
+  (⊢ (σ[f↦value.func f fx R S e σ]) : (P
+       && (f ≡ value.func f fx R S e σ)
+       && prop.subst_env (σ[f↦value.func f fx R S e σ]) (prop.func f fx R (Q (term.app f fx) && S)))) →
+  ∀x, x ∉ FV (prop.subst_env (σ[f↦value.func f fx R S e σ]) (prop.func f fx R (Q (term.app f fx) && S))) :=
+  assume e_verified: (P && spec.func f fx R S && R ⊢ e : Q),
+  assume env_verified: ⊢ (σ[f↦value.func f fx R S e σ]) : (P
+       && (f ≡ value.func f fx R S e σ)
+       && prop.subst_env (σ[f↦value.func f fx R S e σ]) (prop.func f fx R (Q (term.app f fx) && S))),
+  assume x: var,
+  assume h: x ∈ FV (prop.subst_env (σ[f↦value.func f fx R S e σ]) (prop.func f fx R (Q (term.app f fx) && S))),
+  have x ∈ FV (P
+       && (f ≡ value.func f fx R S e σ)
+       && prop.subst_env (σ[f↦value.func f fx R S e σ]) (prop.func f fx R (Q (term.app f fx) && S))),
+  from free_in_prop.and₂ h,
+  have x ∈ (σ[f↦value.func f fx R S e σ]), from contains_of_free env_verified this,
+  have x ∉ FV (prop.subst_env (σ[f↦value.func f fx R S e σ]) (prop.func f fx R (Q (term.app f fx) && S))),
+  from prop.not_free_of_subst_env this,
+  show «false», from this h
 
 lemma val_of_free_in_env {P: prop} {σ: env} {x: var}: (⊢ σ : P) → x ∈ FV P → ∃v, σ x = some v :=
   assume env_verified: ⊢ σ: P,
@@ -1017,14 +1038,11 @@ lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P
       from simple_equality_env_valid σ'_verified x_not_free_in_σ' ih
     },
     case env.vcgen.func σ₁ σ₂ f g gx R S e Q₁ Q₂ Q₃
-      f_not_free_in_σ₁ σ₁_verified σ₂_verified R_fv S_fv func_verified S_valid ih₁ ih₂ { from (
+      f_not_free_in_σ₁ gx_not_free_in_σ₂ σ₁_verified σ₂_verified R_fv S_fv func_verified S_valid ih₁ ih₂ { from (
       have h0: (σ₁[f↦value.func g gx R S e σ₂]) ⊨ prop.erased (Q₁ && (f ≡ value.func g gx R S e σ₂)),
       from simple_equality_env_valid σ₁_verified f_not_free_in_σ₁ ih₁,
-      let R' := spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) R in
-      let S' := spec.subst_env (σ₂[g↦value.func g gx R S e σ₂]) S in
+
       let σ' := σ₁[f↦value.func g gx R S e σ₂] in
-      let forallp := prop.implies R'.to_prop (prop.pre f gx)
-                  && prop.implies (prop.post f gx) S'.to_prop in
       
       have h1: σ' ⊨ prop.erased (term.unop unop.isFunc f), from (
         have unop.apply unop.isFunc (value.func g gx R S e σ₂) = value.true, by unfold unop.apply,
@@ -1052,28 +1070,33 @@ lemma env_translation_erased_valid {P: prop} {σ: env}: (⊢ σ: P) → σ ⊨ P
         show σ' ⊨ prop.erased (term.unop unop.isFunc f), from this.symm ▸ h7
       ),
 
+      let forallp := prop.implies R.to_prop (prop.pre f gx)
+                  && prop.implies (prop.post f gx) (Q₃ (term.app f gx) && S.to_prop) in
+      let pfunc := prop.subst_env (σ₂[g↦value.func g gx R S e σ₂]) (prop.func g gx R (Q₃ (term.app g gx) && S)) in
+
       have h2: σ' ⊨ prop.erased (prop.forallc gx f forallp), from (
         have h9: σ' ⊨ vc.univ gx forallp.erased, from sorry,
         have prop.erased (prop.forallc gx f forallp) = vc.univ gx forallp.erased, by unfold prop.erased,
         show σ' ⊨ prop.erased (prop.forallc gx f forallp), from this.symm ▸ h9
       ),
 
-      have h3: σ' ⊨ (prop.erased (term.unop unop.isFunc f) && prop.erased (prop.forallc gx f forallp)),
-      from valid_env.and h1 h2,
-      have prop.erased (prop.and (term.unop unop.isFunc f) (prop.forallc gx f forallp))
-         = prop.erased (term.unop unop.isFunc f) && prop.erased (prop.forallc gx f forallp),
-      by unfold prop.erased,
-      have h4: σ' ⊨ prop.erased (term.unop unop.isFunc f && prop.forallc gx f forallp),
-      from this.symm ▸ h3,
-      have (spec.func f gx R' S').to_prop =
-           (term.unop unop.isFunc f) && (prop.forallc gx f forallp), by unfold spec.to_prop,
-      have σ' ⊨ prop.erased (spec.func f gx R' S'), from this.symm ▸ h4,
-      have h5: σ' ⊨ ((Q₁ && (f ≡ value.func g gx R S e σ₂)).erased && prop.erased (spec.func f gx R' S')),
+      -- have h3: σ' ⊨ (prop.erased (term.unop unop.isFunc f) && prop.erased pfunc),
+      -- from valid_env.and h1 h2,
+      -- have prop.erased (prop.and (term.unop unop.isFunc f) pfunc)
+      --    = prop.erased (term.unop unop.isFunc f) && prop.erased pfunc,
+      -- by unfold prop.erased,
+      -- have h4: σ' ⊨ prop.erased (term.unop unop.isFunc f && prop.forallc gx f forallp),
+      -- from this.symm ▸ h3,
+      -- have (spec.func f gx R' S').to_prop =
+      --      (term.unop unop.isFunc f) && (prop.forallc gx f forallp), by unfold spec.to_prop,
+      have σ' ⊨ prop.erased pfunc, from sorry,
+
+      have h5: σ' ⊨ ((Q₁ && (f ≡ value.func g gx R S e σ₂)).erased && prop.erased pfunc),
       from valid_env.and h0 this,
-      have prop.erased (prop.and (Q₁ && (f ≡ value.func g gx R S e σ₂)) (spec.func f gx R' S'))
-         = prop.erased (Q₁ && (f ≡ value.func g gx R S e σ₂)) && prop.erased (spec.func f gx R' S'),
+      have prop.erased (prop.and (Q₁ && (f ≡ value.func g gx R S e σ₂)) pfunc)
+         = prop.erased (Q₁ && (f ≡ value.func g gx R S e σ₂)) && prop.erased pfunc,
       by unfold prop.erased,
-      show σ' ⊨ (Q₁ && (f ≡ value.func g gx R S e σ₂) && (spec.func f gx R' S')).erased,
+      show σ' ⊨ (Q₁ && (f ≡ value.func g gx R S e σ₂) && pfunc).erased,
       from this.symm ▸ h5
     )}
   end
