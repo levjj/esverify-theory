@@ -71,16 +71,16 @@ axiom valid.pre₂ {v₁ v₂: value} {op: binop}:
 -- can write pre and post to extract pre- and postcondition of function values
 
 axiom valid.pre {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
-  ⊨ vc.subst_env (σ[x↦vₓ][f↦value.func f x R S e σ]) R.to_prop.instantiated
-  ↔
+  σ[f↦value.func f x R S e σ][x↦vₓ]⊨ R.to_prop.instantiated_n
+  →
   ⊨ vc.pre (value.func f x R S e σ) vₓ
 
 axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp}:
   (⊢ σ : Q) →
   (Q && spec.func f x R S && R ⊢ e : Q₂) →
-  ⊨ vc.subst_env (σ[x↦vₓ][f↦value.func f x R S e σ]) (Q₂ (term.app f x) && S.to_prop).instantiated
-  →
   ⊨ vc.post (value.func f x R S e σ) vₓ
+  →
+  (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ (Q₂ (term.app f x) && S.to_prop).instantiated)
 
 -- axioms about instantiations
 
@@ -88,7 +88,7 @@ axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R
 --         ⇘    ⇗  
 --     ⇑      P      ⇓
 --         ⇗    ⇘ 
--- erased(P)     erased_n(P)
+-- erased(P)  ⇒  erased_n(P)
 
 axiom valid_env.instantiated_of_erased {σ: env} {P: prop}:
   σ ⊨ P.erased →
@@ -124,7 +124,7 @@ axiom valid_env.strengthen_without_instantiations {σ: env} {P P' Q: prop}:
 
 -- lemmas
 
-lemma instantiated_of_erased {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
+lemma valid.instantiated_of_erased {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
   assume h: ⊨ P.erased,
   have P.erased = vc.subst_env env.empty P.erased, by unfold vc.subst_env,
   have env.empty ⊨ P.erased, from this ▸ h,
@@ -132,7 +132,7 @@ lemma instantiated_of_erased {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
   have  vc.subst_env env.empty P.instantiated = P.instantiated, by unfold vc.subst_env,
   show ⊨ P.instantiated, from this ▸ h2
 
-lemma instantiated_n_of_instantiated {P: prop}: ⊨ P.instantiated → ⊨ P.instantiated_n :=
+lemma valid.instantiated_n_of_instantiated {P: prop}: ⊨ P.instantiated → ⊨ P.instantiated_n :=
   assume h: ⊨ P.instantiated,
   have P.instantiated = vc.subst_env env.empty P.instantiated, by unfold vc.subst_env,
   have env.empty ⊨ P.instantiated, from this ▸ h,
@@ -140,13 +140,42 @@ lemma instantiated_n_of_instantiated {P: prop}: ⊨ P.instantiated → ⊨ P.ins
   have  vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
   show ⊨ P.instantiated_n, from this ▸ h2
 
-lemma erased_n_of_instantiated_n {P: prop}: ⊨ P.instantiated_n → ⊨ P.erased_n :=
+lemma valid.erased_n_of_instantiated_n {P: prop}: ⊨ P.instantiated_n → ⊨ P.erased_n :=
   assume h: ⊨ P.instantiated_n,
   have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
   have env.empty ⊨ P.instantiated_n, from this ▸ h,
   have h2: env.empty ⊨ P.erased_n, from valid_env.erased_n_of_instantiated_n this,
   have vc.subst_env env.empty P.erased_n = P.erased_n, by unfold vc.subst_env,
   show ⊨ P.erased_n, from this ▸ h2
+
+lemma valid.instantiated_and {P Q: prop}:
+      ⊨ (P.instantiated && Q.instantiated) → ⊨ (P && Q).instantiated :=
+  assume h: ⊨ (P.instantiated && Q.instantiated),
+  have (P.instantiated && Q.instantiated) = vc.subst_env env.empty (P.instantiated && Q.instantiated),
+  by unfold vc.subst_env,
+  have env.empty ⊨ (P.instantiated && Q.instantiated), from this ▸ h,
+  have h2: env.empty ⊨ (P && Q).instantiated, from valid_env.instantiated_and this,
+  have vc.subst_env env.empty (P && Q).instantiated = (P && Q).instantiated, by unfold vc.subst_env,
+  show ⊨ (P && Q).instantiated, from this ▸ h2
+
+lemma valid.instantiated_or {P Q: prop}:
+      ⊨ (P.instantiated || Q.instantiated) → ⊨ (P || Q).instantiated :=
+  assume h: ⊨ (P.instantiated || Q.instantiated),
+  have (P.instantiated || Q.instantiated) = vc.subst_env env.empty (P.instantiated || Q.instantiated),
+  by unfold vc.subst_env,
+  have env.empty ⊨ (P.instantiated || Q.instantiated), from this ▸ h,
+  have h2: env.empty ⊨ (P || Q).instantiated, from valid_env.instantiated_or this,
+  have vc.subst_env env.empty (P || Q).instantiated = (P || Q).instantiated, by unfold vc.subst_env,
+  show ⊨ (P || Q).instantiated, from this ▸ h2
+
+lemma valid.instantiated_implies {P Q: prop}:
+      ⊨ (vc.implies P.instantiated_n Q.instantiated) → ⊨ (prop.implies P Q).instantiated :=
+  assume : ⊨ (vc.implies P.instantiated_n Q.instantiated),
+  have h1: ⊨ (vc.or P.instantiated_n.not Q.instantiated), from this,
+  have P.not.instantiated = P.instantiated_n.not, from not_dist_instantiated,
+  have ⊨ (vc.or P.not.instantiated Q.instantiated), from this.symm ▸ h1,
+  have ⊨ (prop.or P.not Q).instantiated, from valid.instantiated_or this,
+  show ⊨ (prop.implies P Q).instantiated, from this
 
 lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
   have binop.apply binop.eq v v = @ite (v = v)

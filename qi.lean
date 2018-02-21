@@ -1,6 +1,6 @@
 -- quantifier instantiation
 
-import .syntax .notations .freevars
+import .syntax .notations .freevars .substitution
 
 mutual def prop.erased, prop.erased_n
 
@@ -76,6 +76,9 @@ def no_instantiations(P: prop): Prop := (calls P = ∅) ∧ (quantifiers P = ∅
 
 -- axioms about instantiation
 
+axiom instantiated.forallc {x: var} {t: term} {P: prop}:
+  (prop.forallc x t P).instantiated = vc.univ x P.instantiated
+
 axiom not_dist_instantiated {P: prop}:
   P.not.instantiated = P.instantiated_n.not
 
@@ -91,7 +94,58 @@ axiom and_dist_of_no_instantiations_n {P Q: prop}:
 axiom or_dist_of_no_instantiations_n {P Q: prop}:
   no_instantiations Q → ((P || Q).instantiated_n = P.instantiated_n || Q.erased)
 
+axiom free_in_erased_of_free_in_instantiated {P: prop} {x: var}:
+   x ∈ FV P.instantiated → x ∈ FV P.erased
+
+axiom instantiated_distrib_subst {P: prop} {x: var} {v: value}:
+  vc.subst x v P.instantiated = (prop.subst x v P).instantiated
+
+axiom instantiated_n_distrib_subst {P: prop} {x: var} {v: value}:
+  vc.subst x v P.instantiated_n = (prop.subst x v P).instantiated_n
+
 -- lemmas
+
+lemma instantiated_distrib_subst_env {P: prop} {σ: env}:
+      vc.subst_env σ P.instantiated = (prop.subst_env σ P).instantiated :=
+begin
+  induction σ with x v σ' ih,
+
+  show (vc.subst_env env.empty (prop.instantiated P) = prop.instantiated (prop.subst_env env.empty P)),
+  by calc
+        vc.subst_env env.empty (prop.instantiated P) 
+      = P.instantiated : by unfold vc.subst_env
+  ... = (prop.subst_env env.empty P).instantiated : by unfold prop.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (prop.instantiated P) = prop.instantiated (prop.subst_env (σ'[x↦v]) P)),
+  by calc
+        vc.subst_env (σ'[x↦v]) P.instantiated
+      = vc.subst x v (vc.subst_env σ' P.instantiated) : by unfold vc.subst_env
+  ... = vc.subst x v (prop.subst_env σ' P).instantiated : by rw[ih]
+  ... = (prop.subst x v (prop.subst_env σ' P)).instantiated : instantiated_distrib_subst
+  ... = (prop.subst_env (σ'[x↦v]) P).instantiated : by unfold prop.subst_env
+
+end
+
+lemma instantiated_n_distrib_subst_env {P: prop} {σ: env}:
+      vc.subst_env σ P.instantiated_n = (prop.subst_env σ P).instantiated_n :=
+begin
+  induction σ with x v σ' ih,
+
+  show (vc.subst_env env.empty (prop.instantiated_n P) = prop.instantiated_n (prop.subst_env env.empty P)),
+  by calc
+        vc.subst_env env.empty (prop.instantiated_n P) 
+      = P.instantiated_n : by unfold vc.subst_env
+  ... = (prop.subst_env env.empty P).instantiated_n : by unfold prop.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (prop.instantiated_n P) = prop.instantiated_n (prop.subst_env (σ'[x↦v]) P)),
+  by calc
+        vc.subst_env (σ'[x↦v]) P.instantiated_n
+      = vc.subst x v (vc.subst_env σ' P.instantiated_n) : by unfold vc.subst_env
+  ... = vc.subst x v (prop.subst_env σ' P).instantiated_n : by rw[ih]
+  ... = (prop.subst x v (prop.subst_env σ' P)).instantiated_n : instantiated_n_distrib_subst
+  ... = (prop.subst_env (σ'[x↦v]) P).instantiated_n : by unfold prop.subst_env
+
+end
 
 lemma has_call.term.inv {c: calltrigger} {t: term}: c ∉ calls t :=
   assume t_has_call: has_call c t,
@@ -385,7 +439,19 @@ lemma no_instantiations.post {t₁ t₂: term}: no_instantiations (prop.post t�
   ),
   show (calls (prop.post t₁ t₂) = ∅) ∧ (quantifiers (prop.post t₁ t₂) = ∅), from ⟨h1, h2⟩
 
--- lemmas
+lemma prop.erased.implies {P Q: prop}:
+      (prop.implies P Q).erased = vc.implies P.erased_n Q.erased :=
+  by calc 
+       (prop.implies P Q).erased = (prop.or (prop.not P) Q).erased : rfl
+                             ... = (prop.not P).erased || Q.erased : by unfold prop.erased
+                             ... = (vc.not P.erased_n) || Q.erased : by unfold prop.erased
+
+lemma prop.erased_n.implies {P Q: prop}:
+      (prop.implies P Q).erased_n = vc.implies P.erased Q.erased_n :=
+  by calc 
+       (prop.implies P Q).erased_n = (prop.or (prop.not P) Q).erased_n : rfl
+                               ... = (prop.not P).erased_n || Q.erased_n : by unfold prop.erased_n
+                               ... = (vc.not P.erased) || Q.erased_n : by unfold prop.erased_n
 
 lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.erased_n) → x ∈ FV P :=
   assume x_free_in_erased_or_erased_n: x ∈ FV P.erased ∨ x ∈ FV P.erased_n,

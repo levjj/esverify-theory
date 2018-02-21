@@ -137,6 +137,12 @@ lemma term.subst.var.same {x: var} {v: value}: term.subst x v x = v :=
   have (if x = x then (term.value v) else (term.var x)) = (term.value v), by simp,
   show term.subst x v x = v, from eq.trans h this
 
+lemma term.subst.var.diff {x y: var} {v: value}: (x ≠ y) → (term.subst x v y = y) :=
+  assume x_neq_y: x ≠ y,
+  have h: term.subst x v (term.var y) = (if x = y then v else y), by unfold term.subst,
+  have (if x = y then (term.value v) else (term.var y)) = (term.var y), by simp[x_neq_y],
+  show term.subst x v y = y, from eq.trans h this
+
 lemma unchanged_of_subst_nonfree_vc {P: vc} {x: var} {v: value}:
     x ∉ FV P → (vc.subst x v P = P) :=
   assume x_not_free: ¬ free_in_vc x P,
@@ -1190,6 +1196,192 @@ begin
                       (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
   ... = term.binop op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end
+
+lemma prop.subst_env.term {σ: env} {t: term}:
+  prop.subst_env σ t = prop.term (term.subst_env σ t) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (prop.subst_env env.empty t = prop.term (term.subst_env env.empty t)), by begin
+    have : (term.subst_env env.empty t = t), by unfold term.subst_env,
+    have h2: (prop.term (term.subst_env env.empty t) = prop.term t), by simp[this],
+    calc
+      prop.subst_env env.empty t = t : by unfold prop.subst_env
+                             ... = prop.term t : by refl
+                             ... = prop.term (term.subst_env env.empty t) : by rw[←h2]
+  end,
+
+  show (prop.subst_env (σ'[x↦v]) t = prop.term (term.subst_env (σ'[x↦v]) t)),
+  by calc
+        prop.subst_env (σ'[x↦v]) t = prop.subst x v (prop.subst_env σ' t) : by unfold prop.subst_env
+                               ... = prop.subst x v (prop.term (term.subst_env σ' t)) : by rw[ih]
+                               ... = term.subst x v (term.subst_env σ' t) : by unfold prop.subst
+                               ... = term.subst_env (σ'[x↦v]) t : by unfold term.subst_env
+end
+
+lemma prop.subst_env.not {σ: env} {P: prop}:
+      prop.subst_env σ P.not = (prop.subst_env σ P).not :=
+begin
+  induction σ with x v σ' ih,
+
+  show (prop.subst_env env.empty P.not = (prop.subst_env env.empty P).not),
+  by calc
+        prop.subst_env env.empty P.not = P.not : by unfold prop.subst_env
+                                   ... = (prop.subst_env env.empty P).not : by unfold prop.subst_env,
+
+  show (prop.subst_env (σ'[x↦v]) P.not = (prop.subst_env (σ'[x↦v]) P).not),
+  by calc
+        prop.subst_env (σ'[x↦v]) P.not = prop.subst x v (prop.subst_env σ' P.not) : by unfold prop.subst_env
+                                   ... = prop.subst x v (prop.subst_env σ' P).not : by rw[ih]
+                                   ... = (prop.subst x v (prop.subst_env σ' P)).not : by unfold prop.subst
+                                   ... = (prop.subst_env (σ'[x↦v]) P).not : by unfold prop.subst_env
+end
+
+lemma prop.subst_env.and {σ: env} {P Q: prop}:
+      prop.subst_env σ (P && Q) = (prop.subst_env σ P && prop.subst_env σ Q) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (prop.subst_env env.empty (P && Q) = (prop.subst_env env.empty P && prop.subst_env env.empty Q)),
+  by calc
+        prop.subst_env env.empty (P && Q) = (P && Q) : by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P && Q) : by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P && prop.subst_env env.empty Q)
+                                                     : by unfold prop.subst_env,
+
+  show (prop.subst_env (σ'[x↦v]) (P && Q) = (prop.subst_env (σ'[x↦v]) P && prop.subst_env (σ'[x↦v]) Q)),
+  by calc
+        prop.subst_env (σ'[x↦v]) (P && Q) = prop.subst x v (prop.subst_env σ' (P && Q)) : by unfold prop.subst_env
+                                      ... = prop.subst x v (prop.subst_env σ' P && prop.subst_env σ' Q) : by rw[ih]
+                                      ... = (prop.subst x v (prop.subst_env σ' P) &&
+                                             prop.subst x v (prop.subst_env σ' Q)) : by refl
+                                      ... = (prop.subst_env (σ'[x↦v]) P &&
+                                             prop.subst x v (prop.subst_env σ' Q)) : by unfold prop.subst_env
+                                      ... = (prop.subst_env (σ'[x↦v]) P && prop.subst_env (σ'[x↦v]) Q)
+                                                                               : by unfold prop.subst_env
+end
+
+lemma prop.subst_env.or {σ: env} {P Q: prop}:
+      prop.subst_env σ (P || Q) = (prop.subst_env σ P || prop.subst_env σ Q) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (prop.subst_env env.empty (P || Q) = (prop.subst_env env.empty P || prop.subst_env env.empty Q)),
+  by calc
+        prop.subst_env env.empty (P || Q) = (P || Q) : by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P || Q) : by by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P || prop.subst_env env.empty Q)
+                                                     : by unfold prop.subst_env,
+
+  show (prop.subst_env (σ'[x↦v]) (P || Q) = (prop.subst_env (σ'[x↦v]) P || prop.subst_env (σ'[x↦v]) Q)),
+  by calc
+        prop.subst_env (σ'[x↦v]) (P || Q) = prop.subst x v (prop.subst_env σ' (P || Q)) : by unfold prop.subst_env
+                                      ... = prop.subst x v (prop.subst_env σ' P || prop.subst_env σ' Q) : by rw[ih]
+                                      ... = (prop.subst x v (prop.subst_env σ' P) ||
+                                             prop.subst x v (prop.subst_env σ' Q)) : by refl
+                                      ... = (prop.subst_env (σ'[x↦v]) P ||
+                                             prop.subst x v (prop.subst_env σ' Q)) : by unfold prop.subst_env
+                                      ... = (prop.subst_env (σ'[x↦v]) P || prop.subst_env (σ'[x↦v]) Q)
+                                               : by unfold prop.subst_env
+end
+
+lemma prop.subst_env.implies {σ: env} {P Q: prop}:
+      prop.subst_env σ (prop.implies P Q) = prop.implies (prop.subst_env σ P) (prop.subst_env σ Q) :=
+  have h1: prop.subst_env σ (prop.implies P Q) = prop.subst_env σ (P.not || Q), by refl,
+  have prop.subst_env σ (P.not || Q) = prop.subst_env σ P.not || prop.subst_env σ Q, from prop.subst_env.or,
+  have h2: prop.subst_env σ (prop.implies P Q) = prop.subst_env σ P.not || prop.subst_env σ Q, from this ▸ h1,
+  have prop.subst_env σ P.not = prop.not (prop.subst_env σ P), from prop.subst_env.not,
+  have prop.subst_env σ (prop.implies P Q) = prop.not (prop.subst_env σ P) || prop.subst_env σ Q, from this ▸ h2,
+  show prop.subst_env σ (prop.implies P Q) = prop.implies (prop.subst_env σ P) (prop.subst_env σ Q), from this
+
+lemma prop.subst_env.pre {σ: env} {t₁ t₂: term}:
+      prop.subst_env σ (prop.pre t₁ t₂) = prop.pre (term.subst_env σ t₁) (term.subst_env σ t₂) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (prop.subst_env env.empty (prop.pre t₁ t₂)
+      = prop.pre (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        prop.subst_env env.empty (prop.pre t₁ t₂)
+      = (prop.pre t₁ t₂) : by unfold prop.subst_env
+  ... = (prop.pre (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (prop.pre (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
+  show (prop.subst_env (σ'[x↦v]) (prop.pre t₁ t₂)
+      = prop.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),
+  by calc
+        prop.subst_env (σ'[x↦v]) (prop.pre t₁ t₂)
+      = prop.subst x v (prop.subst_env σ' (prop.pre t₁ t₂)) : by unfold prop.subst_env
+  ... = prop.subst x v (prop.pre (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = prop.pre (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold prop.subst
+  ... = prop.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = prop.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
+end
+
+lemma prop.subst_env.post {σ: env} {t₁ t₂: term}:
+      prop.subst_env σ (prop.post t₁ t₂) = prop.post (term.subst_env σ t₁) (term.subst_env σ t₂) :=
+begin
+  induction σ with x v σ' ih,
+
+  show (prop.subst_env env.empty (prop.post t₁ t₂)
+      = prop.post (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        prop.subst_env env.empty (prop.post t₁ t₂)
+      = (prop.post t₁ t₂) : by unfold prop.subst_env
+  ... = (prop.post (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (prop.post (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
+  show (prop.subst_env (σ'[x↦v]) (prop.post t₁ t₂)
+      = prop.post (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),
+  by calc
+        prop.subst_env (σ'[x↦v]) (prop.post t₁ t₂)
+      = prop.subst x v (prop.subst_env σ' (prop.post t₁ t₂)) : by unfold prop.subst_env
+  ... = prop.subst x v (prop.post (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = prop.post (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold prop.subst
+  ... = prop.post (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = prop.post (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
+end
+
+lemma prop.subst_env.forallc {σ: env} {x: var} {t: term} {P: prop}:
+      (x ∉ σ) → (prop.subst_env σ (prop.forallc x t P) = prop.forallc x (term.subst_env σ t) (prop.subst_env σ P)) :=
+begin
+  assume x_not_in_σ,
+  induction σ with y v σ' ih,
+
+  show (prop.subst_env env.empty (prop.forallc x t P)
+      = prop.forallc x (term.subst_env env.empty t) (prop.subst_env env.empty P)),
+  by calc
+        prop.subst_env env.empty (prop.forallc x t P)
+      = prop.forallc x t P : by unfold prop.subst_env
+  ... = prop.forallc x t (prop.subst_env env.empty P) : by unfold prop.subst_env
+  ... = prop.forallc x (term.subst_env env.empty t) (prop.subst_env env.empty P) : by unfold term.subst_env,
+
+  show (prop.subst_env (σ'[y↦v]) (prop.forallc x t P)
+      = prop.forallc x (term.subst_env (σ'[y↦v]) t) (prop.subst_env (σ'[y↦v]) P)), from (
+    have ¬ (x = y ∨ x ∈ σ'), from env.contains.same.inv x_not_in_σ,
+    have x_neq_y: x ≠ y, from (not_or_distrib.mp this).left,
+    have x ∉ σ', from (not_or_distrib.mp this).right,
+    have h: prop.subst_env σ' (prop.forallc x t P) = prop.forallc x (term.subst_env σ' t) (prop.subst_env σ' P),
+    from ih this,
+
+    calc
+        prop.subst_env (σ'[y↦v]) (prop.forallc x t P)
+      = prop.subst y v (prop.subst_env σ' (prop.forallc x t P)) : by unfold prop.subst_env
+  ... = prop.subst y v (prop.forallc x (term.subst_env σ' t) (prop.subst_env σ' P)) : by rw[h]
+  ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) (if y = x then prop.subst_env σ' P else (prop.subst_env σ' P).subst y v)
+     : by unfold prop.subst
+  ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) ((prop.subst_env σ' P).subst y v) : by simp[x_neq_y.symm]
+  ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) (prop.subst_env (σ'[y↦v]) P) : by unfold prop.subst_env
+  ... = prop.forallc x (term.subst_env (σ'[y↦v]) t) (prop.subst_env (σ'[y↦v]) P) : by unfold term.subst_env
+  )
+end
+
+lemma vc.subst.implies {x: var} {v: value} {P Q: vc}:
+      vc.subst x v (vc.implies P Q) = vc.implies (vc.subst x v P) (vc.subst x v Q) :=
+  by calc 
+       vc.subst x v (vc.implies P Q) = vc.subst x v (vc.or (vc.not P) Q) : rfl
+                                 ... = vc.subst x v (vc.not P) || vc.subst x v Q : by unfold vc.subst
+                                 ... = (vc.subst x v P).not || vc.subst x v Q : by unfold vc.subst
 
 lemma vc.subst_env.term {σ: env} {t: term}:
   vc.subst_env σ t = vc.term (term.subst_env σ t) :=

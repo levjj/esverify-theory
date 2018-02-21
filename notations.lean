@@ -103,9 +103,9 @@ instance : has_sizeof spec := ⟨spec.size⟩
 
 @[reducible]
 def prop.func (f: term) (x: var) (P: prop) (Q: prop): prop := 
-  (term.unop unop.isFunc f) &&
-  (prop.forallc x f (prop.implies P (prop.pre f x)
-                  && prop.implies (prop.post f x) Q))
+  term.unop unop.isFunc f &&
+  prop.forallc x f (prop.implies P (prop.pre f x)
+                  && prop.implies (prop.post f x) Q)
 
 def spec.to_prop : spec → prop
 | (spec.term t)       := prop.term t
