@@ -14,21 +14,21 @@ def propctx.implies(p q: propctx): propctx := propctx.or (propctx.not p) q
 @[reducible]
 def vc.implies(p q: vc): vc := vc.or (vc.not p) q
 
--- P && Q
+-- P ⋀ Q
 class has_and (α : Type) := (and : α → α → α) 
 instance : has_and spec := ⟨spec.and⟩
 instance : has_and prop := ⟨prop.and⟩
 instance : has_and propctx := ⟨propctx.and⟩
 instance : has_and vc := ⟨vc.and⟩
-infix `&&` := has_and.and
+infixr `⋀`:35 := has_and.and
 
--- P || Q
+-- P ⋁ Q
 class has_or (α : Type) := (or : α → α → α) 
 instance : has_or spec := ⟨spec.or⟩
 instance : has_or prop := ⟨prop.or⟩
 instance : has_or propctx := ⟨propctx.or⟩
 instance : has_or vc := ⟨vc.or⟩
-infix `||` := has_or.or
+infixr `⋁`:30 := has_or.or
 
 -- use • as hole
 notation `•` := termctx.hole
@@ -103,9 +103,9 @@ instance : has_sizeof spec := ⟨spec.size⟩
 
 @[reducible]
 def prop.func (f: term) (x: var) (P: prop) (Q: prop): prop := 
-  term.unop unop.isFunc f &&
-  prop.forallc x f (prop.implies P (prop.pre f x)
-                  && prop.implies (prop.post f x) Q)
+  term.unop unop.isFunc f ⋀
+  prop.forallc x f (prop.implies P (prop.pre f x) ⋀
+                    prop.implies (prop.post f x) Q)
 
 def spec.to_prop : spec → prop
 | (spec.term t)       := prop.term t
@@ -113,16 +113,16 @@ def spec.to_prop : spec → prop
     have S.size < S.not.size, from lt_of_add_one,
     prop.not S.to_prop
 | (spec.and R S)      :=
-    have R.size < (R && S).size, from lt_of_add.left,
-    have S.size < (R && S).size, from lt_of_add.right,
-    R.to_prop && S.to_prop
+    have R.size < (R ⋀ S).size, from lt_of_add.left,
+    have S.size < (R ⋀ S).size, from lt_of_add.right,
+    R.to_prop ⋀ S.to_prop
 | (spec.or R S)       :=
-    have R.size < (R || S).size, from lt_of_add.left,
-    have S.size < (R || S).size, from lt_of_add.right,
-    R.to_prop || S.to_prop
+    have R.size < (R ⋁ S).size, from lt_of_add.left,
+    have S.size < (R ⋁ S).size, from lt_of_add.right,
+    R.to_prop ⋁ S.to_prop
 | (spec.func f x R S) :=
-    have R.size < (R && S).size, from lt_of_add.left,
-    have S.size < (R && S).size, from lt_of_add.right,
+    have R.size < (R ⋀ S).size, from lt_of_add.left,
+    have S.size < (R ⋀ S).size, from lt_of_add.right,
     prop.func f x R.to_prop S.to_prop
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
@@ -177,8 +177,8 @@ instance term_to_termctx : has_coe term termctx := ⟨term.to_termctx⟩
 def prop.to_propctx : prop → propctx
 | (prop.term t)        := propctx.term t
 | (prop.not P)         := propctx.not P.to_propctx
-| (prop.and P₁ P₂)     := P₁.to_propctx && P₂.to_propctx
-| (prop.or P₁ P₂)      := P₁.to_propctx || P₂.to_propctx
+| (prop.and P₁ P₂)     := P₁.to_propctx ⋀ P₂.to_propctx
+| (prop.or P₁ P₂)      := P₁.to_propctx ⋁ P₂.to_propctx
 | (prop.pre t₁ t₂)     := propctx.pre t₁ t₂
 | (prop.pre₁ op t)     := propctx.pre₁ op t
 | (prop.pre₂ op t₁ t₂) := propctx.pre₂ op t₁ t₂
@@ -206,8 +206,8 @@ instance : has_coe_to_fun termctx := ⟨λ _, term → term, termctx.apply⟩
 def propctx.apply: propctx → term → prop
 | (propctx.term t₁) t        := t₁ t
 | (propctx.not P) t          := prop.not (P.apply t)
-| (propctx.and P₁ P₂) t      := P₁.apply t && P₂.apply t
-| (propctx.or P₁ P₂) t       := P₁.apply t || P₂.apply t
+| (propctx.and P₁ P₂) t      := P₁.apply t ⋀ P₂.apply t
+| (propctx.or P₁ P₂) t       := P₁.apply t ⋁ P₂.apply t
 | (propctx.pre t₁ t₂) t      := prop.pre (t₁ t) (t₂ t)
 | (propctx.pre₁ op t₁) t     := prop.pre₁ op (t₁ t)
 | (propctx.pre₂ op t₁ t₂) t  := prop.pre₂ op (t₁ t) (t₂ t)
@@ -223,7 +223,7 @@ instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 def calls_to_prop: callhistory → prop
 | list.nil                                  := value.true
 | (historyitem.nop :: rest)                 := calls_to_prop rest
-| (historyitem.call f x R S e σ vₓ :: rest) := prop.call (value.func f x R S e σ) vₓ && calls_to_prop rest
+| (historyitem.call f x R S e σ vₓ :: rest) := prop.call (value.func f x R S e σ) vₓ ⋀ calls_to_prop rest
 
 instance call_to_prop: has_coe callhistory prop := ⟨calls_to_prop⟩
 
@@ -236,4 +236,4 @@ constant prop.instantiated_n: prop → vc
 -- validity is axiomatized in logic.lean
 
 constant valid : vc → Prop
-notation `⊨` p: 100 := valid p
+notation `⊨` p: 20 := valid p

@@ -18,8 +18,8 @@ def term.subst_env: env → term → term
 def prop.subst (x: var) (v: value): prop → prop
 | (prop.term t)        := term.subst x v t
 | (prop.not P)         := P.subst.not
-| (prop.and P Q)       := P.subst && Q.subst
-| (prop.or P Q)        := P.subst || Q.subst
+| (prop.and P Q)       := P.subst ⋀ Q.subst
+| (prop.or P Q)        := P.subst ⋁ Q.subst
 | (prop.pre t₁ t₂)     := prop.pre (term.subst x v t₁) (term.subst x v t₂)
 | (prop.pre₁ op t)     := prop.pre₁ op (term.subst x v t)
 | (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.subst x v t₁) (term.subst x v t₂)
@@ -37,8 +37,8 @@ def prop.subst_env: env → prop → prop
 def vc.subst (x: var) (v: value): vc → vc
 | (vc.term t)        := term.subst x v t
 | (vc.not P)         := vc.not P.subst
-| (vc.and P Q)       := P.subst && Q.subst
-| (vc.or P Q)        := P.subst || Q.subst
+| (vc.and P Q)       := P.subst ⋀ Q.subst
+| (vc.or P Q)        := P.subst ⋁ Q.subst
 | (vc.pre t₁ t₂)     := vc.pre (term.subst x v t₁) (term.subst x v t₂)
 | (vc.pre₁ op t)     := vc.pre₁ op (term.subst x v t)
 | (vc.pre₂ op t₁ t₂) := vc.pre₂ op (term.subst x v t₁) (term.subst x v t₂)
@@ -53,7 +53,7 @@ def vc.subst_env: env → vc → vc
 
 -- notation
 
-notation σ `⊨` p: 100 := valid (vc.subst_env σ p)
+notation σ `⊨` p: 20 := valid (vc.subst_env σ p)
 
 notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated P)
 
@@ -171,42 +171,42 @@ lemma unchanged_of_subst_nonfree_vc {P: vc} {x: var} {v: value}:
       from @eq.subst vc (λa, vc.subst x v P₁.not = vc.not a) (vc.subst x v P₁) P₁ this h
     )},
     case vc.and P₁ P₂ P₁_ih P₂_ih { from (
-      have h: vc.subst x v (vc.and P₁ P₂) = (vc.subst x v P₁) && (vc.subst x v P₂), by unfold vc.subst,
+      have h: vc.subst x v (vc.and P₁ P₂) = (vc.subst x v P₁ ⋀ vc.subst x v P₂), by unfold vc.subst,
       have ¬ free_in_vc x P₁, from (
         assume : free_in_vc x P₁,
-        have free_in_vc x (P₁ && P₂), from free_in_vc.and₁ this,
+        have free_in_vc x (P₁ ⋀ P₂), from free_in_vc.and₁ this,
         show «false», from x_not_free this
       ),
       have h1: vc.subst x v P₁ = P₁, from P₁_ih this,
       have ¬ free_in_vc x P₂, from (
         assume : free_in_vc x P₂,
-        have free_in_vc x (P₁ && P₂), from free_in_vc.and₂ this,
+        have free_in_vc x (P₁ ⋀ P₂), from free_in_vc.and₂ this,
         show «false», from x_not_free this
       ),
       have h2: vc.subst x v P₂ = P₂, from P₂_ih this,
-      have vc.subst x v (P₁ && P₂) = P₁ && (vc.subst x v P₂),
-      from @eq.subst vc (λa, vc.subst x v (vc.and P₁ P₂) = a && (vc.subst x v P₂)) (vc.subst x v P₁) P₁ h1 h,
-      show vc.subst x v (P₁ && P₂) = P₁ && P₂,
-      from @eq.subst vc (λa, vc.subst x v (vc.and P₁ P₂) = P₁ && a) (vc.subst x v P₂) P₂ h2 this
+      have vc.subst x v (P₁ ⋀ P₂) = (P₁ ⋀ vc.subst x v P₂),
+      from @eq.subst vc (λa, vc.subst x v (vc.and P₁ P₂) = (a ⋀ vc.subst x v P₂)) (vc.subst x v P₁) P₁ h1 h,
+      show vc.subst x v (P₁ ⋀ P₂) = (P₁ ⋀ P₂),
+      from @eq.subst vc (λa, vc.subst x v (vc.and P₁ P₂) = (P₁ ⋀ a)) (vc.subst x v P₂) P₂ h2 this
     )},
     case vc.or P₁ P₂ P₁_ih P₂_ih { from (
-      have h: vc.subst x v (vc.or P₁ P₂) = (vc.subst x v P₁) || (vc.subst x v P₂), by unfold vc.subst,
+      have h: vc.subst x v (vc.or P₁ P₂) = (vc.subst x v P₁ ⋁ vc.subst x v P₂), by unfold vc.subst,
       have ¬ free_in_vc x P₁, from (
         assume : free_in_vc x P₁,
-        have free_in_vc x (P₁ || P₂), from free_in_vc.or₁ this,
+        have free_in_vc x (P₁ ⋁ P₂), from free_in_vc.or₁ this,
         show «false», from x_not_free this
       ),
       have h1: vc.subst x v P₁ = P₁, from P₁_ih this,
       have ¬ free_in_vc x P₂, from (
         assume : free_in_vc x P₂,
-        have free_in_vc x (P₁ || P₂), from free_in_vc.or₂ this,
+        have free_in_vc x (P₁ ⋁ P₂), from free_in_vc.or₂ this,
         show «false», from x_not_free this
       ),
       have h2: vc.subst x v P₂ = P₂, from P₂_ih this,
-      have vc.subst x v (P₁ || P₂) = P₁ || (vc.subst x v P₂),
-      from @eq.subst vc (λa, vc.subst x v (vc.or P₁ P₂) = a || (vc.subst x v P₂)) (vc.subst x v P₁) P₁ h1 h,
-      show vc.subst x v (P₁ || P₂) = P₁ || P₂,
-      from @eq.subst vc (λa, vc.subst x v (vc.or P₁ P₂) = P₁ || a) (vc.subst x v P₂) P₂ h2 this
+      have vc.subst x v (P₁ ⋁ P₂) = (P₁ ⋁ vc.subst x v P₂),
+      from @eq.subst vc (λa, vc.subst x v (vc.or P₁ P₂) = (a ⋁ vc.subst x v P₂)) (vc.subst x v P₁) P₁ h1 h,
+      show vc.subst x v (P₁ ⋁ P₂) = (P₁ ⋁ P₂),
+      from @eq.subst vc (λa, vc.subst x v (vc.or P₁ P₂) = (P₁ ⋁ a)) (vc.subst x v P₂) P₂ h2 this
     )},
     case vc.pre t₁ t₂ { from (
       have h: vc.subst x v (vc.pre t₁ t₂) = vc.pre (term.subst x v t₁) (term.subst x v t₂), by unfold vc.subst,
@@ -398,22 +398,22 @@ lemma free_of_subst_prop {P: prop} {x y: var} {v: value}:
       show x ≠ y ∧ free_in_prop x P₁.not, from ⟨this.left, free_in_prop.not this.right⟩
     )},
     case prop.and P₂ P₃ P₂_ih P₃_ih { from (
-      have prop.subst y v (prop.and P₂ P₃) = (prop.subst y v P₂ && prop.subst y v P₃), by unfold prop.subst,
-      have free_in_prop x ((prop.subst y v P₂) && (prop.subst y v P₃)), from this ▸ x_free_in_subst,
+      have prop.subst y v (prop.and P₂ P₃) = (prop.subst y v P₂ ⋀ prop.subst y v P₃), by unfold prop.subst,
+      have free_in_prop x ((prop.subst y v P₂) ⋀ (prop.subst y v P₃)), from this ▸ x_free_in_subst,
       have free_in_prop x (prop.subst y v P₂) ∨ free_in_prop x (prop.subst y v P₃),
       from free_in_prop.and.inv this,
       or.elim this (
         assume : free_in_prop x (prop.subst y v P₂),
         have x ≠ y ∧ free_in_prop x P₂, from P₂_ih this,
-        show x ≠ y ∧ free_in_prop x (P₂ && P₃), from ⟨this.left, free_in_prop.and₁ this.right⟩
+        show x ≠ y ∧ free_in_prop x (P₂ ⋀ P₃), from ⟨this.left, free_in_prop.and₁ this.right⟩
       ) (
         assume : free_in_prop x (prop.subst y v P₃),
         have x ≠ y ∧ free_in_prop x P₃, from P₃_ih this,
-        show x ≠ y ∧ free_in_prop x (P₂ && P₃), from ⟨this.left, free_in_prop.and₂ this.right⟩
+        show x ≠ y ∧ free_in_prop x (P₂ ⋀ P₃), from ⟨this.left, free_in_prop.and₂ this.right⟩
       )
     )},
     case prop.or P₄ P₅ P₄_ih P₅_ih { from (
-      have prop.subst y v (prop.or P₄ P₅) = (prop.subst y v P₄) || (prop.subst y v P₅), by unfold prop.subst,
+      have prop.subst y v (prop.or P₄ P₅) = (prop.subst y v P₄ ⋁ prop.subst y v P₅), by unfold prop.subst,
       have free_in_prop x (prop.or (prop.subst y v P₄) (prop.subst y v P₅)),
       from this ▸ x_free_in_subst,
       have free_in_prop x (prop.subst y v P₄) ∨ free_in_prop x (prop.subst y v P₅),
@@ -581,22 +581,22 @@ lemma free_in_vc.subst {P: vc} {x y: var} {v: value}:
       show x ≠ y ∧ free_in_vc x P₁.not, from ⟨this.left, free_in_vc.not this.right⟩
     )},
     case vc.and P₁ P₂ P₁_ih P₂_ih { from (
-      have vc.subst y v (vc.and P₁ P₂) = (vc.subst y v P₁ && vc.subst y v P₂), by unfold vc.subst,
-      have free_in_vc x (vc.subst y v P₁ && vc.subst y v P₂), from this ▸ x_free_in_subst,
+      have vc.subst y v (vc.and P₁ P₂) = (vc.subst y v P₁ ⋀ vc.subst y v P₂), by unfold vc.subst,
+      have free_in_vc x (vc.subst y v P₁ ⋀ vc.subst y v P₂), from this ▸ x_free_in_subst,
       have free_in_vc x (vc.subst y v P₁) ∨ free_in_vc x (vc.subst y v P₂),
       from free_in_vc.and.inv this,
       or.elim this (
         assume : free_in_vc x (vc.subst y v P₁),
         have x ≠ y ∧ free_in_vc x P₁, from P₁_ih this,
-        show x ≠ y ∧ free_in_vc x (P₁ && P₂), from ⟨this.left, free_in_vc.and₁ this.right⟩
+        show x ≠ y ∧ free_in_vc x (P₁ ⋀ P₂), from ⟨this.left, free_in_vc.and₁ this.right⟩
       ) (
         assume : free_in_vc x (vc.subst y v P₂),
         have x ≠ y ∧ free_in_vc x P₂, from P₂_ih this,
-        show x ≠ y ∧ free_in_vc x (P₁ && P₂), from ⟨this.left, free_in_vc.and₂ this.right⟩
+        show x ≠ y ∧ free_in_vc x (P₁ ⋀ P₂), from ⟨this.left, free_in_vc.and₂ this.right⟩
       )
     )},
     case vc.or P₁ P₂ P₁_ih P₂_ih { from (
-      have vc.subst y v (vc.or P₁ P₂) = (vc.subst y v P₁) || (vc.subst y v P₂), by unfold vc.subst,
+      have vc.subst y v (vc.or P₁ P₂) = (vc.subst y v P₁ ⋁ vc.subst y v P₂), by unfold vc.subst,
       have free_in_vc x (vc.or (vc.subst y v P₁) (vc.subst y v P₂)),
       from this ▸ x_free_in_subst,
       have free_in_vc x (vc.subst y v P₁) ∨ free_in_vc x (vc.subst y v P₂),
@@ -1026,8 +1026,8 @@ lemma prop.not_free_of_subst {x: var} {v: value} {P: prop}: x ∉ FV (prop.subst
       show «false», from P₁_ih this
     )},
     case prop.and P₁ P₂ P₁_ih P₂_ih { from (
-      have prop.subst x v (prop.and P₁ P₂) = (P₁.subst x v && P₂.subst x v), by unfold prop.subst,
-      have x ∈ FV (P₁.subst x v && P₂.subst x v), from this ▸ x_free,
+      have prop.subst x v (prop.and P₁ P₂) = (P₁.subst x v ⋀ P₂.subst x v), by unfold prop.subst,
+      have x ∈ FV (P₁.subst x v ⋀ P₂.subst x v), from this ▸ x_free,
       or.elim (free_in_prop.and.inv this) (
         assume : x ∈ FV (P₁.subst x v),
         show «false», from P₁_ih this
@@ -1037,8 +1037,8 @@ lemma prop.not_free_of_subst {x: var} {v: value} {P: prop}: x ∉ FV (prop.subst
       )
     )},
     case prop.or P₁ P₂ P₁_ih P₂_ih { from (
-      have prop.subst x v (prop.or P₁ P₂) = (P₁.subst x v || P₂.subst x v), by unfold prop.subst,
-      have x ∈ FV (P₁.subst x v || P₂.subst x v), from this ▸ x_free,
+      have prop.subst x v (prop.or P₁ P₂) = (P₁.subst x v ⋁ P₂.subst x v), by unfold prop.subst,
+      have x ∈ FV (P₁.subst x v ⋁ P₂.subst x v), from this ▸ x_free,
       or.elim (free_in_prop.or.inv this) (
         assume : x ∈ FV (P₁.subst x v),
         show «false», from P₁_ih this
@@ -1238,60 +1238,60 @@ begin
 end
 
 lemma prop.subst_env.and {σ: env} {P Q: prop}:
-      prop.subst_env σ (P && Q) = (prop.subst_env σ P && prop.subst_env σ Q) :=
+      prop.subst_env σ (P ⋀ Q) = (prop.subst_env σ P ⋀ prop.subst_env σ Q) :=
 begin
   induction σ with x v σ' ih,
 
-  show (prop.subst_env env.empty (P && Q) = (prop.subst_env env.empty P && prop.subst_env env.empty Q)),
+  show (prop.subst_env env.empty (P ⋀ Q) = (prop.subst_env env.empty P ⋀ prop.subst_env env.empty Q)),
   by calc
-        prop.subst_env env.empty (P && Q) = (P && Q) : by unfold prop.subst_env
-                                      ... = (prop.subst_env env.empty P && Q) : by unfold prop.subst_env
-                                      ... = (prop.subst_env env.empty P && prop.subst_env env.empty Q)
+        prop.subst_env env.empty (P ⋀ Q) = (P ⋀ Q) : by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P ⋀ Q) : by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P ⋀ prop.subst_env env.empty Q)
                                                      : by unfold prop.subst_env,
 
-  show (prop.subst_env (σ'[x↦v]) (P && Q) = (prop.subst_env (σ'[x↦v]) P && prop.subst_env (σ'[x↦v]) Q)),
+  show (prop.subst_env (σ'[x↦v]) (P ⋀ Q) = (prop.subst_env (σ'[x↦v]) P ⋀ prop.subst_env (σ'[x↦v]) Q)),
   by calc
-        prop.subst_env (σ'[x↦v]) (P && Q) = prop.subst x v (prop.subst_env σ' (P && Q)) : by unfold prop.subst_env
-                                      ... = prop.subst x v (prop.subst_env σ' P && prop.subst_env σ' Q) : by rw[ih]
-                                      ... = (prop.subst x v (prop.subst_env σ' P) &&
+        prop.subst_env (σ'[x↦v]) (P ⋀ Q) = prop.subst x v (prop.subst_env σ' (P ⋀ Q)) : by unfold prop.subst_env
+                                      ... = prop.subst x v (prop.subst_env σ' P ⋀ prop.subst_env σ' Q) : by rw[ih]
+                                      ... = (prop.subst x v (prop.subst_env σ' P) ⋀
                                              prop.subst x v (prop.subst_env σ' Q)) : by refl
-                                      ... = (prop.subst_env (σ'[x↦v]) P &&
+                                      ... = (prop.subst_env (σ'[x↦v]) P ⋀
                                              prop.subst x v (prop.subst_env σ' Q)) : by unfold prop.subst_env
-                                      ... = (prop.subst_env (σ'[x↦v]) P && prop.subst_env (σ'[x↦v]) Q)
+                                      ... = (prop.subst_env (σ'[x↦v]) P ⋀ prop.subst_env (σ'[x↦v]) Q)
                                                                                : by unfold prop.subst_env
 end
 
 lemma prop.subst_env.or {σ: env} {P Q: prop}:
-      prop.subst_env σ (P || Q) = (prop.subst_env σ P || prop.subst_env σ Q) :=
+      prop.subst_env σ (P ⋁ Q) = (prop.subst_env σ P ⋁ prop.subst_env σ Q) :=
 begin
   induction σ with x v σ' ih,
 
-  show (prop.subst_env env.empty (P || Q) = (prop.subst_env env.empty P || prop.subst_env env.empty Q)),
+  show (prop.subst_env env.empty (P ⋁ Q) = (prop.subst_env env.empty P ⋁ prop.subst_env env.empty Q)),
   by calc
-        prop.subst_env env.empty (P || Q) = (P || Q) : by unfold prop.subst_env
-                                      ... = (prop.subst_env env.empty P || Q) : by by unfold prop.subst_env
-                                      ... = (prop.subst_env env.empty P || prop.subst_env env.empty Q)
+        prop.subst_env env.empty (P ⋁ Q) = (P ⋁ Q) : by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P ⋁ Q) : by by unfold prop.subst_env
+                                      ... = (prop.subst_env env.empty P ⋁ prop.subst_env env.empty Q)
                                                      : by unfold prop.subst_env,
 
-  show (prop.subst_env (σ'[x↦v]) (P || Q) = (prop.subst_env (σ'[x↦v]) P || prop.subst_env (σ'[x↦v]) Q)),
+  show (prop.subst_env (σ'[x↦v]) (P ⋁ Q) = (prop.subst_env (σ'[x↦v]) P ⋁ prop.subst_env (σ'[x↦v]) Q)),
   by calc
-        prop.subst_env (σ'[x↦v]) (P || Q) = prop.subst x v (prop.subst_env σ' (P || Q)) : by unfold prop.subst_env
-                                      ... = prop.subst x v (prop.subst_env σ' P || prop.subst_env σ' Q) : by rw[ih]
-                                      ... = (prop.subst x v (prop.subst_env σ' P) ||
+        prop.subst_env (σ'[x↦v]) (P ⋁ Q) = prop.subst x v (prop.subst_env σ' (P ⋁ Q)) : by unfold prop.subst_env
+                                      ... = prop.subst x v (prop.subst_env σ' P ⋁ prop.subst_env σ' Q) : by rw[ih]
+                                      ... = (prop.subst x v (prop.subst_env σ' P) ⋁
                                              prop.subst x v (prop.subst_env σ' Q)) : by refl
-                                      ... = (prop.subst_env (σ'[x↦v]) P ||
+                                      ... = (prop.subst_env (σ'[x↦v]) P ⋁
                                              prop.subst x v (prop.subst_env σ' Q)) : by unfold prop.subst_env
-                                      ... = (prop.subst_env (σ'[x↦v]) P || prop.subst_env (σ'[x↦v]) Q)
+                                      ... = (prop.subst_env (σ'[x↦v]) P ⋁ prop.subst_env (σ'[x↦v]) Q)
                                                : by unfold prop.subst_env
 end
 
 lemma prop.subst_env.implies {σ: env} {P Q: prop}:
       prop.subst_env σ (prop.implies P Q) = prop.implies (prop.subst_env σ P) (prop.subst_env σ Q) :=
-  have h1: prop.subst_env σ (prop.implies P Q) = prop.subst_env σ (P.not || Q), by refl,
-  have prop.subst_env σ (P.not || Q) = prop.subst_env σ P.not || prop.subst_env σ Q, from prop.subst_env.or,
-  have h2: prop.subst_env σ (prop.implies P Q) = prop.subst_env σ P.not || prop.subst_env σ Q, from this ▸ h1,
+  have h1: prop.subst_env σ (prop.implies P Q) = prop.subst_env σ (P.not ⋁ Q), by refl,
+  have prop.subst_env σ (P.not ⋁ Q) = (prop.subst_env σ P.not ⋁ prop.subst_env σ Q), from prop.subst_env.or,
+  have h2: prop.subst_env σ (prop.implies P Q) = (prop.subst_env σ P.not ⋁ prop.subst_env σ Q), from this ▸ h1,
   have prop.subst_env σ P.not = prop.not (prop.subst_env σ P), from prop.subst_env.not,
-  have prop.subst_env σ (prop.implies P Q) = prop.not (prop.subst_env σ P) || prop.subst_env σ Q, from this ▸ h2,
+  have prop.subst_env σ (prop.implies P Q) = (prop.not (prop.subst_env σ P) ⋁ prop.subst_env σ Q), from this ▸ h2,
   show prop.subst_env σ (prop.implies P Q) = prop.implies (prop.subst_env σ P) (prop.subst_env σ Q), from this
 
 lemma prop.subst_env.pre {σ: env} {t₁ t₂: term}:
@@ -1380,8 +1380,8 @@ lemma vc.subst.implies {x: var} {v: value} {P Q: vc}:
       vc.subst x v (vc.implies P Q) = vc.implies (vc.subst x v P) (vc.subst x v Q) :=
   by calc 
        vc.subst x v (vc.implies P Q) = vc.subst x v (vc.or (vc.not P) Q) : rfl
-                                 ... = vc.subst x v (vc.not P) || vc.subst x v Q : by unfold vc.subst
-                                 ... = (vc.subst x v P).not || vc.subst x v Q : by unfold vc.subst
+                                 ... = (vc.subst x v (vc.not P) ⋁ vc.subst x v Q) : by unfold vc.subst
+                                 ... = ((vc.subst x v P).not ⋁ vc.subst x v Q) : by unfold vc.subst
 
 lemma vc.subst_env.term {σ: env} {t: term}:
   vc.subst_env σ t = vc.term (term.subst_env σ t) :=
@@ -1424,50 +1424,50 @@ begin
 end
 
 lemma vc.subst_env.and {σ: env} {P Q: vc}:
-      vc.subst_env σ (P && Q) = (vc.subst_env σ P && vc.subst_env σ Q) :=
+      vc.subst_env σ (P ⋀ Q) = (vc.subst_env σ P ⋀ vc.subst_env σ Q) :=
 begin
   induction σ with x v σ' ih,
 
-  show (vc.subst_env env.empty (P && Q) = (vc.subst_env env.empty P && vc.subst_env env.empty Q)),
+  show (vc.subst_env env.empty (P ⋀ Q) = (vc.subst_env env.empty P ⋀ vc.subst_env env.empty Q)),
   by calc
-        vc.subst_env env.empty (P && Q) = (P && Q) : by unfold vc.subst_env
-                                    ... = (vc.subst_env env.empty P && Q) : by unfold vc.subst_env
-                                    ... = (vc.subst_env env.empty P && vc.subst_env env.empty Q)
+        vc.subst_env env.empty (P ⋀ Q) = (P ⋀ Q) : by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P ⋀ Q) : by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P ⋀ vc.subst_env env.empty Q)
                                                    : by unfold vc.subst_env,
 
-  show (vc.subst_env (σ'[x↦v]) (P && Q) = (vc.subst_env (σ'[x↦v]) P && vc.subst_env (σ'[x↦v]) Q)),
+  show (vc.subst_env (σ'[x↦v]) (P ⋀ Q) = (vc.subst_env (σ'[x↦v]) P ⋀ vc.subst_env (σ'[x↦v]) Q)),
   by calc
-        vc.subst_env (σ'[x↦v]) (P && Q) = vc.subst x v (vc.subst_env σ' (P && Q)) : by unfold vc.subst_env
-                                    ... = vc.subst x v (vc.subst_env σ' P && vc.subst_env σ' Q) : by rw[ih]
-                                    ... = (vc.subst x v (vc.subst_env σ' P) &&
+        vc.subst_env (σ'[x↦v]) (P ⋀ Q) = vc.subst x v (vc.subst_env σ' (P ⋀ Q)) : by unfold vc.subst_env
+                                    ... = vc.subst x v (vc.subst_env σ' P ⋀ vc.subst_env σ' Q) : by rw[ih]
+                                    ... = (vc.subst x v (vc.subst_env σ' P) ⋀
                                            vc.subst x v (vc.subst_env σ' Q)) : by refl
-                                    ... = (vc.subst_env (σ'[x↦v]) P &&
+                                    ... = (vc.subst_env (σ'[x↦v]) P ⋀
                                            vc.subst x v (vc.subst_env σ' Q)) : by unfold vc.subst_env
-                                    ... = (vc.subst_env (σ'[x↦v]) P && vc.subst_env (σ'[x↦v]) Q)
+                                    ... = (vc.subst_env (σ'[x↦v]) P ⋀ vc.subst_env (σ'[x↦v]) Q)
                                                                              : by unfold vc.subst_env
 end
 
 lemma vc.subst_env.or {σ: env} {P Q: vc}:
-      vc.subst_env σ (P || Q) = (vc.subst_env σ P || vc.subst_env σ Q) :=
+      vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q) :=
 begin
   induction σ with x v σ' ih,
 
-  show (vc.subst_env env.empty (P || Q) = (vc.subst_env env.empty P || vc.subst_env env.empty Q)),
+  show (vc.subst_env env.empty (P ⋁ Q) = (vc.subst_env env.empty P ⋁ vc.subst_env env.empty Q)),
   by calc
-        vc.subst_env env.empty (P || Q) = (P || Q) : by unfold vc.subst_env
-                                    ... = (vc.subst_env env.empty P || Q) : by by unfold vc.subst_env
-                                    ... = (vc.subst_env env.empty P || vc.subst_env env.empty Q)
+        vc.subst_env env.empty (P ⋁ Q) = (P ⋁ Q) : by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P ⋁ Q) : by by unfold vc.subst_env
+                                    ... = (vc.subst_env env.empty P ⋁ vc.subst_env env.empty Q)
                                                    : by unfold vc.subst_env,
 
-  show (vc.subst_env (σ'[x↦v]) (P || Q) = (vc.subst_env (σ'[x↦v]) P || vc.subst_env (σ'[x↦v]) Q)),
+  show (vc.subst_env (σ'[x↦v]) (P ⋁ Q) = (vc.subst_env (σ'[x↦v]) P ⋁ vc.subst_env (σ'[x↦v]) Q)),
   by calc
-        vc.subst_env (σ'[x↦v]) (P || Q) = vc.subst x v (vc.subst_env σ' (P || Q)) : by unfold vc.subst_env
-                                    ... = vc.subst x v (vc.subst_env σ' P || vc.subst_env σ' Q) : by rw[ih]
-                                    ... = (vc.subst x v (vc.subst_env σ' P) ||
+        vc.subst_env (σ'[x↦v]) (P ⋁ Q) = vc.subst x v (vc.subst_env σ' (P ⋁ Q)) : by unfold vc.subst_env
+                                    ... = vc.subst x v (vc.subst_env σ' P ⋁ vc.subst_env σ' Q) : by rw[ih]
+                                    ... = (vc.subst x v (vc.subst_env σ' P) ⋁
                                            vc.subst x v (vc.subst_env σ' Q)) : by refl
-                                    ... = (vc.subst_env (σ'[x↦v]) P ||
+                                    ... = (vc.subst_env (σ'[x↦v]) P ⋁
                                            vc.subst x v (vc.subst_env σ' Q)) : by unfold vc.subst_env
-                                    ... = (vc.subst_env (σ'[x↦v]) P || vc.subst_env (σ'[x↦v]) Q)
+                                    ... = (vc.subst_env (σ'[x↦v]) P ⋁ vc.subst_env (σ'[x↦v]) Q)
                                              : by unfold vc.subst_env
 end
 

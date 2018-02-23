@@ -6,17 +6,17 @@ axiom valid.tru:
   ⊨ value.true
 
 axiom valid.and {P Q: vc}:
-  (⊨ P ∧ ⊨ Q)
+  (⊨ P) ∧ (⊨ Q)
   ↔
-  ⊨ (P && Q)
+  ⊨ P ⋀ Q
 
 axiom valid.or {P Q: vc}:
-  (⊨ P ∨ ⊨ Q)
+  (⊨ P) ∨ (⊨ Q)
   ↔
-  ⊨ (P || Q)
+  ⊨ P ⋁ Q
 
 axiom valid.implies  {P Q: vc}:
-  (⊨ P → ⊨ Q)
+  (⊨ P) → (⊨ Q)
   ↔
   ⊨ vc.implies P Q
 
@@ -31,18 +31,18 @@ axiom valid.univ {x: var} {P: vc}:
 axiom valid.eq.true {t: term}:
   ⊨ t
   ↔
-  ⊨ (t ≡ value.true)
+  ⊨ t ≡ value.true
 
 -- unary and binary operators are decidable, so equalities with operators are decidable
 axiom valid.eq.unop {op: unop} {vₓ v: value}:
   unop.apply op vₓ = some v
   ↔
-  ⊨ (term.unop op vₓ ≡ v)
+  ⊨ term.unop op vₓ ≡ v
 
 axiom valid.eq.binop {op: binop} {v₁ v₂ v: value}:
   binop.apply op v₁ v₂ = some v
   ↔
-  ⊨ (term.binop op v₁ v₂ ≡ v)
+  ⊨ term.binop op v₁ v₂ ≡ v
 
 -- The following equality axiom is non-standard and makes validity undecidable.
 -- It is only used in the preservation proof of e-return and in no other lemmas.
@@ -54,7 +54,7 @@ axiom valid.eq.app {vₓ v: value} {σ σ': env} {f x y: var} {R S: spec} {e: ex
   (σ[x↦vₓ], e) ⟶* (σ', exp.return y) ∧
   (σ' y = some v)
   →
-  ⊨ (term.app (value.func f x R S e σ) vₓ ≡ v)
+  ⊨ term.app (value.func f x R S e σ) vₓ ≡ v
 
 -- can write pre₁ and pre₂ to check domain of operators
 
@@ -71,18 +71,18 @@ axiom valid.pre₂ {v₁ v₂: value} {op: binop}:
 -- can write pre and post to extract pre- and postcondition of function values
 
 axiom valid.pre {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
-  σ[f↦value.func f x R S e σ][x↦vₓ]⊨ R.to_prop.instantiated_n
+  (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ R.to_prop.instantiated_n)
   →
   ⊨ vc.pre (value.func f x R S e σ) vₓ
 
 axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp}:
   (⊢ σ : Q) →
-  (Q && spec.func f x R S && R ⊢ e : Q₂) →
-  ⊨ vc.post (value.func f x R S e σ) vₓ
+  (Q ⋀ spec.func f x R S ⋀ R ⊢ e : Q₂) →
+  (⊨ vc.post (value.func f x R S e σ) vₓ)
   →
-  (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ (Q₂ (term.app f x) && S.to_prop).instantiated)
+  (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ (Q₂ (term.app f x) ⋀ S.to_prop).instantiated)
 
--- axioms about instantiations
+-- axioms about instantiation
 
 --  inst(P)   ⇒   inst_n(P)
 --         ⇘    ⇗  
@@ -91,40 +91,43 @@ axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R
 -- erased(P)  ⇒  erased_n(P)
 
 axiom valid_env.instantiated_of_erased {σ: env} {P: prop}:
-  σ ⊨ P.erased →
+  (σ ⊨ P.erased) →
   σ ⊨ P.instantiated
 
 axiom valid_env.instantiated_n_of_instantiated {σ: env} {P: prop}:
-  σ ⊨ P.instantiated →
+  (σ ⊨ P.instantiated) →
   σ ⊨ P.instantiated_n
 
 axiom valid_env.erased_n_of_instantiated_n {σ: env} {P: prop}:
-  σ ⊨ P.instantiated_n →
+  (σ ⊨ P.instantiated_n) →
   σ ⊨ P.erased_n
 
 -- if a conjunction or disjunciton is valid without cross-instantiations
 -- then it remains valid, as potential new instantiations are in negative positions
 axiom valid_env.instantiated_and {σ: env} {P Q: prop}:
-  σ ⊨ (P.instantiated && Q.instantiated) →
-  σ ⊨ (P && Q).instantiated
+  (σ ⊨ P.instantiated ⋀ Q.instantiated) →
+  σ ⊨ (P ⋀ Q).instantiated
 
 axiom valid_env.instantiated_or {σ: env} {P Q: prop}:
-  σ ⊨ (P.instantiated || Q.instantiated) →
-  σ ⊨ (P || Q).instantiated
+  (σ ⊨ P.instantiated ⋁ Q.instantiated) →
+  σ ⊨ (P ⋁ Q).instantiated
 
--- if P and P' have the exact same triggers and quantifiers, then
--- any instantiation with an arbitrary propostion Q are also the same,
+-- if P and P' have the same substituted triggers and every quantifier
+-- in P' is dominated by a quantifier in P then any
+-- any cross-instantiations with an arbitrary propostion Q are also the same,
 -- so if (P') implies (P) without cross-instantiations,
 -- then (P' ∧ Q) implies (P ∧ Q) without cross-instantiations
-axiom valid_env.strengthen_without_instantiations {σ: env} {P P' Q: prop}:
-  (calls P' = calls P) →
-  (quantifiers P' = quantifiers P) →
-  σ ⊨ vc.implies P'.instantiated_n P.instantiated_n →
-  σ ⊨ vc.implies (P' && Q).instantiated_n (P && Q).instantiated_n
+axiom valid_env.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
+  dominates σ P P' →
+  σ ⊨ vc.implies (P ⋀ Q).instantiated_n (P' ⋀ Q).instantiated_n
+
+axiom valid_env.strengthen_or_with_dominating_instantiations {σ: env} {P P' Q: prop}:
+  dominates σ P P' →
+  σ ⊨ vc.implies (P ⋁ Q).instantiated_n (P' ⋁ Q).instantiated_n
 
 -- lemmas
 
-lemma valid.instantiated_of_erased {P: prop}: ⊨ P.erased → ⊨ P.instantiated :=
+lemma valid.instantiated_of_erased {P: prop}: (⊨ P.erased) → ⊨ P.instantiated :=
   assume h: ⊨ P.erased,
   have P.erased = vc.subst_env env.empty P.erased, by unfold vc.subst_env,
   have env.empty ⊨ P.erased, from this ▸ h,
@@ -132,7 +135,7 @@ lemma valid.instantiated_of_erased {P: prop}: ⊨ P.erased → ⊨ P.instantiate
   have  vc.subst_env env.empty P.instantiated = P.instantiated, by unfold vc.subst_env,
   show ⊨ P.instantiated, from this ▸ h2
 
-lemma valid.instantiated_n_of_instantiated {P: prop}: ⊨ P.instantiated → ⊨ P.instantiated_n :=
+lemma valid.instantiated_n_of_instantiated {P: prop}: (⊨ P.instantiated) → ⊨ P.instantiated_n :=
   assume h: ⊨ P.instantiated,
   have P.instantiated = vc.subst_env env.empty P.instantiated, by unfold vc.subst_env,
   have env.empty ⊨ P.instantiated, from this ▸ h,
@@ -140,7 +143,7 @@ lemma valid.instantiated_n_of_instantiated {P: prop}: ⊨ P.instantiated → ⊨
   have  vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
   show ⊨ P.instantiated_n, from this ▸ h2
 
-lemma valid.erased_n_of_instantiated_n {P: prop}: ⊨ P.instantiated_n → ⊨ P.erased_n :=
+lemma valid.erased_n_of_instantiated_n {P: prop}: (⊨ P.instantiated_n) → ⊨ P.erased_n :=
   assume h: ⊨ P.instantiated_n,
   have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
   have env.empty ⊨ P.instantiated_n, from this ▸ h,
@@ -149,27 +152,27 @@ lemma valid.erased_n_of_instantiated_n {P: prop}: ⊨ P.instantiated_n → ⊨ P
   show ⊨ P.erased_n, from this ▸ h2
 
 lemma valid.instantiated_and {P Q: prop}:
-      ⊨ (P.instantiated && Q.instantiated) → ⊨ (P && Q).instantiated :=
-  assume h: ⊨ (P.instantiated && Q.instantiated),
-  have (P.instantiated && Q.instantiated) = vc.subst_env env.empty (P.instantiated && Q.instantiated),
+      (⊨ P.instantiated ⋀ Q.instantiated) → ⊨ (P ⋀ Q).instantiated :=
+  assume h: ⊨ (P.instantiated ⋀ Q.instantiated),
+  have (P.instantiated ⋀ Q.instantiated) = vc.subst_env env.empty (P.instantiated ⋀ Q.instantiated),
   by unfold vc.subst_env,
-  have env.empty ⊨ (P.instantiated && Q.instantiated), from this ▸ h,
-  have h2: env.empty ⊨ (P && Q).instantiated, from valid_env.instantiated_and this,
-  have vc.subst_env env.empty (P && Q).instantiated = (P && Q).instantiated, by unfold vc.subst_env,
-  show ⊨ (P && Q).instantiated, from this ▸ h2
+  have env.empty ⊨ (P.instantiated ⋀ Q.instantiated), from this ▸ h,
+  have h2: env.empty ⊨ (P ⋀ Q).instantiated, from valid_env.instantiated_and this,
+  have vc.subst_env env.empty (P ⋀ Q).instantiated = (P ⋀ Q).instantiated, by unfold vc.subst_env,
+  show ⊨ (P ⋀ Q).instantiated, from this ▸ h2
 
 lemma valid.instantiated_or {P Q: prop}:
-      ⊨ (P.instantiated || Q.instantiated) → ⊨ (P || Q).instantiated :=
-  assume h: ⊨ (P.instantiated || Q.instantiated),
-  have (P.instantiated || Q.instantiated) = vc.subst_env env.empty (P.instantiated || Q.instantiated),
+      (⊨ P.instantiated ⋁ Q.instantiated) → ⊨ (P ⋁ Q).instantiated :=
+  assume h: ⊨ (P.instantiated ⋁ Q.instantiated),
+  have (P.instantiated ⋁ Q.instantiated) = vc.subst_env env.empty (P.instantiated ⋁ Q.instantiated),
   by unfold vc.subst_env,
-  have env.empty ⊨ (P.instantiated || Q.instantiated), from this ▸ h,
-  have h2: env.empty ⊨ (P || Q).instantiated, from valid_env.instantiated_or this,
-  have vc.subst_env env.empty (P || Q).instantiated = (P || Q).instantiated, by unfold vc.subst_env,
-  show ⊨ (P || Q).instantiated, from this ▸ h2
+  have env.empty ⊨ (P.instantiated ⋁ Q.instantiated), from this ▸ h,
+  have h2: env.empty ⊨ (P ⋁ Q).instantiated, from valid_env.instantiated_or this,
+  have vc.subst_env env.empty (P ⋁ Q).instantiated = (P ⋁ Q).instantiated, by unfold vc.subst_env,
+  show ⊨ (P ⋁ Q).instantiated, from this ▸ h2
 
 lemma valid.instantiated_implies {P Q: prop}:
-      ⊨ (vc.implies P.instantiated_n Q.instantiated) → ⊨ (prop.implies P Q).instantiated :=
+      (⊨ vc.implies P.instantiated_n Q.instantiated) → ⊨ (prop.implies P Q).instantiated :=
   assume : ⊨ (vc.implies P.instantiated_n Q.instantiated),
   have h1: ⊨ (vc.or P.instantiated_n.not Q.instantiated), from this,
   have P.not.instantiated = P.instantiated_n.not, from not_dist_instantiated,
@@ -223,37 +226,37 @@ lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (t ≡ value.tr
     show ⊨ vc.subst_env σ t, from this.symm ▸ h3
   )
 
-lemma valid_env.and {σ: env} {P Q: vc}: σ ⊨ P → σ ⊨ Q → σ ⊨ (P && Q) :=
+lemma valid_env.and {σ: env} {P Q: vc}: (σ ⊨ P) → (σ ⊨ Q) → σ ⊨ (P ⋀ Q) :=
   assume p_valid: ⊨ vc.subst_env σ P,
   assume q_valid: ⊨ vc.subst_env σ Q,
-  have vc.subst_env σ (P && Q) = (vc.subst_env σ P && vc.subst_env σ Q), from vc.subst_env.and,
-  show σ ⊨ (P && Q), from this.symm ▸ valid.and.mp ⟨p_valid, q_valid⟩
+  have vc.subst_env σ (P ⋀ Q) = (vc.subst_env σ P ⋀ vc.subst_env σ Q), from vc.subst_env.and,
+  show σ ⊨ (P ⋀ Q), from this.symm ▸ valid.and.mp ⟨p_valid, q_valid⟩
 
-lemma valid_env.and.elim {σ: env} {P Q: vc}: σ ⊨ (P && Q) → σ ⊨ P ∧ σ ⊨ Q :=
-  assume p_and_q_valid: ⊨ vc.subst_env σ (P && Q),
-  have vc.subst_env σ (P && Q) = (vc.subst_env σ P && vc.subst_env σ Q), from vc.subst_env.and,
-  have ⊨ (vc.subst_env σ P && vc.subst_env σ Q), from this ▸ p_and_q_valid,
-  show σ ⊨ P ∧ σ ⊨ Q, from valid.and.mpr this
+lemma valid_env.and.elim {σ: env} {P Q: vc}: (σ ⊨ P ⋀ Q) → (σ ⊨ P) ∧ σ ⊨ Q :=
+  assume p_and_q_valid: ⊨ vc.subst_env σ (P ⋀ Q),
+  have vc.subst_env σ (P ⋀ Q) = (vc.subst_env σ P ⋀ vc.subst_env σ Q), from vc.subst_env.and,
+  have ⊨ (vc.subst_env σ P ⋀ vc.subst_env σ Q), from this ▸ p_and_q_valid,
+  show (σ ⊨ P) ∧ (σ ⊨ Q), from valid.and.mpr this
 
-lemma valid_env.mp {σ: env} {P Q: vc}: σ ⊨ vc.implies P Q → σ ⊨ P → σ ⊨ Q :=
+lemma valid_env.mp {σ: env} {P Q: vc}: (σ ⊨ vc.implies P Q) → (σ ⊨ P) → σ ⊨ Q :=
   assume impl: σ ⊨ (vc.implies P Q),
   assume p: σ ⊨ P,
-  have vc.subst_env σ (vc.implies P Q) = (vc.subst_env σ P.not || vc.subst_env σ Q), from vc.subst_env.or,
-  have h: ⊨ (vc.subst_env σ P.not || vc.subst_env σ Q), from this ▸ impl,
+  have vc.subst_env σ (vc.implies P Q) = (vc.subst_env σ P.not ⋁ vc.subst_env σ Q), from vc.subst_env.or,
+  have h: ⊨ (vc.subst_env σ P.not ⋁ vc.subst_env σ Q), from this ▸ impl,
   have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
-  have ⊨ ((vc.subst_env σ P).not || vc.subst_env σ Q), from this ▸ h,
+  have ⊨ ((vc.subst_env σ P).not ⋁ vc.subst_env σ Q), from this ▸ h,
   have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from this,
   show σ ⊨ Q, from valid.implies.mpr this p
 
-lemma valid_env.mpr {σ: env} {P Q: vc}: (σ ⊨ P → σ ⊨ Q) → σ ⊨ vc.implies P Q :=
-  assume : (σ ⊨ P → σ ⊨ Q),
+lemma valid_env.mpr {σ: env} {P Q: vc}: ((σ ⊨ P) → σ ⊨ Q) → σ ⊨ vc.implies P Q :=
+  assume : ((σ ⊨ P) → σ ⊨ Q),
   have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from valid.implies.mp this,
   have h1: ⊨ vc.or (vc.subst_env σ P).not (vc.subst_env σ Q), from this,
   have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
   have h2: ⊨ vc.or (vc.subst_env σ P.not) (vc.subst_env σ Q), from this.symm ▸ h1,
-  have vc.subst_env σ (P.not || Q) = vc.subst_env σ P.not || vc.subst_env σ Q,
+  have vc.subst_env σ (P.not ⋁ Q) = (vc.subst_env σ P.not ⋁ vc.subst_env σ Q),
   from vc.subst_env.or,
-  have ⊨ vc.subst_env σ (P.not || Q), from this.symm ▸ h2,
+  have ⊨ vc.subst_env σ (P.not ⋁ Q), from this.symm ▸ h2,
   show σ ⊨ vc.implies P Q, from this
 
 lemma history_valid {H: callhistory}: ⟪calls_to_prop H⟫ :=
@@ -281,12 +284,12 @@ lemma history_valid {H: callhistory}: ⟪calls_to_prop H⟫ :=
         have σ ⊨ (prop.call (value.func f x R S e σ₂) v).erased, from this ▸ h1,
         have h2: σ ⊨ (prop.call (value.func f x R S e σ₂) v).instantiated, from valid_env.instantiated_of_erased this,
         have h3: σ ⊨ (calls_to_prop rest).instantiated, from ih,
-        have σ ⊨ ((prop.call (value.func f x R S e σ₂) v).instantiated && (calls_to_prop rest).instantiated),
+        have σ ⊨ ((prop.call (value.func f x R S e σ₂) v).instantiated ⋀ (calls_to_prop rest).instantiated),
         from valid_env.and h2 h3,
-        have h4: σ ⊨ (prop.call (value.func f x R S e σ₂) v && calls_to_prop rest).instantiated,
+        have h4: σ ⊨ (prop.call (value.func f x R S e σ₂) v ⋀ calls_to_prop rest).instantiated,
         from valid_env.instantiated_and this,
         have calls_to_prop (call f x R S e σ₂ v :: rest)
-          = prop.call (value.func f x R S e σ₂) v && calls_to_prop rest,
+          = (prop.call (value.func f x R S e σ₂) v ⋀ calls_to_prop rest),
         by unfold calls_to_prop,
         show σ ⊨ (calls_to_prop (call f x R S e σ₂ v :: rest)).instantiated, from this ▸ h4
       )}

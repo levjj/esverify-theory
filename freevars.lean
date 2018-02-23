@@ -117,8 +117,8 @@ lemma free_in_prop.not.inv {P: prop} {x: var}: free_in_prop x P.not → free_in_
     case free_in_prop.not free_in_P { from free_in_P }
   end
 
-lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ && P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
-  assume x_free_in_and: free_in_prop x (P₁ && P₂),
+lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ ⋀ P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
+  assume x_free_in_and: free_in_prop x (P₁ ⋀ P₂),
   begin
     cases x_free_in_and,
     case free_in_prop.and₁ free_in_P₁ {
@@ -129,8 +129,8 @@ lemma free_in_prop.and.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ && P
     }
   end
 
-lemma free_in_prop.or.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ || P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
-  assume x_free_in_or: free_in_prop x (P₁ || P₂),
+lemma free_in_prop.or.inv {P₁ P₂: prop} {x: var}: free_in_prop x (P₁ ⋁ P₂) → free_in_prop x P₁ ∨ free_in_prop x P₂ :=
+  assume x_free_in_or: free_in_prop x (P₁ ⋁ P₂),
   begin
     cases x_free_in_or,
     case free_in_prop.or₁ free_in_P₁ {
@@ -226,9 +226,9 @@ lemma free_in_prop.implies.inv {P₁ P₂: prop} {x: var}: free_in_prop x (prop.
 lemma free_in_prop.func.inv {P₁ P₂: prop} {t: term} {x y: var}:
       free_in_prop x (prop.func t y P₁ P₂) → free_in_term x t ∨ (x ≠ y ∧ (free_in_prop x P₁ ∨ free_in_prop x P₂)) :=
   assume : free_in_prop x (prop.func t y P₁ P₂),
-  have free_in_prop x (term.unop unop.isFunc t &&
+  have free_in_prop x (term.unop unop.isFunc t ⋀
                       (prop.forallc y t (prop.implies P₁ (prop.pre t y)
-                                      && prop.implies (prop.post t y) P₂))), from this,
+                                      ⋀ prop.implies (prop.post t y) P₂))), from this,
   begin
     cases this,
     case free_in_prop.and₁ x_free_in_unopfunc {
@@ -319,8 +319,8 @@ lemma free_in_vc.not.inv {P: vc} {x: var}: free_in_vc x P.not → free_in_vc x P
     case free_in_vc.not free_in_P { from free_in_P }
   end
 
-lemma free_in_vc.and.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ && P₂) → free_in_vc x P₁ ∨ free_in_vc x P₂ :=
-  assume x_free_in_and: free_in_vc x (P₁ && P₂),
+lemma free_in_vc.and.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ ⋀ P₂) → free_in_vc x P₁ ∨ free_in_vc x P₂ :=
+  assume x_free_in_and: free_in_vc x (P₁ ⋀ P₂),
   begin
     cases x_free_in_and,
     case free_in_vc.and₁ free_in_P₁ {
@@ -331,8 +331,8 @@ lemma free_in_vc.and.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ && P₂) �
     }
   end
 
-lemma free_in_vc.or.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ || P₂) → free_in_vc x P₁ ∨ free_in_vc x P₂ :=
-  assume x_free_in_or: free_in_vc x (P₁ || P₂),
+lemma free_in_vc.or.inv {P₁ P₂: vc} {x: var}: free_in_vc x (P₁ ⋁ P₂) → free_in_vc x P₁ ∨ free_in_vc x P₂ :=
+  assume x_free_in_or: free_in_vc x (P₁ ⋁ P₂),
   begin
     cases x_free_in_or,
     case free_in_vc.or₁ free_in_P₁ {
@@ -424,9 +424,9 @@ lemma call_history_closed (H: callhistory) (x: var): ¬ free_in_prop x (calls_to
       assume f x' R S e σ vₓ,
       assume x_free: free_in_prop x (calls_to_prop (call f x' R S e σ vₓ :: rest)),
       have calls_to_prop (call f x' R S e σ vₓ :: rest) =
-        (prop.call (value.func f x' R S e σ) vₓ && calls_to_prop rest), by unfold calls_to_prop,
+        (prop.call (value.func f x' R S e σ) vₓ ⋀ calls_to_prop rest), by unfold calls_to_prop,
       have x_free_in_prop: free_in_prop x (
-        prop.call (value.func f x' R S e σ) vₓ &&
+        prop.call (value.func f x' R S e σ) vₓ ⋀
         calls_to_prop rest), from this ▸ x_free,
       have x_not_free_in_vₓ: ¬ free_in_term x vₓ, from (
         assume x_free_in_vₓ: free_in_term x vₓ,
@@ -736,37 +736,37 @@ lemma free_in_propctx.prop.inv {x: var} {P: prop} {t': term}:
       show x ∈ FV P₁.not, from free_in_prop.not this
     )},
     case prop.and P₁ P₂ ih₁ ih₂ { from (
-      have prop.to_propctx (prop.and P₁ P₂) = (P₁.to_propctx && P₂.to_propctx), by unfold prop.to_propctx,
-      have h: x ∈ FV ((P₁.to_propctx && P₂.to_propctx) t'), from this ▸ x_free_in_P,
+      have prop.to_propctx (prop.and P₁ P₂) = (P₁.to_propctx ⋀ P₂.to_propctx), by unfold prop.to_propctx,
+      have h: x ∈ FV ((P₁.to_propctx ⋀ P₂.to_propctx) t'), from this ▸ x_free_in_P,
       have propctx.apply (propctx.and P₁.to_propctx P₂.to_propctx) t'
-         = (P₁.to_propctx.apply t') && (P₂.to_propctx.apply t'), by unfold propctx.apply,
-      have x ∈ FV ((P₁.to_propctx.apply t') && (P₂.to_propctx.apply t')), from this.symm ▸ h,
+         = (P₁.to_propctx.apply t' ⋀ P₂.to_propctx.apply t'), by unfold propctx.apply,
+      have x ∈ FV ((P₁.to_propctx.apply t') ⋀ (P₂.to_propctx.apply t')), from this.symm ▸ h,
       have x ∈ FV (P₁.to_propctx.apply t') ∨ x ∈ FV (P₂.to_propctx.apply t'), from free_in_prop.and.inv this,
       or.elim this (
         assume : x ∈ FV (P₁.to_propctx.apply t'),
         have x ∈ FV P₁, from ih₁ this,
-        show x ∈ FV (P₁ && P₂), from free_in_prop.and₁ this
+        show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
       ) (
         assume : x ∈ FV (P₂.to_propctx.apply t'),
         have x ∈ FV P₂, from ih₂ this,
-        show x ∈ FV (P₁ && P₂), from free_in_prop.and₂ this
+        show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this
       )
     )},
     case prop.or P₁ P₂ ih₁ ih₂ { from (
-      have prop.to_propctx (prop.or P₁ P₂) = (P₁.to_propctx || P₂.to_propctx), by unfold prop.to_propctx,
-      have h: x ∈ FV ((P₁.to_propctx || P₂.to_propctx) t'), from this ▸ x_free_in_P,
+      have prop.to_propctx (prop.or P₁ P₂) = (P₁.to_propctx ⋁ P₂.to_propctx), by unfold prop.to_propctx,
+      have h: x ∈ FV ((P₁.to_propctx ⋁ P₂.to_propctx) t'), from this ▸ x_free_in_P,
       have propctx.apply (propctx.or P₁.to_propctx P₂.to_propctx) t'
-         = (P₁.to_propctx.apply t') || (P₂.to_propctx.apply t'), by unfold propctx.apply,
-      have x ∈ FV ((P₁.to_propctx.apply t') || (P₂.to_propctx.apply t')), from this.symm ▸ h,
+         = (P₁.to_propctx.apply t' ⋁ P₂.to_propctx.apply t'), by unfold propctx.apply,
+      have x ∈ FV ((P₁.to_propctx.apply t') ⋁ (P₂.to_propctx.apply t')), from this.symm ▸ h,
       have x ∈ FV (P₁.to_propctx.apply t') ∨ x ∈ FV (P₂.to_propctx.apply t'), from free_in_prop.or.inv this,
       or.elim this (
         assume : x ∈ FV (P₁.to_propctx.apply t'),
         have x ∈ FV P₁, from ih₁ this,
-        show x ∈ FV (P₁ || P₂), from free_in_prop.or₁ this
+        show x ∈ FV (P₁ ⋁ P₂), from free_in_prop.or₁ this
       ) (
         assume : x ∈ FV (P₂.to_propctx.apply t'),
         have x ∈ FV P₂, from ih₂ this,
-        show x ∈ FV (P₁ || P₂), from free_in_prop.or₂ this
+        show x ∈ FV (P₁ ⋁ P₂), from free_in_prop.or₂ this
       )
     )},
     case prop.pre t₁ t₂ { from (
@@ -893,17 +893,17 @@ lemma free_in_propctx.not.inv {x: var} {Q: propctx} {t: term}:
   show x ∈ FV (Q t), from free_in_prop.not.inv this
 
 lemma free_in_propctx.and.inv {x: var} {Q₁ Q₂: propctx} {t: term}:
-      x ∈ FV ((Q₁ && Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
-  assume x_free_in_Q12: x ∈ FV ((Q₁ && Q₂) t),
-  have (propctx.apply (propctx.and Q₁ Q₂) t) = Q₁.apply t && Q₂.apply t, by unfold propctx.apply,
-  have x ∈ FV (Q₁.apply t && Q₂.apply t), from this ▸ x_free_in_Q12,
+      x ∈ FV ((Q₁ ⋀ Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
+  assume x_free_in_Q12: x ∈ FV ((Q₁ ⋀ Q₂) t),
+  have (propctx.apply (propctx.and Q₁ Q₂) t) = (Q₁.apply t ⋀ Q₂.apply t), by unfold propctx.apply,
+  have x ∈ FV (Q₁.apply t ⋀ Q₂.apply t), from this ▸ x_free_in_Q12,
   show x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t), from free_in_prop.and.inv this
 
 lemma free_in_propctx.or.inv {x: var} {Q₁ Q₂: propctx} {t: term}:
-      x ∈ FV ((Q₁ || Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
-  assume x_free_in_Q12: x ∈ FV ((Q₁ || Q₂) t),
-  have (propctx.apply (propctx.or Q₁ Q₂) t) = Q₁.apply t || Q₂.apply t, by unfold propctx.apply,
-  have x ∈ FV (Q₁.apply t || Q₂.apply t), from this ▸ x_free_in_Q12,
+      x ∈ FV ((Q₁ ⋁ Q₂) t) → x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t) :=
+  assume x_free_in_Q12: x ∈ FV ((Q₁ ⋁ Q₂) t),
+  have (propctx.apply (propctx.or Q₁ Q₂) t) = (Q₁.apply t ⋁ Q₂.apply t), by unfold propctx.apply,
+  have x ∈ FV (Q₁.apply t ⋁ Q₂.apply t), from this ▸ x_free_in_Q12,
   show x ∈ FV (Q₁ t) ∨ x ∈ FV (Q₂ t), from free_in_prop.or.inv this
 
 lemma free_in_propctx.implies.inv {x: var} {Q₁ Q₂: propctx} {t: term}:

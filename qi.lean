@@ -10,12 +10,12 @@ with prop.erased: prop → vc
                           have P.size + 2 = 2 + P.size, from add_comm P.size 2,
                           have P.size + 1 < 2 + P.size, from this ▸ h,
                           vc.not P.erased_n
-| (prop.and P₁ P₂)     := have P₁.size < (P₁ && P₂).size, from lt_of_add.left,
-                          have P₂.size < (P₁ && P₂).size, from lt_of_add.right,
-                          P₁.erased && P₂.erased
-| (prop.or P₁ P₂)      := have P₁.size < (P₁ || P₂).size, from lt_of_add.left,
-                          have P₂.size < (P₁ || P₂).size, from lt_of_add.right,
-                          P₁.erased || P₂.erased
+| (prop.and P₁ P₂)     := have P₁.size < (P₁ ⋀ P₂).size, from lt_of_add.left,
+                          have P₂.size < (P₁ ⋀ P₂).size, from lt_of_add.right,
+                          P₁.erased ⋀ P₂.erased
+| (prop.or P₁ P₂)      := have P₁.size < (P₁ ⋁ P₂).size, from lt_of_add.left,
+                          have P₂.size < (P₁ ⋁ P₂).size, from lt_of_add.right,
+                          P₁.erased ⋁ P₂.erased
 | (prop.pre t₁ t₂)     := vc.pre t₁ t₂
 | (prop.pre₁ op t)     := vc.pre₁ op t
 | (prop.pre₂ op t₁ t₂) := vc.pre₂ op t₁ t₂
@@ -32,12 +32,12 @@ with prop.erased_n: prop → vc
                           have P.size + 2 = 2 + P.size, from add_comm P.size 2,
                           have P.size + 1 < 2 + P.size, from this ▸ h,
                           vc.not P.erased
-| (prop.and P₁ P₂)     := have P₁.size < (P₁ && P₂).size, from lt_of_add.left,
-                          have P₂.size < (P₁ && P₂).size, from lt_of_add.right,
-                          P₁.erased_n && P₂.erased_n
-| (prop.or P₁ P₂)      := have P₁.size < (P₁ || P₂).size, from lt_of_add.left,
-                          have P₂.size < (P₁ || P₂ ).size, from lt_of_add.right,
-                          P₁.erased_n || P₂.erased_n
+| (prop.and P₁ P₂)     := have P₁.size < (P₁ ⋀ P₂).size, from lt_of_add.left,
+                          have P₂.size < (P₁ ⋀ P₂).size, from lt_of_add.right,
+                          P₁.erased_n ⋀ P₂.erased_n
+| (prop.or P₁ P₂)      := have P₁.size < (P₁ ⋁ P₂).size, from lt_of_add.left,
+                          have P₂.size < (P₁ ⋁ P₂ ).size, from lt_of_add.right,
+                          P₁.erased_n ⋁ P₂.erased_n
 | (prop.pre t₁ t₂)     := vc.pre t₁ t₂
 | (prop.pre₁ op t)     := vc.pre₁ op t
 | (prop.pre₂ op t₁ t₂) := vc.pre₂ op t₁ t₂
@@ -50,10 +50,10 @@ with prop.erased_n: prop → vc
 inductive has_call (c: calltrigger) : prop → Prop
 | calltrigger                           : has_call (prop.call c.f c.x)
 | not {P: prop}                         : has_call P  → has_call P.not
-| and₁ {P₁ P₂: prop}                    : has_call P₁ → has_call (P₁ && P₂)
-| and₂ {P₁ P₂: prop}                    : has_call P₂ → has_call (P₁ && P₂)
-| or₁ {P₁ P₂: prop}                     : has_call P₁ → has_call (P₁ || P₂)
-| or₂ {P₁ P₂: prop}                     : has_call P₂ → has_call (P₁ || P₂)
+| and₁ {P₁ P₂: prop}                    : has_call P₁ → has_call (P₁ ⋀ P₂)
+| and₂ {P₁ P₂: prop}                    : has_call P₂ → has_call (P₁ ⋀ P₂)
+| or₁ {P₁ P₂: prop}                     : has_call P₁ → has_call (P₁ ⋁ P₂)
+| or₂ {P₁ P₂: prop}                     : has_call P₂ → has_call (P₁ ⋁ P₂)
 | forallc {y: var} {t: term} {P: prop}  : has_call P  → has_call (prop.forallc y t P)
 | exis {y: var} {P: prop}               : has_call P  → has_call (prop.exis y P)
 
@@ -62,10 +62,10 @@ def calls (p: prop): set calltrigger := λc, has_call c p
 inductive has_quantifier (q: callquantifier) : prop → Prop
 | callquantifier                        : has_quantifier (prop.forallc q.x q.f q.P)
 | not {P: prop}                         : has_quantifier P  → has_quantifier P.not
-| and₁ {P₁ P₂: prop}                    : has_quantifier P₁ → has_quantifier (P₁ && P₂)
-| and₂ {P₁ P₂: prop}                    : has_quantifier P₂ → has_quantifier (P₁ && P₂)
-| or₁ {P₁ P₂: prop}                     : has_quantifier P₁ → has_quantifier (P₁ || P₂)
-| or₂ {P₁ P₂: prop}                     : has_quantifier P₂ → has_quantifier (P₁ || P₂)
+| and₁ {P₁ P₂: prop}                    : has_quantifier P₁ → has_quantifier (P₁ ⋀ P₂)
+| and₂ {P₁ P₂: prop}                    : has_quantifier P₂ → has_quantifier (P₁ ⋀ P₂)
+| or₁ {P₁ P₂: prop}                     : has_quantifier P₁ → has_quantifier (P₁ ⋁ P₂)
+| or₂ {P₁ P₂: prop}                     : has_quantifier P₂ → has_quantifier (P₁ ⋁ P₂)
 | forallc {y: var} {t: term} {P: prop}  : has_quantifier P  → has_quantifier (prop.forallc y t P)
 | exis {y: var} {P: prop}               : has_quantifier P  → has_quantifier (prop.exis y P)
 
@@ -73,6 +73,25 @@ def quantifiers (p: prop): set callquantifier := λc, has_quantifier c p
 
  -- propositions without call triggers or quantifiers do not participate in instantiations
 def no_instantiations(P: prop): Prop := (calls P = ∅) ∧ (quantifiers P = ∅)
+
+def calltrigger.subst (σ: env) (c: calltrigger): calltrigger := ⟨term.subst_env σ c.f, term.subst_env σ c.x⟩
+
+@[reducible]
+def calls_env (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls P
+
+@[reducible]
+def qualifiers_dominate (σ: env) (P P': prop): Prop :=
+  ∀(t': term) (x: var) (Q': prop), callquantifier.mk t' x Q' ∈ quantifiers P' →
+  ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
+                        ∀v: value, σ[x↦v] ⊨ vc.implies Q.instantiated Q'.instantiated
+
+-- given a environment σ, P dominates P' if P implies P' and
+-- P has matching or stronger triggers and quantifiers than P'
+@[reducible]
+def dominates (σ: env) (P P': prop): Prop :=
+  calls_env σ P = calls_env σ P' ∧
+  qualifiers_dominate σ P P' ∧
+  σ ⊨ vc.implies P.instantiated_n P'.instantiated_n
 
 -- axioms about instantiation
 
@@ -83,16 +102,16 @@ axiom not_dist_instantiated {P: prop}:
   P.not.instantiated = P.instantiated_n.not
 
 axiom and_dist_of_no_instantiations {P Q: prop}:
-  no_instantiations Q → ((P && Q).instantiated = P.instantiated && Q.erased)
+  no_instantiations Q → ((P ⋀ Q).instantiated = (P.instantiated ⋀ Q.erased))
 
 axiom or_dist_of_no_instantiations {P Q: prop}:
-  no_instantiations Q → ((P || Q).instantiated = P.instantiated || Q.erased)
+  no_instantiations Q → ((P ⋁ Q).instantiated = (P.instantiated ⋁ Q.erased))
 
 axiom and_dist_of_no_instantiations_n {P Q: prop}:
-  no_instantiations Q → ((P && Q).instantiated_n = P.instantiated_n && Q.erased)
+  no_instantiations Q → ((P ⋀ Q).instantiated_n = (P.instantiated_n ⋀ Q.erased))
 
 axiom or_dist_of_no_instantiations_n {P Q: prop}:
-  no_instantiations Q → ((P || Q).instantiated_n = P.instantiated_n || Q.erased)
+  no_instantiations Q → ((P ⋁ Q).instantiated_n = (P.instantiated_n ⋁ Q.erased))
 
 axiom free_in_erased_of_free_in_instantiated {P: prop} {x: var}:
    x ∈ FV P.instantiated → x ∈ FV P.erased
@@ -158,8 +177,8 @@ lemma has_call.not.inv {c: calltrigger} {P: prop}: c ∈ calls P.not → c ∈ c
     case has_call.not P_has_call { from P_has_call }
   end
 
-lemma has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ && P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
-  assume and_has_call: c ∈ calls (P₁ && P₂),
+lemma has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ ⋀ P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
+  assume and_has_call: c ∈ calls (P₁ ⋀ P₂),
   begin
     cases and_has_call,
     case has_call.and₁ P₁_has_call {
@@ -170,8 +189,8 @@ lemma has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ && 
     }
   end
 
-lemma has_call.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ || P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
-  assume or_has_call: c ∈ calls (P₁ || P₂),
+lemma has_call.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ ⋁ P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
+  assume or_has_call: c ∈ calls (P₁ ⋁ P₂),
   begin
     cases or_has_call,
     case has_call.or₁ P₁_has_call {
@@ -225,8 +244,8 @@ lemma has_quantifier.not.inv {q: callquantifier} {P: prop}: q ∈ quantifiers P.
   end
 
 lemma has_quantifier.and.inv {q: callquantifier} {P₁ P₂: prop}:
-      q ∈ quantifiers (P₁ && P₂) → q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂ :=
-  assume and_has_quantifier: q ∈ quantifiers (P₁ && P₂),
+      q ∈ quantifiers (P₁ ⋀ P₂) → q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂ :=
+  assume and_has_quantifier: q ∈ quantifiers (P₁ ⋀ P₂),
   begin
     cases and_has_quantifier,
     case has_quantifier.and₁ P₁_has_quantifier {
@@ -238,8 +257,8 @@ lemma has_quantifier.and.inv {q: callquantifier} {P₁ P₂: prop}:
   end
 
 lemma has_quantifier.or.inv {q: callquantifier} {P₁ P₂: prop}:
-      q ∈ quantifiers (P₁ || P₂) → q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂ :=
-  assume or_has_quantifier: q ∈ quantifiers (P₁ || P₂),
+      q ∈ quantifiers (P₁ ⋁ P₂) → q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂ :=
+  assume or_has_quantifier: q ∈ quantifiers (P₁ ⋁ P₂),
   begin
     cases or_has_quantifier,
     case has_quantifier.or₁ P₁_has_quantifier {
@@ -288,6 +307,51 @@ lemma has_quantifier.exis.inv {q: callquantifier} {x: var} {P: prop}:
     case has_quantifier.exis P_has_quantifier { from P_has_quantifier }
   end
 
+lemma has_call_env.and₁ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+      c ∈ calls_env σ P₁ → c ∈ calls_env σ (P₁ ⋀ P₂) :=
+  assume : c ∈ calls_env σ P₁,
+  have c ∈ (calltrigger.subst σ) '' calls P₁, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls P₁)
+      (λa, a ∈ calls_env σ (P₁ ⋀ P₂)) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls P₁,
+    have c' ∈ calls (P₁ ⋀ P₂), from has_call.and₁ this,
+    show calltrigger.subst σ c' ∈ calls_env σ (P₁ ⋀ P₂), from set.mem_image this rfl
+  )
+
+lemma has_call_env.and₂ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+      c ∈ calls_env σ P₂ → c ∈ calls_env σ (P₁ ⋀ P₂) :=
+  assume : c ∈ calls_env σ P₂,
+  have c ∈ (calltrigger.subst σ) '' calls P₂, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls P₂)
+      (λa, a ∈ calls_env σ (P₁ ⋀ P₂)) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls P₂,
+    have c' ∈ calls (P₁ ⋀ P₂), from has_call.and₂ this,
+    show calltrigger.subst σ c' ∈ calls_env σ (P₁ ⋀ P₂), from set.mem_image this rfl
+  )
+
+lemma has_call_env.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+      c ∈ calls_env σ (P₁ ⋀ P₂) → c ∈ calls_env σ P₁ ∨ c ∈ calls_env σ P₂ :=
+  assume : c ∈ calls_env σ (P₁ ⋀ P₂),
+  have c ∈ (calltrigger.subst σ) '' calls (P₁ ⋀ P₂), from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls (P₁ ⋀ P₂))
+      (λa, a ∈ calls_env σ P₁ ∨ a ∈ calls_env σ P₂) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls (P₁ ⋀ P₂),
+    or.elim (has_call.and.inv this) (
+      assume : c' ∈ calls P₁,
+      have calltrigger.subst σ c' ∈ calls_env σ P₁, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_env σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_env σ P₂, from or.inl this
+    ) (
+      assume : c' ∈ calls P₂,
+      have calltrigger.subst σ c' ∈ calls_env σ P₂, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_env σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_env σ P₂, from or.inr this
+    )
+  )
+
 lemma no_instantiations.term {t: term}: no_instantiations t :=
   have h1: calls t = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
@@ -323,9 +387,9 @@ lemma no_instantiations.and {P₁ P₂: prop}:
       no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.and P₁ P₂) :=
   assume ⟨no_calls_in_P₁, no_quantifiers_in_P₁⟩,
   assume ⟨no_calls_in_P₂, no_quantifiers_in_P₂⟩,
-  have h1: calls (P₁ && P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h1: calls (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
-    assume : c ∈ calls (P₁ && P₂),
+    assume : c ∈ calls (P₁ ⋀ P₂),
     have c ∈ calls P₁ ∨ c ∈ calls P₂, from has_call.and.inv this,
     or.elim this (
       assume c_in_calls_P₁: c ∈ calls P₁,
@@ -337,9 +401,9 @@ lemma no_instantiations.and {P₁ P₂: prop}:
       show «false», from c_not_in_calls_P₂ c_in_calls_P₂
     )
   ),
-  have h2: quantifiers (P₁ && P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: quantifiers (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
-    assume : q ∈ quantifiers (P₁ && P₂),
+    assume : q ∈ quantifiers (P₁ ⋀ P₂),
     have q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from has_quantifier.and.inv this,
     or.elim this (
       assume q_in_quantifiers_P₁: q ∈ quantifiers P₁,
@@ -357,9 +421,9 @@ lemma no_instantiations.or {P₁ P₂: prop}:
       no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.or P₁ P₂) :=
   assume ⟨no_calls_in_P₁, no_quantifiers_in_P₁⟩,
   assume ⟨no_calls_in_P₂, no_quantifiers_in_P₂⟩,
-  have h1: calls (P₁ || P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h1: calls (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
-    assume : c ∈ calls (P₁ || P₂),
+    assume : c ∈ calls (P₁ ⋁ P₂),
     have c ∈ calls P₁ ∨ c ∈ calls P₂, from has_call.or.inv this,
     or.elim this (
       assume c_in_calls_P₁: c ∈ calls P₁,
@@ -371,9 +435,9 @@ lemma no_instantiations.or {P₁ P₂: prop}:
       show «false», from c_not_in_calls_P₂ c_in_calls_P₂
     )
   ),
-  have h2: quantifiers (P₁ || P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: quantifiers (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
-    assume : q ∈ quantifiers (P₁ || P₂),
+    assume : q ∈ quantifiers (P₁ ⋁ P₂),
     have q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from has_quantifier.or.inv this,
     or.elim this (
       assume q_in_quantifiers_P₁: q ∈ quantifiers P₁,
@@ -443,15 +507,15 @@ lemma prop.erased.implies {P Q: prop}:
       (prop.implies P Q).erased = vc.implies P.erased_n Q.erased :=
   by calc 
        (prop.implies P Q).erased = (prop.or (prop.not P) Q).erased : rfl
-                             ... = (prop.not P).erased || Q.erased : by unfold prop.erased
-                             ... = (vc.not P.erased_n) || Q.erased : by unfold prop.erased
+                             ... = ((prop.not P).erased ⋁ Q.erased) : by unfold prop.erased
+                             ... = ((vc.not P.erased_n) ⋁ Q.erased) : by unfold prop.erased
 
 lemma prop.erased_n.implies {P Q: prop}:
       (prop.implies P Q).erased_n = vc.implies P.erased Q.erased_n :=
   by calc 
        (prop.implies P Q).erased_n = (prop.or (prop.not P) Q).erased_n : rfl
-                               ... = (prop.not P).erased_n || Q.erased_n : by unfold prop.erased_n
-                               ... = (vc.not P.erased) || Q.erased_n : by unfold prop.erased_n
+                               ... = ((prop.not P).erased_n ⋁ Q.erased_n) : by unfold prop.erased_n
+                               ... = (vc.not P.erased ⋁ Q.erased_n) : by unfold prop.erased_n
 
 lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.erased_n) → x ∈ FV P :=
   assume x_free_in_erased_or_erased_n: x ∈ FV P.erased ∨ x ∈ FV P.erased_n,
@@ -493,63 +557,63 @@ lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.
     )},
     case prop.and P₁ P₂ P₁_ih P₂_ih { from (
       or.elim x_free_in_erased_or_erased_n (
-        assume x_free: x ∈ FV (P₁ && P₂).erased,
-        have (prop.and P₁ P₂).erased = P₁.erased && P₂.erased, by unfold prop.erased,
-        have x ∈ FV (P₁.erased && P₂.erased), from this ▸ x_free,
+        assume x_free: x ∈ FV (P₁ ⋀ P₂).erased,
+        have (prop.and P₁ P₂).erased = (P₁.erased ⋀ P₂.erased), by unfold prop.erased,
+        have x ∈ FV (P₁.erased ⋀ P₂.erased), from this ▸ x_free,
         have x ∈ FV P₁.erased ∨ x ∈ FV P₂.erased, from free_in_vc.and.inv this,
         or.elim this (
           assume : x ∈ FV P₁.erased,
           have x ∈ FV P₁, from P₁_ih (or.inl this),
-          show x ∈ FV (P₁ && P₂), from free_in_prop.and₁ this
+          show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
         ) (
           assume : x ∈ FV P₂.erased,
           have x ∈ FV P₂, from P₂_ih (or.inl this),
-          show x ∈ FV (P₁ && P₂), from free_in_prop.and₂ this
+          show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this
         )
       ) (
-        assume x_free: x ∈ FV (P₁ && P₂).erased_n,
-        have (prop.and P₁ P₂).erased_n = P₁.erased_n && P₂.erased_n, by unfold prop.erased_n,
-        have x ∈ FV (P₁.erased_n && P₂.erased_n), from this ▸ x_free,
+        assume x_free: x ∈ FV (P₁ ⋀ P₂).erased_n,
+        have (prop.and P₁ P₂).erased_n = (P₁.erased_n ⋀ P₂.erased_n), by unfold prop.erased_n,
+        have x ∈ FV (P₁.erased_n ⋀ P₂.erased_n), from this ▸ x_free,
         have x ∈ FV P₁.erased_n ∨ x ∈ FV P₂.erased_n, from free_in_vc.and.inv this,
         or.elim this (
           assume : x ∈ FV P₁.erased_n,
           have x ∈ FV P₁, from P₁_ih (or.inr this),
-          show x ∈ FV (P₁ && P₂), from free_in_prop.and₁ this
+          show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
         ) (
           assume : x ∈ FV P₂.erased_n,
           have x ∈ FV P₂, from P₂_ih (or.inr this),
-          show x ∈ FV (P₁ && P₂), from free_in_prop.and₂ this
+          show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this
         )
       )
     )},
     case prop.or P₁ P₂ P₁_ih P₂_ih { from (
       or.elim x_free_in_erased_or_erased_n (
-        assume x_free: x ∈ FV (P₁ || P₂).erased,
-        have (prop.or P₁ P₂).erased = P₁.erased || P₂.erased, by unfold prop.erased,
-        have x ∈ FV (P₁.erased || P₂.erased), from this ▸ x_free,
+        assume x_free: x ∈ FV (P₁ ⋁ P₂).erased,
+        have (prop.or P₁ P₂).erased = (P₁.erased ⋁ P₂.erased), by unfold prop.erased,
+        have x ∈ FV (P₁.erased ⋁ P₂.erased), from this ▸ x_free,
         have x ∈ FV P₁.erased ∨ x ∈ FV P₂.erased, from free_in_vc.or.inv this,
         or.elim this (
           assume : x ∈ FV P₁.erased,
           have x ∈ FV P₁, from P₁_ih (or.inl this),
-          show x ∈ FV (P₁ || P₂), from free_in_prop.or₁ this
+          show x ∈ FV (P₁ ⋁ P₂), from free_in_prop.or₁ this
         ) (
           assume : x ∈ FV P₂.erased,
           have x ∈ FV P₂, from P₂_ih (or.inl this),
-          show x ∈ FV (P₁ || P₂), from free_in_prop.or₂ this
+          show x ∈ FV (P₁ ⋁ P₂), from free_in_prop.or₂ this
         )
       ) (
-        assume x_free: x ∈ FV (P₁ || P₂).erased_n,
-        have (prop.or P₁ P₂).erased_n = P₁.erased_n || P₂.erased_n, by unfold prop.erased_n,
-        have x ∈ FV (P₁.erased_n || P₂.erased_n), from this ▸ x_free,
+        assume x_free: x ∈ FV (P₁ ⋁ P₂).erased_n,
+        have (prop.or P₁ P₂).erased_n = (P₁.erased_n ⋁ P₂.erased_n), by unfold prop.erased_n,
+        have x ∈ FV (P₁.erased_n ⋁ P₂.erased_n), from this ▸ x_free,
         have x ∈ FV P₁.erased_n ∨ x ∈ FV P₂.erased_n, from free_in_vc.or.inv this,
         or.elim this (
           assume : x ∈ FV P₁.erased_n,
           have x ∈ FV P₁, from P₁_ih (or.inr this),
-          show x ∈ FV (P₁ || P₂), from free_in_prop.or₁ this
+          show x ∈ FV (P₁ ⋁ P₂), from free_in_prop.or₁ this
         ) (
           assume : x ∈ FV P₂.erased_n,
           have x ∈ FV P₂, from P₂_ih (or.inr this),
-          show x ∈ FV (P₁ || P₂), from free_in_prop.or₂ this
+          show x ∈ FV (P₁ ⋁ P₂), from free_in_prop.or₂ this
         )
       )
     )},
