@@ -5,6 +5,11 @@ import .syntax .notations .evaluation .substitution .qi .vcgen
 axiom valid.tru:
   ⊨ value.true
 
+axiom valid.not {P: vc}:
+  ¬ (⊨ P)
+  ↔
+  ⊨ P.not
+
 axiom valid.and {P Q: vc}:
   (⊨ P) ∧ (⊨ Q)
   ↔
@@ -121,11 +126,44 @@ axiom valid_env.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q:
   dominates σ P P' →
   σ ⊨ vc.implies (P ⋀ Q).instantiated_n (P' ⋀ Q).instantiated_n
 
-axiom valid_env.strengthen_or_with_dominating_instantiations {σ: env} {P P' Q: prop}:
-  dominates σ P P' →
-  σ ⊨ vc.implies (P ⋁ Q).instantiated_n (P' ⋁ Q).instantiated_n
+axiom valid_env.and_not_dist_with_instantiations {σ: env} {P Q: prop}:
+  (σ ⊨ (P ⋁ Q).not.instantiated_n) ↔ (σ ⊨ (P.not ⋀ Q.not).instantiated_n)
 
 -- lemmas
+
+lemma valid.neg_neg {P: vc}: (⊨ P.not.not) ↔ ⊨ P :=
+  iff.intro (
+    assume : ⊨ P.not.not,
+    have h1: ¬ ⊨ P.not, from valid.not.mpr this,
+    have h2: ¬ ¬ ⊨ P, from (
+      assume : ¬ ⊨ P,
+      have ⊨ P.not, from valid.not.mp this,
+      show «false», from h1 this
+    ),
+    show ⊨ P, from classical.by_contradiction (
+      assume : ¬ ⊨ P,
+      show «false», from h2 this
+    )
+  ) (
+    assume h1: ⊨ P,
+    have h2: ¬ ⊨ P.not, from (
+      assume : ⊨ P.not,
+      have ¬ ⊨ P, from valid.not.mpr this,
+      show «false», from this h1
+    ),
+    show ⊨ P.not.not, from valid.not.mp h2
+  )
+
+lemma valid.mt {P Q: vc}: (⊨ vc.implies P Q) → (⊨ Q.not) → ⊨ P.not :=
+  assume h1: ⊨ vc.implies P Q,
+  assume : ⊨ Q.not,
+  have h2: ¬ ⊨ Q, from valid.not.mpr this,
+  have ¬ ⊨ P, from (
+    assume : ⊨ P,
+    have ⊨ Q, from valid.implies.mpr h1 this,
+    show «false», from h2 this
+  ),
+  show ⊨ P.not, from valid.not.mp this
 
 lemma valid.instantiated_of_erased {P: prop}: (⊨ P.erased) → ⊨ P.instantiated :=
   assume h: ⊨ P.erased,
@@ -195,6 +233,18 @@ lemma valid_env.true {σ: env}: σ ⊨ value.true :=
   have vc.subst_env σ value.true = vc.term (term.subst_env σ value.true), from vc.subst_env.term,
   show σ ⊨ value.true, from this.symm ▸ h2
 
+lemma valid_env.mt {σ: env} {P Q: vc}: (σ ⊨ vc.implies P Q) → (σ ⊨ Q.not) → σ ⊨ P.not :=
+  assume h1: σ ⊨ vc.implies P Q,
+  have vc.subst_env σ (vc.implies P Q) = vc.implies (vc.subst_env σ P) (vc.subst_env σ Q),
+  from vc.subst_env.implies,
+  have h2: ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from this ▸ h1,
+  assume h3: σ ⊨ Q.not,
+  have vc.subst_env σ Q.not = (vc.subst_env σ Q).not, from vc.subst_env.not,
+  have h4: ⊨ (vc.subst_env σ Q).not, from this ▸ h3,
+  have h5: ⊨ (vc.subst_env σ P).not, from valid.mt h2 h4,
+  have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+  show σ ⊨ P.not, from this.symm ▸ h5
+
 lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (t ≡ value.true) :=
   iff.intro (
     assume t_valid: ⊨ vc.subst_env σ t,
@@ -226,6 +276,23 @@ lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (t ≡ value.tr
     show ⊨ vc.subst_env σ t, from this.symm ▸ h3
   )
 
+lemma valid_env.neg_neg {σ: env} {P: vc}: (σ ⊨ P.not.not) ↔ σ ⊨ P :=
+  iff.intro (
+    assume h1: σ ⊨ P.not.not,
+    have vc.subst_env σ P.not.not = (vc.subst_env σ P.not).not, from vc.subst_env.not,
+    have h2: ⊨ (vc.subst_env σ P.not).not, from this ▸ h1,
+    have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+    have  ⊨ (vc.subst_env σ P).not.not, from this ▸ h2,
+    show σ ⊨ P, from valid.neg_neg.mp this
+  ) (
+    assume : σ ⊨ P,
+    have h1: ⊨ (vc.subst_env σ P).not.not, from valid.neg_neg.mpr this,
+    have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+    have h2: ⊨ (vc.subst_env σ P.not).not, from this.symm ▸ h1,
+    have vc.subst_env σ P.not.not = (vc.subst_env σ P.not).not, from vc.subst_env.not,
+    show σ ⊨ P.not.not, from this.symm ▸ h2
+  )
+
 lemma valid_env.and {σ: env} {P Q: vc}: (σ ⊨ P) → (σ ⊨ Q) → σ ⊨ (P ⋀ Q) :=
   assume p_valid: ⊨ vc.subst_env σ P,
   assume q_valid: ⊨ vc.subst_env σ Q,
@@ -237,6 +304,21 @@ lemma valid_env.and.elim {σ: env} {P Q: vc}: (σ ⊨ P ⋀ Q) → (σ ⊨ P) �
   have vc.subst_env σ (P ⋀ Q) = (vc.subst_env σ P ⋀ vc.subst_env σ Q), from vc.subst_env.and,
   have ⊨ (vc.subst_env σ P ⋀ vc.subst_env σ Q), from this ▸ p_and_q_valid,
   show (σ ⊨ P) ∧ (σ ⊨ Q), from valid.and.mpr this
+
+lemma valid_env.not {σ: env} {P: vc}: ¬ (σ ⊨ P) ↔ (σ ⊨ P.not) :=
+  iff.intro (
+    assume h1: ¬ (σ ⊨ P),
+    have h2: vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+    have ¬ ⊨ (vc.subst_env σ P), from h2 ▸ h1,
+    have ⊨ (vc.subst_env σ P).not, from valid.not.mp this,
+    show σ ⊨ P.not, from h2.symm ▸ this
+  ) (
+    assume h1: σ ⊨ P.not,
+    have h2: vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+    have ⊨ (vc.subst_env σ P).not, from h2 ▸ h1,
+    have ¬ ⊨ (vc.subst_env σ P), from valid.not.mpr this,
+    show ¬ (σ ⊨ P), from h2.symm ▸ this
+  )
 
 lemma valid_env.mp {σ: env} {P Q: vc}: (σ ⊨ vc.implies P Q) → (σ ⊨ P) → σ ⊨ Q :=
   assume impl: σ ⊨ (vc.implies P Q),

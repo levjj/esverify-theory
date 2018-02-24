@@ -47,32 +47,55 @@ with prop.erased_n: prop → vc
 | (prop.exis x P)      := have P.size < P.size + 1, from lt_of_add_one,
                           vc.not (vc.univ x (vc.not P.erased_n))
 
-inductive has_call (c: calltrigger) : prop → Prop
-| calltrigger                           : has_call (prop.call c.f c.x)
-| not {P: prop}                         : has_call P  → has_call P.not
-| and₁ {P₁ P₂: prop}                    : has_call P₁ → has_call (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop}                    : has_call P₂ → has_call (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop}                     : has_call P₁ → has_call (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop}                     : has_call P₂ → has_call (P₁ ⋁ P₂)
-| forallc {y: var} {t: term} {P: prop}  : has_call P  → has_call (prop.forallc y t P)
-| exis {y: var} {P: prop}               : has_call P  → has_call (prop.exis y P)
+-- top-level calls and quantifiers in positive and negative positions
+mutual inductive prop.has_call, prop.has_call_n
 
-def calls (p: prop): set calltrigger := λc, has_call c p
+with prop.has_call: calltrigger → prop → Prop
+| calltrigger {f x: term}                               : prop.has_call ⟨f, x⟩ (prop.call f x)
+| not {P: prop} {c: calltrigger}                        : prop.has_call_n c P  → prop.has_call c P.not
+| and₁ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call   c P₁ → prop.has_call c (P₁ ⋀ P₂)
+| and₂ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call   c P₂ → prop.has_call c (P₁ ⋀ P₂)
+| or₁ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call   c P₁ → prop.has_call c (P₁ ⋁ P₂)
+| or₂ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call   c P₂ → prop.has_call c (P₁ ⋁ P₂)
+| exis {y: var} {P: prop} {c: calltrigger}              : prop.has_call   c P  → prop.has_call c (prop.exis y P)
 
-inductive has_quantifier (q: callquantifier) : prop → Prop
-| callquantifier                        : has_quantifier (prop.forallc q.x q.f q.P)
-| not {P: prop}                         : has_quantifier P  → has_quantifier P.not
-| and₁ {P₁ P₂: prop}                    : has_quantifier P₁ → has_quantifier (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop}                    : has_quantifier P₂ → has_quantifier (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop}                     : has_quantifier P₁ → has_quantifier (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop}                     : has_quantifier P₂ → has_quantifier (P₁ ⋁ P₂)
-| forallc {y: var} {t: term} {P: prop}  : has_quantifier P  → has_quantifier (prop.forallc y t P)
-| exis {y: var} {P: prop}               : has_quantifier P  → has_quantifier (prop.exis y P)
+with prop.has_call_n: calltrigger → prop → Prop
+| calltrigger {f x: term}                               : prop.has_call_n ⟨f, x⟩ (prop.call f x)
+| not {P: prop} {c: calltrigger}                        : prop.has_call   c P  → prop.has_call_n c P.not
+| and₁ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_n c P₁ → prop.has_call_n c (P₁ ⋀ P₂)
+| and₂ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_n c P₂ → prop.has_call_n c (P₁ ⋀ P₂)
+| or₁ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_n c P₁ → prop.has_call_n c (P₁ ⋁ P₂)
+| or₂ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_n c P₂ → prop.has_call_n c (P₁ ⋁ P₂)
+| exis {y: var} {P: prop} {c: calltrigger}              : prop.has_call_n c P  → prop.has_call_n c (prop.exis y P)
 
-def quantifiers (p: prop): set callquantifier := λc, has_quantifier c p
+def calls (P: prop): set calltrigger := λc, prop.has_call c P
+def calls_n (P: prop): set calltrigger := λc, prop.has_call_n c P
+
+mutual inductive prop.has_quantifier, prop.has_quantifier_n
+
+with prop.has_quantifier: callquantifier → prop → Prop
+| callquantifier {x: var} {f: term} {P: prop} : prop.has_quantifier ⟨f, x, P⟩ (prop.forallc x f P)
+| not {P: prop} {q: callquantifier}           : prop.has_quantifier_n q P  → prop.has_quantifier q P.not
+| and₁ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier   q P₁ → prop.has_quantifier q (P₁ ⋀ P₂)
+| and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier   q P₂ → prop.has_quantifier q (P₁ ⋀ P₂)
+| or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier   q P₁ → prop.has_quantifier q (P₁ ⋁ P₂)
+| or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier   q P₂ → prop.has_quantifier q (P₁ ⋁ P₂)
+| exis {y: var} {P: prop} {q: callquantifier} : prop.has_quantifier   q P  → prop.has_quantifier q (prop.exis y P)
+
+with prop.has_quantifier_n: callquantifier → prop → Prop
+| callquantifier {x: var} {f: term} {P: prop} : prop.has_quantifier_n ⟨f, x, P⟩ (prop.forallc x f P)
+| not {P: prop} {q: callquantifier}           : prop.has_quantifier   q P  → prop.has_quantifier_n q P.not
+| and₁ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋀ P₂)
+| and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋀ P₂)
+| or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋁ P₂)
+| or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋁ P₂)
+| exis {y: var} {P: prop} {q: callquantifier} : prop.has_quantifier_n q P  → prop.has_quantifier_n q (prop.exis y P)
+
+def quantifiers (P: prop): set callquantifier := λc, has_quantifier c P
+def quantifiers_n (P: prop): set callquantifier := λc, has_quantifier_n c P
 
  -- propositions without call triggers or quantifiers do not participate in instantiations
-def no_instantiations(P: prop): Prop := (calls P = ∅) ∧ (quantifiers P = ∅)
+def no_instantiations(P: prop): Prop := (calls P = ∅) ∧ (calls_n P = ∅) ∧ (quantifiers P = ∅) ∧ (quantifiers_n P = ∅)
 
 def calltrigger.subst (σ: env) (c: calltrigger): calltrigger := ⟨term.subst_env σ c.f, term.subst_env σ c.x⟩
 
@@ -80,18 +103,165 @@ def calltrigger.subst (σ: env) (c: calltrigger): calltrigger := ⟨term.subst_e
 def calls_env (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls P
 
 @[reducible]
-def qualifiers_dominate (σ: env) (P P': prop): Prop :=
-  ∀(t': term) (x: var) (Q': prop), callquantifier.mk t' x Q' ∈ quantifiers P' →
-  ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
-                        ∀v: value, σ[x↦v] ⊨ vc.implies Q.instantiated Q'.instantiated
+def calls_n_env (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_n P
+
+lemma quantifiers_smaller_than_prop {f: term} {x: var} {P Q: prop}:
+     ((callquantifier.mk f x P ∈ quantifiers Q) → P.size < Q.size) ∧
+     ((callquantifier.mk f x P ∈ quantifiers_n Q) → P.size < Q.size) :=
+begin
+  induction Q,
+  case prop.term t {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q
+  },
+  case prop.not P₁ P₁_ih {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.right a,
+    have h2: prop.size P₁ < prop.size P₁.not, from lt_of_add_one,
+    from lt.trans h h2,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.left a,
+    have h2: prop.size P₁ < prop.size P₁.not, from lt_of_add_one,
+    from lt.trans h h2
+  },
+  case prop.and P₁ P₂ P₁_ih P₂_ih {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.left a,
+    have h2: prop.size P₁ < prop.size (P₁ ⋀ P₂), from lt_of_add.left,
+    from lt.trans h h2,
+    have h: prop.size P < prop.size P₂, from P₂_ih.left a,
+    have h2: prop.size P₂ < prop.size (P₁ ⋀ P₂), from lt_of_add.right,
+    from lt.trans h h2,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.right a,
+    have h2: prop.size P₁ < prop.size (P₁ ⋀ P₂), from lt_of_add.left,
+    from lt.trans h h2,
+    have h: prop.size P < prop.size P₂, from P₂_ih.right a,
+    have h2: prop.size P₂ < prop.size (P₁ ⋀ P₂), from lt_of_add.right,
+    from lt.trans h h2
+  },
+  case prop.or P₁ P₂ P₁_ih P₂_ih {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.left a,
+    have h2: prop.size P₁ < prop.size (P₁ ⋁ P₂), from lt_of_add.left,
+    from lt.trans h h2,
+    have h: prop.size P < prop.size P₂, from P₂_ih.left a,
+    have h2: prop.size P₂ < prop.size (P₁ ⋁ P₂), from lt_of_add.right,
+    from lt.trans h h2,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.right a,
+    have h2: prop.size P₁ < prop.size (P₁ ⋁ P₂), from lt_of_add.left,
+    from lt.trans h h2,
+    have h: prop.size P < prop.size P₂, from P₂_ih.right a,
+    have h2: prop.size P₂ < prop.size (P₁ ⋁ P₂), from lt_of_add.right,
+    from lt.trans h h2
+  },
+  case prop.pre {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q
+  },
+  case prop.pre₁ {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q
+  },
+  case prop.pre₂ {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q
+  },
+  case prop.post {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q
+  },
+  case prop.call {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q
+  },
+  case prop.forallc y t P₁ P₁_ih {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+    from lt_of_add_one,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q,
+    from lt_of_add_one
+  },
+  case prop.exis y P₁ P₁_ih {
+    split,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.left a,
+    have h2: prop.size P₁ < prop.size P₁.not, from lt_of_add_one,
+    from lt.trans h h2,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a,
+    have h: prop.size P < prop.size P₁, from P₁_ih.right a,
+    have h2: prop.size P₁ < prop.size P₁.not, from lt_of_add_one,
+    from lt.trans h h2
+  }
+end
+
+def dominates': prop → prop → env → Prop
+| P' P σ :=
+    (σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
+    (calls_env σ P = calls_env σ P') ∧
+    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
+                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
+                          (∀v: value, dominates' Q' Q (σ[x↦v])))
 
 -- given a environment σ, P dominates P' if P implies P' and
 -- P has matching or stronger triggers and quantifiers than P'
 @[reducible]
-def dominates (σ: env) (P P': prop): Prop :=
-  calls_env σ P = calls_env σ P' ∧
-  qualifiers_dominate σ P P' ∧
-  σ ⊨ vc.implies P.instantiated_n P'.instantiated_n
+def dominates (σ: env) (P P': prop): Prop := dominates' P' P σ
 
 -- axioms about instantiation
 
@@ -100,6 +270,9 @@ axiom instantiated.forallc {x: var} {t: term} {P: prop}:
 
 axiom not_dist_instantiated {P: prop}:
   P.not.instantiated = P.instantiated_n.not
+
+axiom not_dist_instantiated_n {P: prop}:
+  P.not.instantiated_n = P.instantiated.not
 
 axiom and_dist_of_no_instantiations {P Q: prop}:
   no_instantiations Q → ((P ⋀ Q).instantiated = (P.instantiated ⋀ Q.erased))
@@ -166,148 +339,243 @@ begin
 
 end
 
-lemma has_call.term.inv {c: calltrigger} {t: term}: c ∉ calls t :=
+lemma prop.has_call.term.inv {c: calltrigger} {t: term}: c ∉ calls t :=
   assume t_has_call: has_call c t,
   show «false», by cases t_has_call
 
-lemma has_call.not.inv {c: calltrigger} {P: prop}: c ∈ calls P.not → c ∈ calls P :=
+lemma prop.has_call.not.inv {c: calltrigger} {P: prop}: c ∈ calls P.not → c ∈ calls_n P :=
   assume not_has_call: c ∈ calls P.not,
   begin
     cases not_has_call,
-    case has_call.not P_has_call { from P_has_call }
+    from a
   end
 
-lemma has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ ⋀ P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
+lemma prop.has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ ⋀ P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
   assume and_has_call: c ∈ calls (P₁ ⋀ P₂),
   begin
     cases and_has_call,
-    case has_call.and₁ P₁_has_call {
-      show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inl P₁_has_call
-    },
-    case has_call.and₂ P₂_has_call {
-      show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inr P₂_has_call
-    }
+    show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inl a,
+    show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inr a
   end
 
-lemma has_call.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ ⋁ P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
+lemma prop.has_call.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls (P₁ ⋁ P₂) → c ∈ calls P₁ ∨ c ∈ calls P₂ :=
   assume or_has_call: c ∈ calls (P₁ ⋁ P₂),
   begin
     cases or_has_call,
-    case has_call.or₁ P₁_has_call {
-      show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inl P₁_has_call
-    },
-    case has_call.or₂ P₂_has_call {
-      show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inr P₂_has_call
-    }
+    show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inl a,
+    show c ∈ calls P₁ ∨ c ∈ calls P₂, from or.inr a
   end
 
-lemma has_call.pre₁.inv {c: calltrigger} {op: unop} {t: term}: c ∉ calls (prop.pre₁ op t) :=
+lemma prop.has_call.pre₁.inv {c: calltrigger} {op: unop} {t: term}: c ∉ calls (prop.pre₁ op t) :=
   assume pre_has_call: c ∈ calls (prop.pre₁ op t),
   show «false», by cases pre_has_call
 
-lemma has_call.pre₂.inv {c: calltrigger} {op: binop} {t₁ t₂: term}: c ∉ calls (prop.pre₂ op t₁ t₂) :=
+lemma prop.has_call.pre₂.inv {c: calltrigger} {op: binop} {t₁ t₂: term}: c ∉ calls (prop.pre₂ op t₁ t₂) :=
   assume pre_has_call: c ∈ calls (prop.pre₂ op t₁ t₂),
   show «false», by cases pre_has_call
 
-lemma has_call.pre.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls (prop.pre t₁ t₂) :=
+lemma prop.has_call.pre.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls (prop.pre t₁ t₂) :=
   assume pre_has_call: c ∈ calls (prop.pre t₁ t₂),
   show «false», by cases pre_has_call
 
-lemma has_call.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls (prop.post t₁ t₂) :=
+lemma prop.has_call.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls (prop.post t₁ t₂) :=
   assume post_has_call: c ∈ calls (prop.post t₁ t₂),
   show «false», by cases post_has_call
 
-lemma has_call.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
-      c ∈ calls (prop.forallc x t P) → c ∈ calls P :=
+lemma prop.has_call.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
+      c ∉ calls (prop.forallc x t P) :=
   assume forall_has_call: c ∈ calls (prop.forallc x t P),
   begin
-    cases forall_has_call,
-    case has_call.forallc P_has_call { from P_has_call }
+    cases forall_has_call
   end
 
-lemma has_call.exis.inv {c: calltrigger} {x: var} {P: prop}: c ∈ calls (prop.exis x P) → c ∈ calls P :=
+lemma prop.has_call.exis.inv {c: calltrigger} {x: var} {P: prop}: c ∈ calls (prop.exis x P) → c ∈ calls P :=
   assume exis_has_call: c ∈ calls (prop.exis x P),
   begin
     cases exis_has_call,
-    case has_call.exis P_has_call { from P_has_call }
+    from a
   end
 
-lemma has_quantifier.term.inv {q: callquantifier} {t: term}: q ∉ quantifiers t :=
-  assume t_has_quantifier: has_quantifier q t,
+lemma prop.has_call_n.term.inv {c: calltrigger} {t: term}: c ∉ calls_n t :=
+  assume t_has_call_n: has_call_n c t,
+  show «false», by cases t_has_call_n
+
+lemma prop.has_call_n.not.inv {c: calltrigger} {P: prop}: c ∈ calls_n P.not → c ∈ calls P :=
+  assume not_has_call_n: c ∈ calls_n P.not,
+  begin
+    cases not_has_call_n,
+    from a
+  end
+
+lemma prop.has_call_n.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_n (P₁ ⋀ P₂) → c ∈ calls_n P₁ ∨ c ∈ calls_n P₂ :=
+  assume and_has_call_n: c ∈ calls_n (P₁ ⋀ P₂),
+  begin
+    cases and_has_call_n,
+    show c ∈ calls_n P₁ ∨ c ∈ calls_n P₂, from or.inl a,
+    show c ∈ calls_n P₁ ∨ c ∈ calls_n P₂, from or.inr a
+  end
+
+lemma prop.has_call_n.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_n (P₁ ⋁ P₂) → c ∈ calls_n P₁ ∨ c ∈ calls_n P₂ :=
+  assume or_has_call_n: c ∈ calls_n (P₁ ⋁ P₂),
+  begin
+    cases or_has_call_n,
+    show c ∈ calls_n P₁ ∨ c ∈ calls_n P₂, from or.inl a,
+    show c ∈ calls_n P₁ ∨ c ∈ calls_n P₂, from or.inr a
+  end
+
+lemma prop.has_call_n.pre₁.inv {c: calltrigger} {op: unop} {t: term}: c ∉ calls_n (prop.pre₁ op t) :=
+  assume pre_has_call_n: c ∈ calls_n (prop.pre₁ op t),
+  show «false», by cases pre_has_call_n
+
+lemma prop.has_call_n.pre₂.inv {c: calltrigger} {op: binop} {t₁ t₂: term}: c ∉ calls_n (prop.pre₂ op t₁ t₂) :=
+  assume pre_has_call_n: c ∈ calls_n (prop.pre₂ op t₁ t₂),
+  show «false», by cases pre_has_call_n
+
+lemma prop.has_call_n.pre.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_n (prop.pre t₁ t₂) :=
+  assume pre_has_call_n: c ∈ calls_n (prop.pre t₁ t₂),
+  show «false», by cases pre_has_call_n
+
+lemma prop.has_call_n.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_n (prop.post t₁ t₂) :=
+  assume post_has_call_n: c ∈ calls_n (prop.post t₁ t₂),
+  show «false», by cases post_has_call_n
+
+lemma prop.has_call_n.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
+      c ∉ calls_n (prop.forallc x t P) :=
+  assume forall_has_call_n: c ∈ calls_n (prop.forallc x t P),
+  begin
+    cases forall_has_call_n
+  end
+
+lemma prop.has_call_n.exis.inv {c: calltrigger} {x: var} {P: prop}: c ∈ calls_n (prop.exis x P) → c ∈ calls_n P :=
+  assume exis_has_call_n: c ∈ calls_n (prop.exis x P),
+  begin
+    cases exis_has_call_n,
+    from a
+  end
+
+lemma prop.has_quantifier.term.inv {q: callquantifier} {t: term}: q ∉ quantifiers t :=
+  assume t_has_quantifier: prop.has_quantifier q t,
   show «false», by cases t_has_quantifier
 
-lemma has_quantifier.not.inv {q: callquantifier} {P: prop}: q ∈ quantifiers P.not → q ∈ quantifiers P :=
+lemma prop.has_quantifier.not.inv {q: callquantifier} {P: prop}: q ∈ quantifiers P.not → q ∈ quantifiers_n P :=
   assume not_has_quantifier: q ∈ quantifiers P.not,
   begin
-    cases not_has_quantifier,
-    case has_quantifier.not P_has_quantifier { from P_has_quantifier }
+    cases not_has_quantifier with a,
+    from a
   end
 
-lemma has_quantifier.and.inv {q: callquantifier} {P₁ P₂: prop}:
+lemma prop.has_quantifier.and.inv {q: callquantifier} {P₁ P₂: prop}:
       q ∈ quantifiers (P₁ ⋀ P₂) → q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂ :=
   assume and_has_quantifier: q ∈ quantifiers (P₁ ⋀ P₂),
   begin
     cases and_has_quantifier,
-    case has_quantifier.and₁ P₁_has_quantifier {
-      show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inl P₁_has_quantifier
-    },
-    case has_quantifier.and₂ P₂_has_quantifier {
-      show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inr P₂_has_quantifier
-    }
+    show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inl a,
+    show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inr a
   end
 
-lemma has_quantifier.or.inv {q: callquantifier} {P₁ P₂: prop}:
+lemma prop.has_quantifier.or.inv {q: callquantifier} {P₁ P₂: prop}:
       q ∈ quantifiers (P₁ ⋁ P₂) → q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂ :=
   assume or_has_quantifier: q ∈ quantifiers (P₁ ⋁ P₂),
   begin
     cases or_has_quantifier,
-    case has_quantifier.or₁ P₁_has_quantifier {
-      show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inl P₁_has_quantifier
-    },
-    case has_quantifier.or₂ P₂_has_quantifier {
-      show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inr P₂_has_quantifier
-    }
+    show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inl a,
+    show q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from or.inr a
   end
 
-lemma has_quantifier.pre₁.inv {q: callquantifier} {op: unop} {t: term}: q ∉ quantifiers (prop.pre₁ op t) :=
+lemma prop.has_quantifier.pre₁.inv {q: callquantifier} {op: unop} {t: term}: q ∉ quantifiers (prop.pre₁ op t) :=
   assume pre_has_quantifier: q ∈ quantifiers (prop.pre₁ op t),
   show «false», by cases pre_has_quantifier
 
-lemma has_quantifier.pre₂.inv {q: callquantifier} {op: binop} {t₁ t₂: term}: q ∉ quantifiers (prop.pre₂ op t₁ t₂) :=
+lemma prop.has_quantifier.pre₂.inv {q: callquantifier} {op: binop} {t₁ t₂: term}: q ∉ quantifiers (prop.pre₂ op t₁ t₂) :=
   assume pre_has_quantifier: q ∈ quantifiers (prop.pre₂ op t₁ t₂),
   show «false», by cases pre_has_quantifier
 
-lemma has_quantifier.pre.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers (prop.pre t₁ t₂) :=
+lemma prop.has_quantifier.pre.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers (prop.pre t₁ t₂) :=
   assume pre_has_quantifier: q ∈ quantifiers (prop.pre t₁ t₂),
   show «false», by cases pre_has_quantifier
 
-lemma has_quantifier.post.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers (prop.post t₁ t₂) :=
+lemma prop.has_quantifier.post.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers (prop.post t₁ t₂) :=
   assume post_has_quantifier: q ∈ quantifiers (prop.post t₁ t₂),
   show «false», by cases post_has_quantifier
 
-lemma has_quantifier.forallc.inv {q: callquantifier} {x: var} {t: term} {P: prop}:
+lemma prop.has_quantifier.forallc.inv {q: callquantifier} {x: var} {t: term} {P: prop}:
       q ∈ quantifiers (prop.forallc x t P) → (q = ⟨t, x, P⟩) ∨ q ∈ quantifiers P :=
   assume forall_has_quantifier: q ∈ quantifiers (prop.forallc x t P),
   begin
     cases forall_has_quantifier,
-    case has_quantifier.callquantifier {
-      have : (q = { f := q.f, x := q.x, P := q.P}), by { cases q, simp },
-      show (q = {f := q.f, x := q.x, P := q.P}) ∨ q ∈ quantifiers (q.P), from or.inl this
-    },
-    case has_quantifier.forallc P_has_quantifier {
-      show (q = ⟨t, x, P⟩) ∨ q ∈ quantifiers P, from or.inr P_has_quantifier
-    }
+    from or.inl rfl
   end
 
-lemma has_quantifier.exis.inv {q: callquantifier} {x: var} {P: prop}:
+lemma prop.has_quantifier.exis.inv {q: callquantifier} {x: var} {P: prop}:
       q ∈ quantifiers (prop.exis x P) → q ∈ quantifiers P :=
   assume exis_has_quantifier: q ∈ quantifiers (prop.exis x P),
   begin
     cases exis_has_quantifier,
-    case has_quantifier.exis P_has_quantifier { from P_has_quantifier }
+    from a
   end
 
-lemma has_call_env.and₁ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+lemma prop.has_quantifier_n.term.inv {q: callquantifier} {t: term}: q ∉ quantifiers_n t :=
+  assume t_has_quantifier_n: prop.has_quantifier_n q t,
+  show «false», by cases t_has_quantifier_n
+
+lemma prop.has_quantifier_n.not.inv {q: callquantifier} {P: prop}: q ∈ quantifiers_n P.not → q ∈ quantifiers P :=
+  assume not_has_quantifier_n: q ∈ quantifiers_n P.not,
+  begin
+    cases not_has_quantifier_n with a,
+    from a
+  end
+
+lemma prop.has_quantifier_n.and.inv {q: callquantifier} {P₁ P₂: prop}:
+      q ∈ quantifiers_n (P₁ ⋀ P₂) → q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂ :=
+  assume and_has_quantifier_n: q ∈ quantifiers_n (P₁ ⋀ P₂),
+  begin
+    cases and_has_quantifier_n,
+    show q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂, from or.inl a,
+    show q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂, from or.inr a
+  end
+
+lemma prop.has_quantifier_n.or.inv {q: callquantifier} {P₁ P₂: prop}:
+      q ∈ quantifiers_n (P₁ ⋁ P₂) → q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂ :=
+  assume or_has_quantifier_n: q ∈ quantifiers_n (P₁ ⋁ P₂),
+  begin
+    cases or_has_quantifier_n,
+    show q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂, from or.inl a,
+    show q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂, from or.inr a
+  end
+
+lemma prop.has_quantifier_n.pre₁.inv {q: callquantifier} {op: unop} {t: term}: q ∉ quantifiers_n (prop.pre₁ op t) :=
+  assume pre_has_quantifier_n: q ∈ quantifiers_n (prop.pre₁ op t),
+  show «false», by cases pre_has_quantifier_n
+
+lemma prop.has_quantifier_n.pre₂.inv {q: callquantifier} {op: binop} {t₁ t₂: term}: q ∉ quantifiers_n (prop.pre₂ op t₁ t₂) :=
+  assume pre_has_quantifier_n: q ∈ quantifiers_n (prop.pre₂ op t₁ t₂),
+  show «false», by cases pre_has_quantifier_n
+
+lemma prop.has_quantifier_n.pre.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers_n (prop.pre t₁ t₂) :=
+  assume pre_has_quantifier_n: q ∈ quantifiers_n (prop.pre t₁ t₂),
+  show «false», by cases pre_has_quantifier_n
+
+lemma prop.has_quantifier_n.post.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers_n (prop.post t₁ t₂) :=
+  assume post_has_quantifier_n: q ∈ quantifiers_n (prop.post t₁ t₂),
+  show «false», by cases post_has_quantifier_n
+
+lemma prop.has_quantifier_n.forallc.inv {q: callquantifier} {x: var} {t: term} {P: prop}:
+      q ∈ quantifiers_n (prop.forallc x t P) → (q = ⟨t, x, P⟩) ∨ q ∈ quantifiers_n P :=
+  assume forall_has_quantifier_n: q ∈ quantifiers_n (prop.forallc x t P),
+  begin
+    cases forall_has_quantifier_n,
+    from or.inl rfl
+  end
+
+lemma prop.has_quantifier_n.exis.inv {q: callquantifier} {x: var} {P: prop}:
+      q ∈ quantifiers_n (prop.exis x P) → q ∈ quantifiers_n P :=
+  assume exis_has_quantifier_n: q ∈ quantifiers_n (prop.exis x P),
+  begin
+    cases exis_has_quantifier_n,
+    from a
+  end
+
+lemma prop.has_call_env.and₁ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       c ∈ calls_env σ P₁ → c ∈ calls_env σ (P₁ ⋀ P₂) :=
   assume : c ∈ calls_env σ P₁,
   have c ∈ (calltrigger.subst σ) '' calls P₁, from this,
@@ -315,11 +583,11 @@ lemma has_call_env.and₁ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       (λa, a ∈ calls_env σ (P₁ ⋀ P₂)) c this (
     assume c': calltrigger,
     assume : c' ∈ calls P₁,
-    have c' ∈ calls (P₁ ⋀ P₂), from has_call.and₁ this,
+    have c' ∈ calls (P₁ ⋀ P₂), from prop.has_call.and₁ this,
     show calltrigger.subst σ c' ∈ calls_env σ (P₁ ⋀ P₂), from set.mem_image this rfl
   )
 
-lemma has_call_env.and₂ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+lemma prop.has_call_env.and₂ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       c ∈ calls_env σ P₂ → c ∈ calls_env σ (P₁ ⋀ P₂) :=
   assume : c ∈ calls_env σ P₂,
   have c ∈ (calltrigger.subst σ) '' calls P₂, from this,
@@ -327,11 +595,59 @@ lemma has_call_env.and₂ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       (λa, a ∈ calls_env σ (P₁ ⋀ P₂)) c this (
     assume c': calltrigger,
     assume : c' ∈ calls P₂,
-    have c' ∈ calls (P₁ ⋀ P₂), from has_call.and₂ this,
+    have c' ∈ calls (P₁ ⋀ P₂), from prop.has_call.and₂ this,
     show calltrigger.subst σ c' ∈ calls_env σ (P₁ ⋀ P₂), from set.mem_image this rfl
   )
 
-lemma has_call_env.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+lemma prop.has_call_env.not {c: calltrigger} {P: prop} {σ: env}:
+      c ∈ calls_env σ P → c ∈ calls_n_env σ P.not :=
+  assume : c ∈ calls_env σ P,
+  have c ∈ (calltrigger.subst σ) '' calls P, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls P)
+      (λa, a ∈ calls_n_env σ P.not) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls P,
+    have c' ∈ calls_n P.not, from prop.has_call_n.not this,
+    show calltrigger.subst σ c' ∈ calls_n_env σ P.not, from set.mem_image this rfl
+  )
+
+lemma prop.has_call_n_env.not {c: calltrigger} {P: prop} {σ: env}:
+      c ∈ calls_n_env σ P → c ∈ calls_env σ P.not :=
+  assume : c ∈ calls_n_env σ P,
+  have c ∈ (calltrigger.subst σ) '' calls_n P, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_n P)
+      (λa, a ∈ calls_env σ P.not) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls_n P,
+    have c' ∈ calls P.not, from prop.has_call.not this,
+    show calltrigger.subst σ c' ∈ calls_env σ P.not, from set.mem_image this rfl
+  )
+
+lemma prop.has_call_env.not.inv {c: calltrigger} {P: prop} {σ: env}:
+      c ∈ calls_env σ P.not → c ∈ calls_n_env σ P :=
+  assume : c ∈ calls_env σ P.not,
+  have c ∈ (calltrigger.subst σ) '' calls P.not, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls P.not)
+      (λa, a ∈ calls_n_env σ P) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls P.not,
+    have c' ∈ calls_n P, from prop.has_call.not.inv this,
+    show calltrigger.subst σ c' ∈ calls_n_env σ P, from set.mem_image this rfl
+  )
+
+lemma prop.has_call_n_env.not.inv {c: calltrigger} {P: prop} {σ: env}:
+      c ∈ calls_n_env σ P.not → c ∈ calls_env σ P :=
+  assume : c ∈ calls_n_env σ P.not,
+  have c ∈ (calltrigger.subst σ) '' calls_n P.not, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_n P.not)
+      (λa, a ∈ calls_env σ P) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls_n P.not,
+    have c' ∈ calls P, from prop.has_call_n.not.inv this,
+    show calltrigger.subst σ c' ∈ calls_env σ P, from set.mem_image this rfl
+  )
+
+lemma prop.has_call_env.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       c ∈ calls_env σ (P₁ ⋀ P₂) → c ∈ calls_env σ P₁ ∨ c ∈ calls_env σ P₂ :=
   assume : c ∈ calls_env σ (P₁ ⋀ P₂),
   have c ∈ (calltrigger.subst σ) '' calls (P₁ ⋀ P₂), from this,
@@ -339,7 +655,7 @@ lemma has_call_env.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       (λa, a ∈ calls_env σ P₁ ∨ a ∈ calls_env σ P₂) c this (
     assume c': calltrigger,
     assume : c' ∈ calls (P₁ ⋀ P₂),
-    or.elim (has_call.and.inv this) (
+    or.elim (prop.has_call.and.inv this) (
       assume : c' ∈ calls P₁,
       have calltrigger.subst σ c' ∈ calls_env σ P₁, from set.mem_image this rfl,
       show calltrigger.subst σ c' ∈ calls_env σ P₁
@@ -356,41 +672,65 @@ lemma no_instantiations.term {t: term}: no_instantiations t :=
   have h1: calls t = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls t,
-    show «false», from has_call.term.inv this
+    show «false», from prop.has_call.term.inv this
   ),
-  have h2: quantifiers t = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n t = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n t,
+    show «false», from prop.has_call_n.term.inv this
+  ),
+  have h3: quantifiers t = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers t,
-    show «false», from has_quantifier.term.inv  this
+    show «false», from prop.has_quantifier.term.inv  this
   ),
-  show (calls t = ∅) ∧ (quantifiers t = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n t = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n t,
+    show «false», from prop.has_quantifier_n.term.inv  this
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.not {P: prop}: no_instantiations P → no_instantiations P.not :=
-  assume ⟨no_calls_in_P, no_quantifiers_in_P⟩,
+  assume ⟨no_calls_in_P, ⟨no_calls_n_in_P, ⟨no_quantifiers_in_P, no_quantifiers_n_in_P⟩⟩⟩,
   have h1: calls P.not = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls P.not,
-    have c_in_calls_P: c ∈ calls P, from has_call.not.inv this,
+    have c_in_calls_P: c ∈ calls_n P, from prop.has_call.not.inv this,
+    have c_not_in_calls_P: c ∉ calls_n P, from set.forall_not_mem_of_eq_empty no_calls_n_in_P c,
+    show «false», from c_not_in_calls_P c_in_calls_P
+  ),
+  have h2: calls_n P.not = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n P.not,
+    have c_in_calls_P: c ∈ calls P, from prop.has_call_n.not.inv this,
     have c_not_in_calls_P: c ∉ calls P, from set.forall_not_mem_of_eq_empty no_calls_in_P c,
     show «false», from c_not_in_calls_P c_in_calls_P
   ),
-  have h2: quantifiers P.not = ∅, from set.eq_empty_of_forall_not_mem (
+  have h3: quantifiers P.not = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers P.not,
-    have c_in_quantifiers_P: q ∈ quantifiers P, from has_quantifier.not.inv this,
+    have c_in_quantifiers_P: q ∈ quantifiers_n P, from prop.has_quantifier.not.inv this,
+    have c_not_in_quantifiers_P: q ∉ quantifiers_n P, from set.forall_not_mem_of_eq_empty no_quantifiers_n_in_P q,
+    show «false», from c_not_in_quantifiers_P c_in_quantifiers_P
+  ),
+  have h4: quantifiers_n P.not = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n P.not,
+    have c_in_quantifiers_P: q ∈ quantifiers P, from prop.has_quantifier_n.not.inv this,
     have c_not_in_quantifiers_P: q ∉ quantifiers P, from set.forall_not_mem_of_eq_empty no_quantifiers_in_P q,
     show «false», from c_not_in_quantifiers_P c_in_quantifiers_P
   ),
-  show (calls P.not = ∅) ∧ (quantifiers P.not = ∅), from ⟨h1, h2⟩
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.and {P₁ P₂: prop}:
       no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.and P₁ P₂) :=
-  assume ⟨no_calls_in_P₁, no_quantifiers_in_P₁⟩,
-  assume ⟨no_calls_in_P₂, no_quantifiers_in_P₂⟩,
+  assume ⟨no_calls_in_P₁, ⟨no_calls_n_in_P₁, ⟨no_quantifiers_in_P₁, no_quantifiers_n_in_P₁⟩⟩⟩,
+  assume ⟨no_calls_in_P₂, ⟨no_calls_n_in_P₂, ⟨no_quantifiers_in_P₂, no_quantifiers_n_in_P₂⟩⟩⟩,
   have h1: calls (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls (P₁ ⋀ P₂),
-    have c ∈ calls P₁ ∨ c ∈ calls P₂, from has_call.and.inv this,
+    have c ∈ calls P₁ ∨ c ∈ calls P₂, from prop.has_call.and.inv this,
     or.elim this (
       assume c_in_calls_P₁: c ∈ calls P₁,
       have c_not_in_calls_P₁: c ∉ calls P₁, from set.forall_not_mem_of_eq_empty no_calls_in_P₁ c,
@@ -401,10 +741,24 @@ lemma no_instantiations.and {P₁ P₂: prop}:
       show «false», from c_not_in_calls_P₂ c_in_calls_P₂
     )
   ),
-  have h2: quantifiers (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (P₁ ⋀ P₂),
+    have c ∈ calls_n P₁ ∨ c ∈ calls_n P₂, from prop.has_call_n.and.inv this,
+    or.elim this (
+      assume c_in_calls_P₁: c ∈ calls_n P₁,
+      have c_not_in_calls_P₁: c ∉ calls_n P₁, from set.forall_not_mem_of_eq_empty no_calls_n_in_P₁ c,
+      show «false», from c_not_in_calls_P₁ c_in_calls_P₁
+    ) (
+      assume c_in_calls_P₂: c ∈ calls_n P₂,
+      have c_not_in_calls_P₂: c ∉ calls_n P₂, from set.forall_not_mem_of_eq_empty no_calls_n_in_P₂ c,
+      show «false», from c_not_in_calls_P₂ c_in_calls_P₂
+    )
+  ),
+  have h3: quantifiers (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers (P₁ ⋀ P₂),
-    have q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from has_quantifier.and.inv this,
+    have q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from prop.has_quantifier.and.inv this,
     or.elim this (
       assume q_in_quantifiers_P₁: q ∈ quantifiers P₁,
       have q_not_in_quantifiers_P₁: q ∉ quantifiers P₁, from set.forall_not_mem_of_eq_empty no_quantifiers_in_P₁ q,
@@ -415,16 +769,30 @@ lemma no_instantiations.and {P₁ P₂: prop}:
       show «false», from q_not_in_quantifiers_P₂ q_in_quantifiers_P₂
     )
   ),
-  show (calls (prop.and P₁ P₂) = ∅) ∧ (quantifiers (prop.and P₁ P₂) = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (P₁ ⋀ P₂),
+    have q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂, from prop.has_quantifier_n.and.inv this,
+    or.elim this (
+      assume q_in_quantifiers_P₁: q ∈ quantifiers_n P₁,
+      have q_not_in_quantifiers_P₁: q ∉ quantifiers_n P₁, from set.forall_not_mem_of_eq_empty no_quantifiers_n_in_P₁ q,
+      show «false», from q_not_in_quantifiers_P₁ q_in_quantifiers_P₁
+    ) (
+      assume q_in_quantifiers_P₂: q ∈ quantifiers_n P₂,
+      have q_not_in_quantifiers_P₂: q ∉ quantifiers_n P₂, from set.forall_not_mem_of_eq_empty no_quantifiers_n_in_P₂ q,
+      show «false», from q_not_in_quantifiers_P₂ q_in_quantifiers_P₂
+    )
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.or {P₁ P₂: prop}:
       no_instantiations P₁ → no_instantiations P₂ → no_instantiations (prop.or P₁ P₂) :=
-  assume ⟨no_calls_in_P₁, no_quantifiers_in_P₁⟩,
-  assume ⟨no_calls_in_P₂, no_quantifiers_in_P₂⟩,
+  assume ⟨no_calls_in_P₁, ⟨no_calls_n_in_P₁, ⟨no_quantifiers_in_P₁, no_quantifiers_n_in_P₁⟩⟩⟩,
+  assume ⟨no_calls_in_P₂, ⟨no_calls_n_in_P₂, ⟨no_quantifiers_in_P₂, no_quantifiers_n_in_P₂⟩⟩⟩,
   have h1: calls (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls (P₁ ⋁ P₂),
-    have c ∈ calls P₁ ∨ c ∈ calls P₂, from has_call.or.inv this,
+    have c ∈ calls P₁ ∨ c ∈ calls P₂, from prop.has_call.or.inv this,
     or.elim this (
       assume c_in_calls_P₁: c ∈ calls P₁,
       have c_not_in_calls_P₁: c ∉ calls P₁, from set.forall_not_mem_of_eq_empty no_calls_in_P₁ c,
@@ -435,10 +803,24 @@ lemma no_instantiations.or {P₁ P₂: prop}:
       show «false», from c_not_in_calls_P₂ c_in_calls_P₂
     )
   ),
-  have h2: quantifiers (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (P₁ ⋁ P₂),
+    have c ∈ calls_n P₁ ∨ c ∈ calls_n P₂, from prop.has_call_n.or.inv this,
+    or.elim this (
+      assume c_in_calls_P₁: c ∈ calls_n P₁,
+      have c_not_in_calls_P₁: c ∉ calls_n P₁, from set.forall_not_mem_of_eq_empty no_calls_n_in_P₁ c,
+      show «false», from c_not_in_calls_P₁ c_in_calls_P₁
+    ) (
+      assume c_in_calls_P₂: c ∈ calls_n P₂,
+      have c_not_in_calls_P₂: c ∉ calls_n P₂, from set.forall_not_mem_of_eq_empty no_calls_n_in_P₂ c,
+      show «false», from c_not_in_calls_P₂ c_in_calls_P₂
+    )
+  ),
+  have h3: quantifiers (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers (P₁ ⋁ P₂),
-    have q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from has_quantifier.or.inv this,
+    have q ∈ quantifiers P₁ ∨ q ∈ quantifiers P₂, from prop.has_quantifier.or.inv this,
     or.elim this (
       assume q_in_quantifiers_P₁: q ∈ quantifiers P₁,
       have q_not_in_quantifiers_P₁: q ∉ quantifiers P₁, from set.forall_not_mem_of_eq_empty no_quantifiers_in_P₁ q,
@@ -449,59 +831,113 @@ lemma no_instantiations.or {P₁ P₂: prop}:
       show «false», from q_not_in_quantifiers_P₂ q_in_quantifiers_P₂
     )
   ),
-  show (calls (prop.or P₁ P₂) = ∅) ∧ (quantifiers (prop.or P₁ P₂) = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (P₁ ⋁ P₂),
+    have q ∈ quantifiers_n P₁ ∨ q ∈ quantifiers_n P₂, from prop.has_quantifier_n.or.inv this,
+    or.elim this (
+      assume q_in_quantifiers_P₁: q ∈ quantifiers_n P₁,
+      have q_not_in_quantifiers_P₁: q ∉ quantifiers_n P₁, from set.forall_not_mem_of_eq_empty no_quantifiers_n_in_P₁ q,
+      show «false», from q_not_in_quantifiers_P₁ q_in_quantifiers_P₁
+    ) (
+      assume q_in_quantifiers_P₂: q ∈ quantifiers_n P₂,
+      have q_not_in_quantifiers_P₂: q ∉ quantifiers_n P₂, from set.forall_not_mem_of_eq_empty no_quantifiers_n_in_P₂ q,
+      show «false», from q_not_in_quantifiers_P₂ q_in_quantifiers_P₂
+    )
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.pre {t₁ t₂: term}: no_instantiations (prop.pre t₁ t₂) :=
   have h1: calls (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls (prop.pre t₁ t₂),
-    show «false», from has_call.pre.inv this
+    show «false», from prop.has_call.pre.inv this
   ),
-  have h2: quantifiers (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.pre t₁ t₂),
+    show «false», from prop.has_call_n.pre.inv this
+  ),
+  have h3: quantifiers (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers (prop.pre t₁ t₂),
-    show «false», from has_quantifier.pre.inv  this
+    show «false», from prop.has_quantifier.pre.inv  this
   ),
-  show (calls (prop.pre t₁ t₂) = ∅) ∧ (quantifiers (prop.pre t₁ t₂) = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (prop.pre t₁ t₂),
+    show «false», from prop.has_quantifier_n.pre.inv  this
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.pre₁ {t: term} {op: unop}: no_instantiations (prop.pre₁ op t) :=
   have h1: calls (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls (prop.pre₁ op t),
-    show «false», from has_call.pre₁.inv this
+    show «false», from prop.has_call.pre₁.inv this
   ),
-  have h2: quantifiers (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.pre₁ op t),
+    show «false», from prop.has_call_n.pre₁.inv this
+  ),
+  have h3: quantifiers (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers (prop.pre₁ op t),
-    show «false», from has_quantifier.pre₁.inv  this
+    show «false», from prop.has_quantifier.pre₁.inv  this
   ),
-  show (calls (prop.pre₁ op t) = ∅) ∧ (quantifiers (prop.pre₁ op t) = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (prop.pre₁ op t),
+    show «false», from prop.has_quantifier_n.pre₁.inv  this
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.pre₂ {t₁ t₂: term} {op: binop}: no_instantiations (prop.pre₂ op t₁ t₂) :=
   have h1: calls (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls (prop.pre₂ op t₁ t₂),
-    show «false», from has_call.pre₂.inv this
+    show «false», from prop.has_call.pre₂.inv this
   ),
-  have h2: quantifiers (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.pre₂ op t₁ t₂),
+    show «false», from prop.has_call_n.pre₂.inv this
+  ),
+  have h3: quantifiers (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers (prop.pre₂ op t₁ t₂),
-    show «false», from has_quantifier.pre₂.inv  this
+    show «false», from prop.has_quantifier.pre₂.inv  this
   ),
-  show (calls (prop.pre₂ op t₁ t₂) = ∅) ∧ (quantifiers (prop.pre₂ op t₁ t₂) = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (prop.pre₂ op t₁ t₂),
+    show «false», from prop.has_quantifier_n.pre₂.inv  this
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma no_instantiations.post {t₁ t₂: term}: no_instantiations (prop.post t₁ t₂) :=
   have h1: calls (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls (prop.post t₁ t₂),
-    show «false», from has_call.post.inv this
+    show «false», from prop.has_call.post.inv this
   ),
-  have h2: quantifiers (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+  have h2: calls_n (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.post t₁ t₂),
+    show «false», from prop.has_call_n.post.inv this
+  ),
+  have h3: quantifiers (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume q: callquantifier,
     assume : q ∈ quantifiers (prop.post t₁ t₂),
-    show «false», from has_quantifier.post.inv  this
+    show «false», from prop.has_quantifier.post.inv  this
   ),
-  show (calls (prop.post t₁ t₂) = ∅) ∧ (quantifiers (prop.post t₁ t₂) = ∅), from ⟨h1, h2⟩
+  have h4: quantifiers_n (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (prop.post t₁ t₂),
+    show «false», from prop.has_quantifier_n.post.inv  this
+  ),
+  ⟨h1, ⟨h2, ⟨h3, h4⟩⟩⟩
 
 lemma prop.erased.implies {P Q: prop}:
       (prop.implies P Q).erased = vc.implies P.erased_n Q.erased :=

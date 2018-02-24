@@ -139,7 +139,7 @@ lemma option.is_some_iff_exists {α: Type} {a: option α}: option.is_some a ↔ 
 -- auxiliary lemmas for sets
 
 lemma set.two_elems_mem {α: Type} {a b c: α}:
-  a ∈ ({b, c}: set α) -> (a = b) ∨ (a = c) :=
+  a ∈ ({b, c}: set α) → (a = b) ∨ (a = c) :=
   assume a_in_bc: a ∈ {b, c},
   have a_in_bc: a ∈ insert b (insert c (∅: set α)), by { simp at a_in_bc, simp[a_in_bc] },
   have a = b ∨ a ∈ insert c ∅, from set.eq_or_mem_of_mem_insert a_in_bc,
@@ -157,6 +157,38 @@ lemma set.two_elems_mem {α: Type} {a b c: α}:
       show (a = b) ∨ (a = c), from absurd this (set.not_mem_empty a)
     )
   )
+
+lemma set.three_elems_mem {α: Type} {a b c d: α}:
+  a ∈ ({b, c, d}: set α) → (a = b) ∨ (a = c) ∨ (a = d) :=
+  assume a_in_bcd: a ∈ {b, c, d},
+  have a_in_bcd: a ∈ insert b (insert c (insert d (∅: set α))),
+  by { simp at a_in_bcd, simp[a_in_bcd] },
+  have a = b ∨ a ∈ insert c (insert d (∅: set α)), from set.eq_or_mem_of_mem_insert a_in_bcd,
+  or.elim this (
+    assume : a = b,
+    show (a = b) ∨ (a = c) ∨ (a = d), from or.inl this
+  ) (
+    assume : a ∈ insert c (insert d (∅: set α)),
+    have a = c ∨ a ∈ insert d (∅: set α), from set.eq_or_mem_of_mem_insert this,
+    or.elim this (
+      assume : a = c,
+      show (a = b) ∨ (a = c) ∨ (a = d), from or.inr (or.inl this)
+    ) (
+      assume : a ∈ insert d (∅: set α),
+      have a = d ∨ a ∈ ∅, from set.eq_or_mem_of_mem_insert this,
+      or.elim this (
+        assume : a = d,
+        show (a = b) ∨ (a = c) ∨ (a = d), from or.inr (or.inr this)
+      ) (
+        assume : a ∈ ∅,
+        show (a = b) ∨ (a = c) ∨ (a = d), from absurd this (set.not_mem_empty a)
+      )
+    )
+  )
+
+lemma set.three_elems_mem₁ {α: Type} {a b c d: α}: (a = b) → a ∈ ({b, c, d}: set α) := by { intro ab, rw[ab], simp }
+lemma set.three_elems_mem₂ {α: Type} {a b c d: α}: (a = c) → a ∈ ({b, c, d}: set α) := by { intro ac, rw[ac], simp }
+lemma set.three_elems_mem₃ {α: Type} {a b c d: α}: (a = d) → a ∈ ({b, c, d}: set α) := by { intro ad, rw[ad], simp }
 
 lemma set.forall_not_mem_of_eq_empty {α: Type} {s: set α}: s = ∅ → ∀ x, x ∉ s :=
   by simp[set.set_eq_def]

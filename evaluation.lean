@@ -31,6 +31,7 @@ noncomputable def binop.apply: binop → value → value → option value
 | binop.lt (value.num n₁) (value.num n₂)    := if n₁ < n₂ then value.true else value.false
 | _ _ _                                     := none
 
+
 inductive step : stack → historyitem → stack → Prop
 notation s₁ `⟶` c `,` s₂:100 := step s₁ c s₂
 

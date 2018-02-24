@@ -1471,6 +1471,14 @@ begin
                                              : by unfold vc.subst_env
 end
 
+lemma vc.subst_env.implies {σ: env} {P Q: vc}:
+      vc.subst_env σ (vc.implies P Q) = vc.implies (vc.subst_env σ P) (vc.subst_env σ Q) :=
+  have h1: vc.subst_env σ (vc.implies P Q) = vc.subst_env σ (vc.or P.not Q), from rfl,
+  have vc.subst_env σ (vc.or P.not Q) = vc.or (vc.subst_env σ P.not) (vc.subst_env σ Q), from vc.subst_env.or,
+  have h2: vc.subst_env σ (vc.implies P Q) = vc.or (vc.subst_env σ P.not) (vc.subst_env σ Q), from eq.trans h1 this,
+  have vc.subst_env σ (vc.not P) = vc.not (vc.subst_env σ P), from vc.subst_env.not,
+  show vc.subst_env σ (vc.implies P Q) = vc.or (vc.subst_env σ P).not (vc.subst_env σ Q), from this ▸ h2
+
 lemma vc.subst_env.pre₁ {σ: env} {op: unop} {t: term}:
       vc.subst_env σ (vc.pre₁ op t) = vc.pre₁ op (term.subst_env σ t) :=
 begin
