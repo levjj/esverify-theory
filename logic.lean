@@ -226,6 +226,16 @@ lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
   have ⊨ ((v ≡ v) ≡ value.true), from valid.eq.binop.mp this,
   show ⊨ (v ≡ v), from valid.eq.true.mpr this
 
+lemma valid.implies.trans {P₁ P₂ P₃: vc}:
+      (⊨ vc.implies P₁ P₂) → (⊨ vc.implies P₂ P₃) → ⊨ vc.implies P₁ P₃ :=
+  assume h1: ⊨ vc.implies P₁ P₂,
+  assume h2: ⊨ vc.implies P₂ P₃,
+  show ⊨ vc.implies P₁ P₃, from valid.implies.mp (
+    assume : ⊨ P₁,
+    have ⊨ P₂, from valid.implies.mpr h1 this,
+    show ⊨ P₃, from valid.implies.mpr h2 this
+  )
+
 lemma valid_env.true {σ: env}: σ ⊨ value.true :=
   have h1: ⊨ value.true, from valid.tru,
   have term.subst_env σ value.true = value.true, from term.subst_env.value,
@@ -340,6 +350,16 @@ lemma valid_env.mpr {σ: env} {P Q: vc}: ((σ ⊨ P) → σ ⊨ Q) → σ ⊨ vc
   from vc.subst_env.or,
   have ⊨ vc.subst_env σ (P.not ⋁ Q), from this.symm ▸ h2,
   show σ ⊨ vc.implies P Q, from this
+
+lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
+      (σ ⊨ vc.implies P₁ P₂) → (σ ⊨ vc.implies P₂ P₃) → σ ⊨ vc.implies P₁ P₃ :=
+  assume h1: σ ⊨ vc.implies P₁ P₂,
+  assume h2: σ ⊨ vc.implies P₂ P₃,
+  show σ ⊨ vc.implies P₁ P₃, from valid_env.mpr (
+    assume : σ ⊨ P₁,
+    have σ ⊨ P₂, from valid_env.mp h1 this,
+    show σ ⊨ P₃, from valid_env.mp h2 this
+  )
 
 lemma history_valid {H: callhistory}: ⟪calls_to_prop H⟫ :=
   assume σ: env,
