@@ -297,6 +297,43 @@ axiom instantiated_n_distrib_subst {P: prop} {x: var} {v: value}:
 
 -- lemmas
 
+lemma dominates_of {σ: env} {P P': prop}:
+    (σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) →
+    (calls_env σ P = calls_env σ P') →
+    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
+                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
+                          (∀v: value, dominates' Q' Q (σ[x↦v]))) →
+    dominates σ P P' :=
+  
+  assume h_impl: σ ⊨ vc.implies P.instantiated_n P'.instantiated_n,
+  assume h_calls: calls_env σ P = calls_env σ P',
+  assume h_quantifiers:
+    ∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
+                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
+                          (∀v: value, dominates' Q' Q (σ[x↦v])),
+  
+  have h: 
+    ((σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
+    (calls_env σ P = calls_env σ P') ∧
+    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
+                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
+                          (∀v: value, dominates' Q' Q (σ[x↦v])))),
+  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
+  have
+    dominates' P' P σ = (
+    ((σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
+    (calls_env σ P = calls_env σ P') ∧
+    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
+                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
+                          (∀v: value, dominates' Q' Q (σ[x↦v]))))),
+  by unfold1 dominates',
+  have dominates' P' P σ, from this.symm ▸ h,
+  show dominates σ P P', from this
+
 lemma instantiated_distrib_subst_env {P: prop} {σ: env}:
       vc.subst_env σ P.instantiated = (prop.subst_env σ P).instantiated :=
 begin

@@ -74,25 +74,7 @@ lemma dominates_self: ∀ {P: prop} {σ: env}, dominates σ P P
     ),
     exists.intro t₁ (exists.intro Q₁ ⟨h, this⟩)
   ),
-  have h3: 
-    ((σ ⊨ vc.implies P.instantiated_n P.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P),
-                          have Q'.size < P.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v])))),
-  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
-  have
-    dominates' P P σ = (
-    ((σ ⊨ vc.implies P.instantiated_n P.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P),
-                          have Q'.size < P.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' P P σ, from this.symm ▸ h3,
-  show dominates σ P P, from this
+  show dominates σ P P, from dominates_of h_impl h_calls h_quantifiers
 
 lemma dominates_and_left {P P' Q: prop} {σ: env}:
       dominates σ P' P → dominates σ (P' ⋀ Q) (P ⋀ Q) :=
@@ -143,26 +125,7 @@ lemma dominates_and_left {P P' Q: prop} {σ: env}:
   have σ ⊨ vc.implies P'.instantiated_n P.instantiated_n, from h2.left,
   have h_impl: σ ⊨ vc.implies (P' ⋀ Q).instantiated_n (P ⋀ Q).instantiated_n,
   from valid_env.strengthen_and_with_dominating_instantiations h1,
-
-  have h3: 
-    ((σ ⊨ vc.implies (P' ⋀ Q).instantiated_n (P ⋀ Q).instantiated_n) ∧
-    (calls_env σ (P' ⋀ Q) = calls_env σ (P ⋀ Q)) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers (P ⋀ Q)),
-                          have Q'.size < (P ⋀ Q).size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers (P' ⋀ Q) ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v])))),
-  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
-  have
-    dominates' (P ⋀ Q) (P' ⋀ Q) σ = (
-    ((σ ⊨ vc.implies (P' ⋀ Q).instantiated_n (P ⋀ Q).instantiated_n) ∧
-    (calls_env σ (P' ⋀ Q) = calls_env σ (P ⋀ Q)) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers (P ⋀ Q)),
-                          have Q'.size < (P ⋀ Q).size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers (P' ⋀ Q) ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' (P ⋀ Q) (P' ⋀ Q) σ, from this.symm ▸ h3,
-  show dominates σ (P' ⋀ Q) (P ⋀ Q), from this
+  show dominates σ (P' ⋀ Q) (P ⋀ Q), from dominates_of h_impl h_calls h_quantifiers
 
 lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
       dominates σ P₁ P₂ → dominates σ P₂ P₃ → dominates σ P₁ P₃
@@ -223,26 +186,7 @@ lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
                                  (∀v: value, dominates' Q₃ Q₁ (σ[x↦v])),
     from exists.intro t₁ (exists.intro Q₁ ⟨t₁_Q₁_in_P₁, Q₃_dom_Q₁⟩)
   ),
-
-  have h3: 
-    ((σ ⊨ vc.implies P₁.instantiated_n P₃.instantiated_n) ∧
-    (calls_env σ P₁ = calls_env σ P₃) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P₃),
-                          have Q'.size < P₃.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P₁ ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v])))),
-  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
-  have
-    dominates' P₃ P₁ σ = (
-    ((σ ⊨ vc.implies P₁.instantiated_n P₃.instantiated_n) ∧
-    (calls_env σ P₁ = calls_env σ P₃) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P₃),
-                          have Q'.size < P₃.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P₁ ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' P₃ P₁ σ, from this.symm ▸ h3,
-  show dominates σ P₁ P₃, from this
+  show dominates σ P₁ P₃, from dominates_of h_impl h_calls h_quantifiers
 
 lemma dominates_not_not: ∀ {P: prop} {σ: env}, dominates σ P.not.not P
 | P σ :=
@@ -282,25 +226,7 @@ lemma dominates_not_not: ∀ {P: prop} {σ: env}, dominates σ P.not.not P
     ),
     exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
   ),
-  have h3: 
-    ((σ ⊨ vc.implies P.not.not.instantiated_n P.instantiated_n) ∧
-    (calls_env σ P.not.not = calls_env σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P),
-                          have Q'.size < P.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P.not.not ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v])))),
-  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
-  have
-    dominates' P P.not.not σ = (
-    ((σ ⊨ vc.implies P.not.not.instantiated_n P.instantiated_n) ∧
-    (calls_env σ P.not.not = calls_env σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P),
-                          have Q'.size < P.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P.not.not ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' P P.not.not σ, from this.symm ▸ h3,
-  show dominates σ P.not.not P, from this
+  show dominates σ P.not.not P, from dominates_of h_impl h_calls h_quantifiers
 
 lemma dominates_of_not_not: ∀ {P: prop} {σ: env}, dominates σ P P.not.not
 | P σ :=
@@ -340,25 +266,7 @@ lemma dominates_of_not_not: ∀ {P: prop} {σ: env}, dominates σ P P.not.not
     ),
     exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
   ),
-  have h3: 
-    ((σ ⊨ vc.implies P.instantiated_n P.not.not.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P.not.not) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P.not.not),
-                          have Q'.size < P.not.not.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v])))),
-  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
-  have
-    dominates' P.not.not P σ = (
-    ((σ ⊨ vc.implies P.instantiated_n P.not.not.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P.not.not) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P.not.not),
-                          have Q'.size < P.not.not.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P ∧
-                          (∀v: value, dominates' Q' Q₂ (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' P.not.not P σ, from this.symm ▸ h3,
-  show dominates σ P P.not.not, from this
+  show dominates σ P P.not.not, from dominates_of h_impl h_calls h_quantifiers
 
 lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates σ P' P → σ ⊨ vc.implies (prop.implies P Q).instantiated (prop.implies P' Q).instantiated :=

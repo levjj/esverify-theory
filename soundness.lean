@@ -80,25 +80,7 @@ lemma trivial_dominates {σ: env}: dominates σ (prop.term value.true ⋀ prop.t
     absurd h3 h4
   ),
 
-  have h3: 
-    ((σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P') ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v])))),
-  from ⟨h_impl, ⟨h_calls, h_quantifiers⟩⟩,
-  have
-    dominates' P' P σ = (
-    ((σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P') ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' P' P σ, from this.symm ▸ h3,
-  show dominates σ P P', from this
+  show dominates σ P P', from dominates_of h_impl h_calls h_quantifiers
 
 lemma soundness {s s': stack}: (s ⟶* s') → ∀H, (H ⊢ₛ s) → (is_value s' ∨ ∃h s'', s' ⟶ h, s'') :=
   assume steps_to_s': s ⟶* s',
