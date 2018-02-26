@@ -114,16 +114,16 @@ notation H `⊢ₛ` s : 10 := stack.vcgen H s
     (H ⋀ P ⊢ e : Q) →
     (H ⊢ₛ (σ, e))
 
-| cons {H: callhistory} {P: prop} {s: stack} {σ₁ σ₂: env} {f fx g x y: var} {R S: spec} {e: exp} {v: value} {Q: propctx}:
+| cons {H: callhistory} {P: prop} {s: stack} {σ₁ σ₂: env} {f fx g x y: var} {R S: spec} {e₁ e₂: exp} {v: value} {Q: propctx}:
     (H ⊢ₛ s) →
     (⊢ σ₁ : P) →
-    (σ₁ g = value.func f fx R S e σ₂) →
+    (σ₁ g = value.func f fx R S e₂ σ₂) →
     (σ₁ x = v) →
     y ∉ σ₁ →
-    (H ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e : Q) →
+    (H ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q) →
     ⟪ prop.implies (H ⋀ P ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
-    ((σ₂[f↦value.func f fx R S e σ₂][fx↦v], e) ⟶* s) →
-    (H ⊢ₛ (s · [σ₁, let y = g[x] in e]))
+    ((σ₂[f↦value.func f fx R S e₂ σ₂][fx↦v], e₂) ⟶* s) →
+    (H ⊢ₛ (s · [σ₁, let y = g[x] in e₁]))
 
 notation H `⊢ₛ` s : 10 := stack.vcgen H s
 

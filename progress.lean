@@ -1509,25 +1509,25 @@ theorem progress(H: callhistory) (s: stack): (H ⊢ₛ s) → is_value s ∨ ∃
     case stack.vcgen.top σ e Q P H env_verified e_verified { from
       show is_value (σ, e) ∨ ∃c s', (σ, e) ⟶ c, s', from exp.progress env_verified e_verified
     },
-    case stack.vcgen.cons H P s' σ σ' f g x y fx R S e vₓ Q s'_verified _ g_is_func x_is_v _ cont _ _ ih { from
-      let s := (s' · [σ, let y = g[x] in e]) in
-      have s_cons: s = (s' · [σ, let y = g[x] in e]), from rfl,
+    case stack.vcgen.cons H P s' σ σ' f g x y fx R S e₁ e₂ vₓ Q s'_verified _ g_is_func x_is_v _ cont _ _ ih { from
+      let s := (s' · [σ, let y = g[x] in e₁]) in
+      have s_cons: s = (s' · [σ, let y = g[x] in e₁]), from rfl,
       or.elim ih
       ( -- step return
         assume s'_is_value: is_value s',
         let ⟨σ₂, z, v, ⟨s'_return, env2_has_z⟩⟩ := s'_is_value in
-        have s_return_cons: s = ((σ₂, exp.return z) · [σ, let y = g[x] in e]), from s'_return ▸ s_cons,
-        have s ⟶ call f fx R S e σ' vₓ, (σ[y↦v], e),
+        have s_return_cons: s = ((σ₂, exp.return z) · [σ, let y = g[x] in e₁]), from s'_return ▸ s_cons,
+        have s ⟶ call f fx R S e₂ σ' vₓ, (σ[y↦v], e₁),
         from s_return_cons.symm ▸ (step.return env2_has_z g_is_func x_is_v),
-        have ∃s', s ⟶ call f fx R S e σ' vₓ, s', from exists.intro (σ[y↦v], e) this,
-        have ∃c s', s ⟶ c, s', from exists.intro (call f fx R S e σ' vₓ) this,
+        have ∃s', s ⟶ call f fx R S e₂ σ' vₓ, s', from exists.intro (σ[y↦v], e₁) this,
+        have ∃c s', s ⟶ c, s', from exists.intro (call f fx R S e₂ σ' vₓ) this,
         show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
       )
       ( -- step ctx
         assume s'_can_step: ∃c s'', s' ⟶ c, s'',
         let ⟨c, s'', s'_steps⟩ := s'_can_step in
-        have s ⟶ c, (s'' · [σ, let y = g[x] in e]), from step.ctx s'_steps,
-        have ∃s', s ⟶ c, s', from exists.intro (s'' · [σ, let y = g[x] in e]) this,
+        have s ⟶ c, (s'' · [σ, let y = g[x] in e₁]), from step.ctx s'_steps,
+        have ∃s', s ⟶ c, s', from exists.intro (s'' · [σ, let y = g[x] in e₁]) this,
         have ∃c s', s ⟶ c, s', from exists.intro c this,
         show is_value s ∨ ∃c s', s ⟶ c, s', from or.inr this
       )
