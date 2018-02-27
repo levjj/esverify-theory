@@ -85,6 +85,8 @@ inductive env.contains: env → var → Prop
 
 instance : has_mem var env := ⟨λx σ, σ.contains x⟩ 
 
+def env.dom (σ: env): set var := λx, x ∈ σ
+
 -- spec to prop coercion
 
 @[reducible]

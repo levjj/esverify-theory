@@ -956,3 +956,27 @@ lemma free_in_prop.and_comm {P₁ P₂ P₃: prop}:
       show x ∈ FV (P₁ ⋀ P₂ ⋀ P₃), from free_in_prop.and₂ this
     )
   )
+
+lemma free_in_prop.and_symm {P₁ P₂: prop}:
+      FV (P₁ ⋀ P₂) = FV (P₂ ⋀ P₁) :=
+  set.eq_of_subset_of_subset (
+    assume x: var,
+    assume : x ∈ FV (P₁ ⋀ P₂),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₁,
+      show x ∈ FV (P₂ ⋀ P₁), from free_in_prop.and₂ this
+    ) (
+      assume : x ∈ FV P₂,
+      show x ∈ FV (P₂ ⋀ P₁), from free_in_prop.and₁ this
+    )
+  ) (
+    assume x: var,
+    assume : x ∈ FV (P₂ ⋀ P₁),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₂,
+      show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this
+    ) (
+      assume : x ∈ FV P₁,
+      show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
+    )
+  )

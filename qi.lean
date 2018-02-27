@@ -338,6 +338,9 @@ axiom valid_env.or_not_dist_with_instantiations {σ: env} {P Q: prop}:
 axiom valid_env.and_comm_with_instantiations {σ: env} {P₁ P₂ P₃: prop}:
   (σ ⊨ (P₁ ⋀ P₂ ⋀ P₃).instantiated_n) ↔ (σ ⊨ ((P₁ ⋀ P₂) ⋀ P₃).instantiated_n)
 
+axiom valid_env.and_symm_with_instantiations {σ: env} {P₁ P₂: prop}:
+  (σ ⊨ (P₁ ⋀ P₂).instantiated_n) → (σ ⊨ (P₂ ⋀ P₁).instantiated_n)
+
 -- lemmas
 
 lemma valid.instantiated_of_erased {P: prop}: (⊨ P.erased) → ⊨ P.instantiated :=
@@ -1340,6 +1343,54 @@ lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.
       )
     )}
   end
+
+lemma prop.has_call.and.symm {P₁ P₂: prop}:
+      calls (P₁ ⋀ P₂) = calls (P₂ ⋀ P₁) :=
+  set.eq_of_subset_of_subset (
+    assume c: calltrigger,
+    assume : c ∈ calls (P₁ ⋀ P₂),
+    or.elim (prop.has_call.and.inv this) (
+      assume : c ∈ calls P₁,
+      show c ∈ calls (P₂ ⋀ P₁), from prop.has_call.and₂ this
+    ) (
+      assume : c ∈ calls P₂,
+      show c ∈ calls (P₂ ⋀ P₁), from prop.has_call.and₁ this
+    )
+  ) (
+    assume c: calltrigger,
+    assume : c ∈ calls (P₂ ⋀ P₁),
+    or.elim (prop.has_call.and.inv this) (
+      assume : c ∈ calls P₂,
+      show c ∈ calls (P₁ ⋀ P₂), from prop.has_call.and₂ this
+    ) (
+      assume : c ∈ calls P₁,
+      show c ∈ calls (P₁ ⋀ P₂), from prop.has_call.and₁ this
+    )
+  )
+
+lemma prop.has_quantifier.and.symm {P₁ P₂: prop}:
+      quantifiers (P₁ ⋀ P₂) = quantifiers (P₂ ⋀ P₁) :=
+  set.eq_of_subset_of_subset (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers (P₁ ⋀ P₂),
+    or.elim (prop.has_quantifier.and.inv this) (
+      assume : q ∈ quantifiers P₁,
+      show q ∈ quantifiers (P₂ ⋀ P₁), from prop.has_quantifier.and₂ this
+    ) (
+      assume : q ∈ quantifiers P₂,
+      show q ∈ quantifiers (P₂ ⋀ P₁), from prop.has_quantifier.and₁ this
+    )
+  ) (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers (P₂ ⋀ P₁),
+    or.elim (prop.has_quantifier.and.inv this) (
+      assume : q ∈ quantifiers P₂,
+      show q ∈ quantifiers (P₁ ⋀ P₂), from prop.has_quantifier.and₂ this
+    ) (
+      assume : q ∈ quantifiers P₁,
+      show q ∈ quantifiers (P₁ ⋀ P₂), from prop.has_quantifier.and₁ this
+    )
+  )
 
 lemma prop.has_call.and.comm {P₁ P₂ P₃: prop}:
       calls (P₁ ⋀ P₂ ⋀ P₃) = calls ((P₁ ⋀ P₂) ⋀ P₃) :=
