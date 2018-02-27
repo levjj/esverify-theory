@@ -126,8 +126,11 @@ axiom valid_env.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q:
   dominates σ P P' →
   σ ⊨ vc.implies (P ⋀ Q).instantiated_n (P' ⋀ Q).instantiated_n
 
-axiom valid_env.and_not_dist_with_instantiations {σ: env} {P Q: prop}:
+axiom valid_env.or_not_dist_with_instantiations {σ: env} {P Q: prop}:
   (σ ⊨ (P ⋁ Q).not.instantiated_n) ↔ (σ ⊨ (P.not ⋀ Q.not).instantiated_n)
+
+axiom valid_env.and_comm_with_instantiations {σ: env} {P₁ P₂ P₃: prop}:
+  (σ ⊨ (P₁ ⋀ P₂ ⋀ P₃).instantiated_n) ↔ (σ ⊨ ((P₁ ⋀ P₂) ⋀ P₃).instantiated_n)
 
 -- lemmas
 
@@ -314,6 +317,24 @@ lemma valid_env.and.elim {σ: env} {P Q: vc}: (σ ⊨ P ⋀ Q) → (σ ⊨ P) �
   have vc.subst_env σ (P ⋀ Q) = (vc.subst_env σ P ⋀ vc.subst_env σ Q), from vc.subst_env.and,
   have ⊨ (vc.subst_env σ P ⋀ vc.subst_env σ Q), from this ▸ p_and_q_valid,
   show (σ ⊨ P) ∧ (σ ⊨ Q), from valid.and.mpr this
+
+lemma valid_env.or₁ {σ: env} {P Q: vc}: (σ ⊨ P) → σ ⊨ (P ⋁ Q) :=
+  assume : ⊨ vc.subst_env σ P,
+  have h: ⊨ vc.subst_env σ P ⋁ vc.subst_env σ Q, from valid.or.mp (or.inl this),
+  have vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q), from vc.subst_env.or,
+  show σ ⊨ (P ⋁ Q), from this.symm ▸ h
+
+lemma valid_env.or₂ {σ: env} {P Q: vc}: (σ ⊨ Q) → σ ⊨ (P ⋁ Q) :=
+  assume : ⊨ vc.subst_env σ Q,
+  have h: ⊨ vc.subst_env σ P ⋁ vc.subst_env σ Q, from valid.or.mp (or.inr this),
+  have vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q), from vc.subst_env.or,
+  show σ ⊨ (P ⋁ Q), from this.symm ▸ h
+
+lemma valid_env.or.elim {σ: env} {P Q: vc}: (σ ⊨ P ⋁ Q) → (σ ⊨ P) ∨ σ ⊨ Q :=
+  assume p_or_q_valid: ⊨ vc.subst_env σ (P ⋁ Q),
+  have vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q), from vc.subst_env.or,
+  have ⊨ (vc.subst_env σ P ⋁ vc.subst_env σ Q), from this ▸ p_or_q_valid,
+  show (σ ⊨ P) ∨ (σ ⊨ Q), from valid.or.mpr this
 
 lemma valid_env.not {σ: env} {P: vc}: ¬ (σ ⊨ P) ↔ (σ ⊨ P.not) :=
   iff.intro (

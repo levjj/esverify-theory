@@ -1244,3 +1244,83 @@ lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased ∨ x ∈ FV P.
       )
     )}
   end
+
+lemma prop.has_call.and.comm {P₁ P₂ P₃: prop}:
+      calls (P₁ ⋀ P₂ ⋀ P₃) = calls ((P₁ ⋀ P₂) ⋀ P₃) :=
+  set.eq_of_subset_of_subset (
+    assume c: calltrigger,
+    assume : c ∈ calls (P₁ ⋀ P₂ ⋀ P₃),
+    or.elim (prop.has_call.and.inv this) (
+      assume : c ∈ calls P₁,
+      have c ∈ calls (P₁ ⋀ P₂), from prop.has_call.and₁ this,
+      show c ∈ calls ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_call.and₁ this
+    ) (
+      assume : c ∈ calls (P₂ ⋀ P₃),
+      or.elim (prop.has_call.and.inv this) (
+        assume : c ∈ calls P₂,
+        have c ∈ calls (P₁ ⋀ P₂), from prop.has_call.and₂ this,
+        show c ∈ calls ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_call.and₁ this
+      ) (
+        assume : c ∈ calls P₃,
+        show c ∈ calls ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_call.and₂ this
+      )
+    )
+  ) (
+    assume c: calltrigger,
+    assume : c ∈ calls ((P₁ ⋀ P₂) ⋀ P₃),
+    or.elim (prop.has_call.and.inv this) (
+      assume : c ∈ calls (P₁ ⋀ P₂),
+      or.elim (prop.has_call.and.inv this) (
+        assume : c ∈ calls P₁,
+        show c ∈ calls (P₁ ⋀ P₂ ⋀ P₃), from prop.has_call.and₁ this
+      ) (
+        assume : c ∈ calls P₂,
+        have c ∈ calls (P₂ ⋀ P₃), from prop.has_call.and₁ this,
+        show c ∈ calls (P₁ ⋀ P₂ ⋀ P₃), from prop.has_call.and₂ this
+      )
+    ) (
+      assume : c ∈ calls P₃,
+      have c ∈ calls (P₂ ⋀ P₃), from prop.has_call.and₂ this,
+      show c ∈ calls (P₁ ⋀ P₂ ⋀ P₃), from prop.has_call.and₂ this
+    )
+  )
+
+lemma prop.has_quantifier.and.comm {P₁ P₂ P₃: prop}:
+      quantifiers (P₁ ⋀ P₂ ⋀ P₃) = quantifiers ((P₁ ⋀ P₂) ⋀ P₃) :=
+  set.eq_of_subset_of_subset (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers (P₁ ⋀ P₂ ⋀ P₃),
+    or.elim (prop.has_quantifier.and.inv this) (
+      assume : q ∈ quantifiers P₁,
+      have q ∈ quantifiers (P₁ ⋀ P₂), from prop.has_quantifier.and₁ this,
+      show q ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_quantifier.and₁ this
+    ) (
+      assume : q ∈ quantifiers (P₂ ⋀ P₃),
+      or.elim (prop.has_quantifier.and.inv this) (
+        assume : q ∈ quantifiers P₂,
+        have q ∈ quantifiers (P₁ ⋀ P₂), from prop.has_quantifier.and₂ this,
+        show q ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_quantifier.and₁ this
+      ) (
+        assume : q ∈ quantifiers P₃,
+        show q ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_quantifier.and₂ this
+      )
+    )
+  ) (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃),
+    or.elim (prop.has_quantifier.and.inv this) (
+      assume : q ∈ quantifiers (P₁ ⋀ P₂),
+      or.elim (prop.has_quantifier.and.inv this) (
+        assume : q ∈ quantifiers P₁,
+        show q ∈ quantifiers (P₁ ⋀ P₂ ⋀ P₃), from prop.has_quantifier.and₁ this
+      ) (
+        assume : q ∈ quantifiers P₂,
+        have q ∈ quantifiers (P₂ ⋀ P₃), from prop.has_quantifier.and₁ this,
+        show q ∈ quantifiers (P₁ ⋀ P₂ ⋀ P₃), from prop.has_quantifier.and₂ this
+      )
+    ) (
+      assume : q ∈ quantifiers P₃,
+      have q ∈ quantifiers (P₂ ⋀ P₃), from prop.has_quantifier.and₂ this,
+      show q ∈ quantifiers (P₁ ⋀ P₂ ⋀ P₃), from prop.has_quantifier.and₂ this
+    )
+  )

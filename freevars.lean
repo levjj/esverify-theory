@@ -925,3 +925,43 @@ lemma free_in_propctx.exis.inv {x fx: var} {Q: propctx} {t: term}:
   have (propctx.apply (propctx.exis fx Q) t) = prop.exis fx (Q.apply t), by unfold propctx.apply,
   have x ∈ FV (prop.exis fx (Q.apply t)), from this ▸ x_free_in_eQt,
   show x ≠ fx ∧ x ∈ FV (Q t), from free_in_prop.exis.inv this
+
+lemma free_in_prop.and_comm {P₁ P₂ P₃: prop}:
+      FV (P₁ ⋀ P₂ ⋀ P₃) = FV ((P₁ ⋀ P₂) ⋀ P₃) :=
+  set.eq_of_subset_of_subset (
+    assume x: var,
+    assume : x ∈ FV (P₁ ⋀ P₂ ⋀ P₃),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₁,
+      have x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this,
+      show x ∈ FV ((P₁ ⋀ P₂) ⋀ P₃), from free_in_prop.and₁ this
+    ) (
+      assume : x ∈ FV (P₂ ⋀ P₃),
+      or.elim (free_in_prop.and.inv this) (
+        assume : x ∈ FV P₂,
+        have x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this,
+        show x ∈ FV ((P₁ ⋀ P₂) ⋀ P₃), from free_in_prop.and₁ this
+      ) (
+        assume : x ∈ FV P₃,
+        show x ∈ FV ((P₁ ⋀ P₂) ⋀ P₃), from free_in_prop.and₂ this
+      )
+    )
+  ) (
+    assume x: var,
+    assume : x ∈ FV ((P₁ ⋀ P₂) ⋀ P₃),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV (P₁ ⋀ P₂),
+      or.elim (free_in_prop.and.inv this) (
+        assume : x ∈ FV P₁,
+        show x ∈ FV (P₁ ⋀ P₂ ⋀ P₃), from free_in_prop.and₁ this
+      ) (
+        assume : x ∈ FV P₂,
+        have x ∈ FV (P₂ ⋀ P₃), from free_in_prop.and₁ this,
+        show x ∈ FV (P₁ ⋀ P₂ ⋀ P₃), from free_in_prop.and₂ this
+      )
+    ) (
+      assume : x ∈ FV P₃,
+      have x ∈ FV (P₂ ⋀ P₃), from free_in_prop.and₂ this,
+      show x ∈ FV (P₁ ⋀ P₂ ⋀ P₃), from free_in_prop.and₂ this
+    )
+  )
