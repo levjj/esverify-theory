@@ -306,7 +306,7 @@ lemma unchanged_of_subst_env_nonfree_vc {P: vc}:
   assume x_not_free: (∀x, x ∉ FV P),
   assume σ: env,
   begin
-    induction σ with x v σ' ih,
+    induction σ with σ' x v ih,
 
     show (vc.subst_env env.empty P = P), by unfold vc.subst_env,
 
@@ -550,7 +550,7 @@ lemma free_of_subst_env {P: prop} {σ: env} {x: var}:
         free_in_prop x (prop.subst_env σ P) → free_in_prop x P :=
   assume x_free_in_subst: free_in_prop x (prop.subst_env σ P),
   begin
-    induction σ with y v σ' ih,
+    induction σ with σ' y v ih,
     show free_in_prop x P, from (
       have prop.subst_env env.empty P = P, by unfold prop.subst_env,
       show free_in_prop x P, from this ▸ x_free_in_subst
@@ -707,7 +707,7 @@ lemma free_in_vc.subst_env {P: vc} {σ: env} {x: var}:
         free_in_vc x (vc.subst_env σ P) → free_in_vc x P :=
   assume x_free_in_subst: free_in_vc x (vc.subst_env σ P),
   begin
-    induction σ with y v σ' ih,
+    induction σ with σ' y v ih,
     show free_in_vc x P, from (
       have vc.subst_env env.empty P = P, by unfold vc.subst_env,
       show free_in_vc x P, from this ▸ x_free_in_subst
@@ -721,7 +721,7 @@ lemma free_in_vc.subst_env {P: vc} {σ: env} {x: var}:
 lemma term.subst_env.var.inv {x: var} {σ: env}:
   (term.subst_env σ x = x) ∨ (∃v:value, term.subst_env σ x = v) :=
   begin
-    induction σ with y v' σ' ih,
+    induction σ with σ' y v' ih,
     show (term.subst_env env.empty x = x) ∨ (∃v:value, term.subst_env env.empty x = v), from (
       have (term.subst_env env.empty x = x), by unfold term.subst_env,
       show (term.subst_env env.empty x = x) ∨ (∃v:value, term.subst_env env.empty x = v), from or.inl this
@@ -763,7 +763,7 @@ lemma term.subst_env.var.inv {x: var} {σ: env}:
 
 lemma term.subst_env.value {σ: env} {v: value}: term.subst_env σ v = v :=
 begin
-  induction σ with x v' σ' ih,
+  induction σ with σ' x v' ih,
   show (term.subst_env env.empty v = v), by unfold term.subst_env,
   show (term.subst_env (σ'[x↦v']) v = v), from (
     have h: term.subst_env σ' v = v, from ih,
@@ -778,7 +778,7 @@ end
 lemma term.subst_env.var {σ: env} {x: var}:
       ((σ x = none) ↔ (term.subst_env σ x = x)) ∧ (∀v, (σ x = some v) ↔ (term.subst_env σ x = v)) :=
 begin
-  induction σ with y v' σ' ih,
+  induction σ with σ' y v' ih,
   show (((env.empty x = none) ↔ (term.subst_env env.empty x = x))
      ∧ (∀v, (env.empty x = some v) ↔ (term.subst_env env.empty x = v))), by begin
     split,
@@ -1128,7 +1128,7 @@ lemma prop.not_free_of_subst_env {x: var} {σ: env} {P: prop}: x ∈ σ → x �
   assume x_in_σ: x ∈ σ,
   assume x_free: x ∈ FV (prop.subst_env σ P),
   begin
-    induction σ with y v σ' ih,
+    induction σ with σ' y v ih,
 
     -- env.empty
     show «false», by cases x_in_σ,
@@ -1154,7 +1154,7 @@ lemma prop.not_free_of_subst_env {x: var} {σ: env} {P: prop}: x ∈ σ → x �
 lemma term.subst_env.unop {σ: env} {op: unop} {t: term}:
       term.subst_env σ (term.unop op t) = term.unop op (term.subst_env σ t) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (term.subst_env env.empty (term.unop op t) = term.unop op (term.subst_env env.empty t)),
   by calc
@@ -1174,7 +1174,7 @@ end
 lemma term.subst_env.binop {σ: env} {op: binop} {t₁ t₂: term}:
       term.subst_env σ (term.binop op t₁ t₂) = term.binop op (term.subst_env σ t₁) (term.subst_env σ t₂) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (term.subst_env env.empty (term.binop op t₁ t₂)
       = term.binop op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
@@ -1200,7 +1200,7 @@ end
 lemma prop.subst_env.term {σ: env} {t: term}:
   prop.subst_env σ t = prop.term (term.subst_env σ t) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (prop.subst_env env.empty t = prop.term (term.subst_env env.empty t)), by begin
     have : (term.subst_env env.empty t = t), by unfold term.subst_env,
@@ -1222,7 +1222,7 @@ end
 lemma prop.subst_env.not {σ: env} {P: prop}:
       prop.subst_env σ P.not = (prop.subst_env σ P).not :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (prop.subst_env env.empty P.not = (prop.subst_env env.empty P).not),
   by calc
@@ -1240,7 +1240,7 @@ end
 lemma prop.subst_env.and {σ: env} {P Q: prop}:
       prop.subst_env σ (P ⋀ Q) = (prop.subst_env σ P ⋀ prop.subst_env σ Q) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (prop.subst_env env.empty (P ⋀ Q) = (prop.subst_env env.empty P ⋀ prop.subst_env env.empty Q)),
   by calc
@@ -1264,7 +1264,7 @@ end
 lemma prop.subst_env.or {σ: env} {P Q: prop}:
       prop.subst_env σ (P ⋁ Q) = (prop.subst_env σ P ⋁ prop.subst_env σ Q) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (prop.subst_env env.empty (P ⋁ Q) = (prop.subst_env env.empty P ⋁ prop.subst_env env.empty Q)),
   by calc
@@ -1297,7 +1297,7 @@ lemma prop.subst_env.implies {σ: env} {P Q: prop}:
 lemma prop.subst_env.pre {σ: env} {t₁ t₂: term}:
       prop.subst_env σ (prop.pre t₁ t₂) = prop.pre (term.subst_env σ t₁) (term.subst_env σ t₂) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (prop.subst_env env.empty (prop.pre t₁ t₂)
       = prop.pre (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
@@ -1321,7 +1321,7 @@ end
 lemma prop.subst_env.post {σ: env} {t₁ t₂: term}:
       prop.subst_env σ (prop.post t₁ t₂) = prop.post (term.subst_env σ t₁) (term.subst_env σ t₂) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (prop.subst_env env.empty (prop.post t₁ t₂)
       = prop.post (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
@@ -1346,7 +1346,7 @@ lemma prop.subst_env.forallc {σ: env} {x: var} {t: term} {P: prop}:
       (x ∉ σ) → (prop.subst_env σ (prop.forallc x t P) = prop.forallc x (term.subst_env σ t) (prop.subst_env σ P)) :=
 begin
   assume x_not_in_σ,
-  induction σ with y v σ' ih,
+  induction σ with σ' y v ih,
 
   show (prop.subst_env env.empty (prop.forallc x t P)
       = prop.forallc x (term.subst_env env.empty t) (prop.subst_env env.empty P)),
@@ -1386,7 +1386,7 @@ lemma vc.subst.implies {x: var} {v: value} {P Q: vc}:
 lemma vc.subst_env.term {σ: env} {t: term}:
   vc.subst_env σ t = vc.term (term.subst_env σ t) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty t = vc.term (term.subst_env env.empty t)), by begin
     have : (term.subst_env env.empty t = t), by unfold term.subst_env,
@@ -1408,7 +1408,7 @@ end
 lemma vc.subst_env.not {σ: env} {P: vc}:
       vc.subst_env σ P.not = (vc.subst_env σ P).not :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty P.not = (vc.subst_env env.empty P).not),
   by calc
@@ -1426,7 +1426,7 @@ end
 lemma vc.subst_env.and {σ: env} {P Q: vc}:
       vc.subst_env σ (P ⋀ Q) = (vc.subst_env σ P ⋀ vc.subst_env σ Q) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty (P ⋀ Q) = (vc.subst_env env.empty P ⋀ vc.subst_env env.empty Q)),
   by calc
@@ -1450,7 +1450,7 @@ end
 lemma vc.subst_env.or {σ: env} {P Q: vc}:
       vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty (P ⋁ Q) = (vc.subst_env env.empty P ⋁ vc.subst_env env.empty Q)),
   by calc
@@ -1482,7 +1482,7 @@ lemma vc.subst_env.implies {σ: env} {P Q: vc}:
 lemma vc.subst_env.pre₁ {σ: env} {op: unop} {t: term}:
       vc.subst_env σ (vc.pre₁ op t) = vc.pre₁ op (term.subst_env σ t) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty (vc.pre₁ op t) = vc.pre₁ op (term.subst_env env.empty t)),
   by calc
@@ -1500,7 +1500,7 @@ end
 lemma vc.subst_env.pre₂ {σ: env} {op: binop} {t₁ t₂: term}:
       vc.subst_env σ (vc.pre₂ op t₁ t₂) = vc.pre₂ op (term.subst_env σ t₁) (term.subst_env σ t₂) :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty (vc.pre₂ op t₁ t₂)
       = vc.pre₂ op (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
@@ -1525,7 +1525,7 @@ lemma vc.subst_env.univ {σ: env} {x: var} {P: vc}:
       (x ∉ σ) → (vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env σ P)) :=
 begin
   assume x_not_in_σ,
-  induction σ with y v σ' ih,
+  induction σ with σ' y v ih,
 
   show (vc.subst_env env.empty (vc.univ x P) = vc.univ x (vc.subst_env env.empty P)),
   by calc

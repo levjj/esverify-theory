@@ -295,7 +295,103 @@ axiom instantiated_distrib_subst {P: prop} {x: var} {v: value}:
 axiom instantiated_n_distrib_subst {P: prop} {x: var} {v: value}:
   vc.subst x v P.instantiated_n = (prop.subst x v P).instantiated_n
 
+--  inst(P)   ⇒   inst_n(P)
+--         ⇘    ⇗  
+--     ⇑      P      ⇓
+--         ⇗    ⇘ 
+-- erased(P)  ⇒  erased_n(P)
+
+axiom valid_env.instantiated_of_erased {σ: env} {P: prop}:
+  (σ ⊨ P.erased) →
+  σ ⊨ P.instantiated
+
+axiom valid_env.instantiated_n_of_instantiated {σ: env} {P: prop}:
+  (σ ⊨ P.instantiated) →
+  σ ⊨ P.instantiated_n
+
+axiom valid_env.erased_n_of_instantiated_n {σ: env} {P: prop}:
+  (σ ⊨ P.instantiated_n) →
+  σ ⊨ P.erased_n
+
+-- if a conjunction or disjunciton is valid without cross-instantiations
+-- then it remains valid, as potential new instantiations are in negative positions
+axiom valid_env.instantiated_and {σ: env} {P Q: prop}:
+  (σ ⊨ P.instantiated ⋀ Q.instantiated) →
+  σ ⊨ (P ⋀ Q).instantiated
+
+axiom valid_env.instantiated_or {σ: env} {P Q: prop}:
+  (σ ⊨ P.instantiated ⋁ Q.instantiated) →
+  σ ⊨ (P ⋁ Q).instantiated
+
+-- if P and P' have the same substituted triggers and every quantifier
+-- in P' is dominated by a quantifier in P then any
+-- any cross-instantiations with an arbitrary propostion Q are also the same,
+-- so if (P') implies (P) without cross-instantiations,
+-- then (P' ∧ Q) implies (P ∧ Q) without cross-instantiations
+axiom valid_env.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
+  dominates σ P P' →
+  σ ⊨ vc.implies (P ⋀ Q).instantiated_n (P' ⋀ Q).instantiated_n
+
+axiom valid_env.or_not_dist_with_instantiations {σ: env} {P Q: prop}:
+  (σ ⊨ (P ⋁ Q).not.instantiated_n) ↔ (σ ⊨ (P.not ⋀ Q.not).instantiated_n)
+
+axiom valid_env.and_comm_with_instantiations {σ: env} {P₁ P₂ P₃: prop}:
+  (σ ⊨ (P₁ ⋀ P₂ ⋀ P₃).instantiated_n) ↔ (σ ⊨ ((P₁ ⋀ P₂) ⋀ P₃).instantiated_n)
+
 -- lemmas
+
+lemma valid.instantiated_of_erased {P: prop}: (⊨ P.erased) → ⊨ P.instantiated :=
+  assume h: ⊨ P.erased,
+  have P.erased = vc.subst_env env.empty P.erased, by unfold vc.subst_env,
+  have env.empty ⊨ P.erased, from this ▸ h,
+  have h2: env.empty ⊨ P.instantiated, from valid_env.instantiated_of_erased this,
+  have  vc.subst_env env.empty P.instantiated = P.instantiated, by unfold vc.subst_env,
+  show ⊨ P.instantiated, from this ▸ h2
+
+lemma valid.instantiated_n_of_instantiated {P: prop}: (⊨ P.instantiated) → ⊨ P.instantiated_n :=
+  assume h: ⊨ P.instantiated,
+  have P.instantiated = vc.subst_env env.empty P.instantiated, by unfold vc.subst_env,
+  have env.empty ⊨ P.instantiated, from this ▸ h,
+  have h2: env.empty ⊨ P.instantiated_n, from valid_env.instantiated_n_of_instantiated this,
+  have  vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
+  show ⊨ P.instantiated_n, from this ▸ h2
+
+lemma valid.erased_n_of_instantiated_n {P: prop}: (⊨ P.instantiated_n) → ⊨ P.erased_n :=
+  assume h: ⊨ P.instantiated_n,
+  have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
+  have env.empty ⊨ P.instantiated_n, from this ▸ h,
+  have h2: env.empty ⊨ P.erased_n, from valid_env.erased_n_of_instantiated_n this,
+  have vc.subst_env env.empty P.erased_n = P.erased_n, by unfold vc.subst_env,
+  show ⊨ P.erased_n, from this ▸ h2
+
+lemma valid.instantiated_and {P Q: prop}:
+      (⊨ P.instantiated ⋀ Q.instantiated) → ⊨ (P ⋀ Q).instantiated :=
+  assume h: ⊨ (P.instantiated ⋀ Q.instantiated),
+  have (P.instantiated ⋀ Q.instantiated) = vc.subst_env env.empty (P.instantiated ⋀ Q.instantiated),
+  by unfold vc.subst_env,
+  have env.empty ⊨ (P.instantiated ⋀ Q.instantiated), from this ▸ h,
+  have h2: env.empty ⊨ (P ⋀ Q).instantiated, from valid_env.instantiated_and this,
+  have vc.subst_env env.empty (P ⋀ Q).instantiated = (P ⋀ Q).instantiated, by unfold vc.subst_env,
+  show ⊨ (P ⋀ Q).instantiated, from this ▸ h2
+
+lemma valid.instantiated_or {P Q: prop}:
+      (⊨ P.instantiated ⋁ Q.instantiated) → ⊨ (P ⋁ Q).instantiated :=
+  assume h: ⊨ (P.instantiated ⋁ Q.instantiated),
+  have (P.instantiated ⋁ Q.instantiated) = vc.subst_env env.empty (P.instantiated ⋁ Q.instantiated),
+  by unfold vc.subst_env,
+  have env.empty ⊨ (P.instantiated ⋁ Q.instantiated), from this ▸ h,
+  have h2: env.empty ⊨ (P ⋁ Q).instantiated, from valid_env.instantiated_or this,
+  have vc.subst_env env.empty (P ⋁ Q).instantiated = (P ⋁ Q).instantiated, by unfold vc.subst_env,
+  show ⊨ (P ⋁ Q).instantiated, from this ▸ h2
+
+lemma valid.instantiated_implies {P Q: prop}:
+      (⊨ vc.implies P.instantiated_n Q.instantiated) → ⊨ (prop.implies P Q).instantiated :=
+  assume : ⊨ (vc.implies P.instantiated_n Q.instantiated),
+  have h1: ⊨ (vc.or P.instantiated_n.not Q.instantiated), from this,
+  have P.not.instantiated = P.instantiated_n.not, from not_dist_instantiated,
+  have ⊨ (vc.or P.not.instantiated Q.instantiated), from this.symm ▸ h1,
+  have ⊨ (prop.or P.not Q).instantiated, from valid.instantiated_or this,
+  show ⊨ (prop.implies P Q).instantiated, from this
 
 lemma dominates_of {σ: env} {P P': prop}:
     (σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) →
@@ -337,7 +433,7 @@ lemma dominates_of {σ: env} {P P': prop}:
 lemma instantiated_distrib_subst_env {P: prop} {σ: env}:
       vc.subst_env σ P.instantiated = (prop.subst_env σ P).instantiated :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty (prop.instantiated P) = prop.instantiated (prop.subst_env env.empty P)),
   by calc
@@ -358,7 +454,7 @@ end
 lemma instantiated_n_distrib_subst_env {P: prop} {σ: env}:
       vc.subst_env σ P.instantiated_n = (prop.subst_env σ P).instantiated_n :=
 begin
-  induction σ with x v σ' ih,
+  induction σ with σ' x v ih,
 
   show (vc.subst_env env.empty (prop.instantiated_n P) = prop.instantiated_n (prop.subst_env env.empty P)),
   by calc

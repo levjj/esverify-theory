@@ -34,11 +34,7 @@ infixr `⋁`:30 := has_or.or
 notation `•` := termctx.hole
 
 -- history items
-@[reducible]
-def nop := historyitem.nop
-
-@[reducible]
-def call := historyitem.call
+notation H `·` `call` := history.call H
 
 -- simple coercions
 instance value_to_term : has_coe value term := ⟨term.value⟩
@@ -61,13 +57,13 @@ notation `letop2` z `=`:1 op `[`:1 x `,` y `]`:1 `in` e := exp.binop z op x y e
 notation `letapp` y `=`:1 f `[`:1 x `]`:1 `in` e := exp.app y f x e
 
 -- σ[x ↦ v]
-notation e `[` x `↦` v `]` := env.cons x v e
+notation e `[` x `↦` v `]` := env.cons e x v
 
--- κ · [σ, let y = f [ x ] in e]
-notation st `·` `[` env `,` `let` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st env y f x e
+-- κ · [H, σ, let y = f [ x ] in e]
+notation st `·` `[` H `,` env `,` `let` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st H env y f x e
 
--- (σ, e) : stack
-instance : has_coe (env × exp) stack := ⟨λe, stack.top e.1 e.2⟩
+-- (H, σ, e) : stack
+instance : has_coe (history × env × exp) stack := ⟨λe, stack.top e.1 e.2.1 e.2.2⟩
 
 -- env lookup as function application
 
@@ -161,6 +157,20 @@ def vc.size: vc → ℕ := @vc.rec (λ_, ℕ)
 
 instance : has_sizeof vc := ⟨vc.size⟩
 
+-- history size
+
+@[reducible]
+def historyfix: (history → ℕ) → (λ (_x : history), ℕ) history.empty :=
+  assume f: history → ℕ,
+  (λ (h : history), f h) history.empty 
+
+@[reducible]
+def history.size: history → ℕ := @history.rec (λ_, ℕ)
+  (historyfix (λ_, 0))
+  (λ _ _ _ _ _ _ _ _ _ n _, n + 1)
+
+instance : has_sizeof history := ⟨history.size⟩
+
 -- term to termctx coercion
 
 def term.to_termctx : term → termctx
@@ -220,12 +230,13 @@ instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 
 -- call history to prop coercion
 
-def calls_to_prop: callhistory → prop
-| list.nil                                  := value.true
-| (historyitem.nop :: rest)                 := calls_to_prop rest
-| (historyitem.call f x R S e σ vₓ :: rest) := prop.call (value.func f x R S e σ) vₓ ⋀ calls_to_prop rest
+def calls_to_prop: history → prop
+| history.empty                        := value.true
+| (history.call rest f x R S e H σ vₓ) :=
+  have history.size rest < history.size (rest · call f x R S e H σ vₓ), from lt_of_add_one,
+  calls_to_prop rest ⋀ prop.call (value.func f x R S e H σ) vₓ
 
-instance call_to_prop: has_coe callhistory prop := ⟨calls_to_prop⟩
+instance call_to_prop: has_coe history prop := ⟨calls_to_prop⟩
 
 -- instantiation is axiomatized in qi.lean
 

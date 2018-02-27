@@ -574,90 +574,70 @@ lemma free_of_contains {P: prop} {σ: env} {x: var}: (⊢ σ : P) → x ∈ σ �
         show x ∈ FV (Q ⋀ y ≡ value.num n), from free_in_prop.and₁ this
       )
     },
-    case env.vcgen.func f σ₂ σ₁ g gx R S e Q₁ Q₂ Q₃ _ _ _ _ _ _ fv_R fv_S e_verified _ ih₁ ih₂ { from
+    case env.vcgen.func f σ₂ σ₁ g gx R S e H Q₁ Q₂ Q₃ _ _ _ _ _ _ fv_R fv_S e_verified _ ih₁ ih₂ { from
       or.elim (env.contains.inv x_contained) (
         assume : x = f,
         have free_in_term x f, from this ▸ free_in_term.var x,
-        have free_in_term x (f ≡ value.func g gx R S e σ₂), from free_in_term.binop₁ this,
-        have free_in_prop x (f ≡ value.func g gx R S e σ₂), from free_in_prop.term this,
-        have x ∈ FV (prop.term (f ≡ value.func g gx R S e σ₂) ⋀
-                     prop.subst_env (σ₂[g↦value.func g gx R S e σ₂])
+        have free_in_term x (f ≡ value.func g gx R S e H σ₂), from free_in_term.binop₁ this,
+        have free_in_prop x (f ≡ value.func g gx R S e H σ₂), from free_in_prop.term this,
+        have x ∈ FV (prop.term (f ≡ value.func g gx R S e H σ₂) ⋀
+                     prop.subst_env (σ₂[g↦value.func g gx R S e H σ₂])
                      (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))), from free_in_prop.and₁ this,
-        show x ∈ FV (Q₁ ⋀ f ≡ value.func g gx R S e σ₂ ⋀
-                     prop.subst_env (σ₂[g↦value.func g gx R S e σ₂])
+        show x ∈ FV (Q₁ ⋀ f ≡ value.func g gx R S e H σ₂ ⋀
+                     prop.subst_env (σ₂[g↦value.func g gx R S e H σ₂])
                      (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))), from free_in_prop.and₂ this
       ) (
         assume : x ∈ σ₁,
         have x ∈ FV Q₁, from ih₁ this,
-        show x ∈ FV (Q₁ ⋀ f ≡ value.func g gx R S e σ₂ ⋀
-                     prop.subst_env (σ₂[g↦value.func g gx R S e σ₂])
+        show x ∈ FV (Q₁ ⋀ f ≡ value.func g gx R S e H σ₂ ⋀
+                     prop.subst_env (σ₂[g↦value.func g gx R S e H σ₂])
                      (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))), from free_in_prop.and₁ this
       )
     }
   end
 
-lemma stack_nop {H: callhistory} {s: stack}: (H ⊢ₛ s) → (nop :: H ⊢ₛ s) :=
-  assume s_verified: H ⊢ₛ s,
-  begin
-    induction s_verified,
-    case stack.vcgen.top σ e Q P H σ_verified e_verified { from
-      show nop :: H ⊢ₛ (σ, e), from stack.vcgen.top σ_verified e_verified
-    },
-    case stack.vcgen.cons P H s' σ σ' f g x y fx R S e₁ e₂ vₓ Q s'_verified σ_verified g_is_func x_is_v y_not_in_σ
-                          cont dd func_vc ih { from
-      show nop :: H ⊢ₛ (s' · [σ, let y = g[x] in e₁]),
-      from stack.vcgen.cons ih σ_verified g_is_func x_is_v y_not_in_σ cont dd func_vc
-    }
-  end
-
-lemma exp.preservation {H: callhistory} {σ σ': env} {P P': prop} {e e': exp} {Q Q': propctx}:
-      (⊢ σ : P) → (H ⋀ P ⊢ e : Q) → ((σ, e) ⟶ nop, (σ', e')) → (⊢ σ' : P') ∧ (H ⋀ P' ⊢ e' : Q') :=
+lemma exp.preservation {H: history} {σ σ': env} {P P': prop} {e e': exp} {Q Q': propctx}:
+      (⊢ σ : P) → (H ⋀ P ⊢ e : Q) → ((H, σ, e) ⟶ (H, σ', e')) → (⊢ σ' : P') ∧ (H ⋀ P' ⊢ e' : Q') :=
   sorry
 
-theorem preservation {H: callhistory} {h: historyitem} {s s': stack}: (H ⊢ₛ s) → (s ⟶ h, s') → (h :: H ⊢ₛ s') :=
-  assume s_verified: H ⊢ₛ s,
-  assume s_steps: s ⟶ h, s',
+theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
+  assume s_verified:  ⊢ₛ s,
+  assume s_steps: s ⟶ s',
   begin
     cases s_verified,
-    case stack.vcgen.top σ e Q P σ_verified e_verified {
+    case stack.vcgen.top σ e H Q P σ_verified e_verified {
       cases s_steps,
       case step.tru x e { from
         have (⊢ (σ[x↦value.true]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ[x↦value.true], e), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ[x↦value.true], e), from stack_nop this
+        show ⊢ₛ (H, σ[x↦value.true], e), from stack.vcgen.top this.left this.right
       },
       case step.fals x e { from
         have (⊢ (σ[x↦value.false]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ[x↦value.false], e), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ[x↦value.false], e), from stack_nop this
+        show ⊢ₛ (H, σ[x↦value.false], e), from stack.vcgen.top this.left this.right
       },
       case step.num n e x { from
         have (⊢ (σ[x↦value.num n]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ[x↦value.num n], e), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ[x↦value.num n], e), from stack_nop this
+        show ⊢ₛ (H, σ[x↦value.num n], e), from stack.vcgen.top this.left this.right
       },
       case step.closure R S f x e₁ e₂ { from
-        have (⊢ (σ[f↦value.func f x R S e₁ σ]) : P) ∧ (H ⋀ P ⊢ e₂ : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ[f↦value.func f x R S e₁ σ], e₂), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ[f↦value.func f x R S e₁ σ], e₂), from stack_nop this
+        have (⊢ (σ[f↦value.func f x R S e₁ H σ]) : P) ∧ (H ⋀ P ⊢ e₂ : Q), from exp.preservation σ_verified e_verified s_steps,
+        show ⊢ₛ (H, σ[f↦value.func f x R S e₁ H σ], e₂), from stack.vcgen.top this.left this.right,
       },
       case step.unop op x y e { from
         have (⊢ (σ[y↦v]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ[y↦v], e), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ[y↦v], e), from stack_nop this
+        show ⊢ₛ (H, σ[y↦v], e), from stack.vcgen.top this.left this.right
       },
       case step.binop op x y z e { from
         have (⊢ (σ[z↦v]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ[z↦v], e), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ[z↦v], e), from stack_nop this
+        show ⊢ₛ (H, σ[z↦v], e), from stack.vcgen.top this.left this.right
       },
-      case step.app f x y σ₂ g R S gx e₁ e₂ vₓ f_is_func x_is_vₓ {
+      case step.app f x y S H₂ g σ₂ R gx e₁ e₂ vₓ f_is_func x_is_vₓ {
         cases e_verified,
         case exp.vcgen.app Q f_free x_free y_not_free e₂_verified func_vc { from
 
-          have h5: H ⊢ₛ (σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ], e₁), from (
+          have h5: ⊢ₛ (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁), from (
 
-            have ∃σ' Q', ⊢ (σ'[f ↦ value.func g gx R S e₁ σ₂]) : Q',
+            have ∃σ' Q', ⊢ (σ'[f ↦ value.func g gx R S e₁ H₂ σ₂]) : Q',
             from env.vcgen.inv σ_verified f_is_func,
             let ⟨σ', Q', ha1⟩ := this in
 
@@ -670,21 +650,21 @@ theorem preservation {H: callhistory} {h: historyitem} {s s': stack}: (H ⊢ₛ 
               (⊢ σ₂ : Q₂) ∧
               FV R.to_prop ⊆ FV Q₂ ∪ { g, gx } ∧
               FV S.to_prop ⊆ FV Q₂ ∪ { g, gx } ∧
-              (Q₂ ⋀ spec.func g gx R S ⋀ R ⊢ e₁ : Q₃) ∧
-              ⟪prop.implies (Q₂ ⋀ spec.func g gx R S ⋀ R ⋀ Q₃ (term.app g gx)) S⟫ ∧
+              (H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R ⊢ e₁ : Q₃) ∧
+              ⟪prop.implies (H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R ⋀ Q₃ (term.app g gx)) S⟫ ∧
               (Q' = (Q₁ ⋀
-                  ((f ≡ (value.func g gx R S e₁ σ₂)) ⋀
-                  prop.subst_env (σ₂[g↦value.func g gx R S e₁ σ₂])
+                  ((f ≡ (value.func g gx R S e₁ H₂ σ₂)) ⋀
+                  prop.subst_env (σ₂[g↦value.func g gx R S e₁ H₂ σ₂])
                   (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))))),
             from env.vcgen.func.inv ha1,
 
             let ⟨Q₁, Q₂, Q₃, ha2⟩ := this in
             let Q₂' := (Q₂ ⋀
-                  ((g ≡ (value.func g gx R S e₁ σ₂)) ⋀
-                  prop.subst_env (σ₂[g↦value.func g gx R S e₁ σ₂])
+                  ((g ≡ (value.func g gx R S e₁ H₂ σ₂)) ⋀
+                  prop.subst_env (σ₂[g↦value.func g gx R S e₁ H₂ σ₂])
                   (prop.func g gx R (Q₃ (term.app g gx) ⋀ S)))) in
 
-            have ha3: ⊢ (σ₂[g↦value.func g gx R S e₁ σ₂]) : Q₂',
+            have ha3: ⊢ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]) : Q₂',
             from env.vcgen.func
                  ha2.right.left
                  ha2.right.left
@@ -701,8 +681,8 @@ theorem preservation {H: callhistory} {h: historyitem} {s s': stack}: (H ⊢ₛ 
             from env.vcgen.inv σ_verified x_is_vₓ,
             let ⟨σ'', Q'', ha4⟩ := this in
 
-            have gx ∉ (σ₂[g↦value.func g gx R S e₁ σ₂]), from (
-              assume : gx ∈ (σ₂[g↦value.func g gx R S e₁ σ₂]),
+            have gx ∉ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]), from (
+              assume : gx ∈ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]),
               or.elim (env.contains.inv this) (
                 assume : gx = g,
                 show «false», from ha2.right.right.right.left this.symm
@@ -711,16 +691,16 @@ theorem preservation {H: callhistory} {h: historyitem} {s s': stack}: (H ⊢ₛ 
                 show «false», from ha2.right.right.left this
               )
             ),
-            have ∃P₃, ⊢ (σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ]) : P₃,
+            have ∃P₃, ⊢ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ]) : P₃,
             from env.vcgen.copy ha3 this ha4,
             let ⟨P₃, ha5⟩ := this in
 
-            have ha6: Q₂ ⋀ spec.func g gx R S ⋀ R ⊢ e₁ : Q₃,
+            have ha6: H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R ⊢ e₁ : Q₃,
             from ha2.right.right.right.right.right.right.right.right.left,
 
-            have ha9: H ⋀ P₃ ⊢ e₁ : Q₃, from sorry,
+            have ha9: H₂ ⋀ P₃ ⊢ e₁ : Q₃, from sorry,
 
-            show H ⊢ₛ (σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ], e₁),
+            show ⊢ₛ (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁),
             from stack.vcgen.top ha5 ha9
           ),
 
@@ -803,23 +783,21 @@ theorem preservation {H: callhistory} {h: historyitem} {s s': stack}: (H ⊢ₛ 
           ),
           -- from func_vc,
 
-          have h9: (σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ], e₁) ⟶* (σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ], e₁),
+          have h9: (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁)
+              ⟶* (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁),
           from trans_step.rfl,
 
-          have H ⊢ₛ ((σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ], e₁) · [σ, let y = f[x] in e₂]),
-          from stack.vcgen.cons h5 σ_verified f_is_func x_is_vₓ h6 h7 h8 h9,
-          show nop :: H ⊢ₛ ((σ₂[g↦value.func g gx R S e₁ σ₂][gx↦vₓ], e₁) · [σ, let y = f[x] in e₂]), from stack_nop this
+          show ⊢ₛ ((H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁) · [H, σ, let y = f[x] in e₂]),
+          from stack.vcgen.cons h5 σ_verified f_is_func x_is_vₓ h6 h7 h8 h9
         }
       },
       case step.ite_true x e₁ e₂ { from
         have (⊢ σ : P) ∧ (H ⋀ P ⊢ e₂ : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ, e₂), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ, e₂), from stack_nop this
+        show ⊢ₛ (H, σ, e₂), from stack.vcgen.top this.left this.right
       },
       case step.ite_false x e₁ e₂ { from
         have (⊢ σ : P) ∧ (H ⋀ P ⊢ e₁ : Q), from exp.preservation σ_verified e_verified s_steps,
-        have H ⊢ₛ (σ, e₁), from stack.vcgen.top this.left this.right,
-        show nop :: H ⊢ₛ (σ, e₁), from stack_nop this
+        show ⊢ₛ (H, σ, e₁), from stack.vcgen.top this.left this.right
       }
     },
     case stack.vcgen.cons H P s' σ σ' f g x y fx R S e vₓ Q s'_verified _ g_is_func x_is_v _ cont _ _ ih { from

@@ -82,30 +82,28 @@ lemma trivial_dominates {σ: env}: dominates σ (prop.term value.true ⋀ prop.t
 
   show dominates σ P P', from dominates_of h_impl h_calls h_quantifiers
 
-lemma soundness {s s': stack}: (s ⟶* s') → ∀H, (H ⊢ₛ s) → (is_value s' ∨ ∃h s'', s' ⟶ h, s'') :=
+lemma soundness {s s': stack}: (s ⟶* s') → (⊢ₛ s) → (is_value s' ∨ ∃s'', s' ⟶ s'') :=
   assume steps_to_s': s ⟶* s',
   begin
     induction steps_to_s',
     case trans_step.rfl s₁ {
-      assume H,
       assume s₁_verified ,
-      show is_value s₁ ∨ ∃h s', s₁ ⟶ h, s', from progress H s₁ s₁_verified
+      show is_value s₁ ∨ ∃s', s₁ ⟶ s', from progress s₁ s₁_verified
     },
-    case trans_step.trans s₁ s₂ s₃ h s₁_steps_to_s₂ s₂_steps_to_s₃ ih {
-      assume H,
-      assume s₁_verified ,
-      have : (h :: H ⊢ₛ s₂), from preservation s₁_verified s₁_steps_to_s₂,
-      show is_value s₃ ∨ ∃h s', s₃ ⟶ h, s', from ih (h::H) this
+    case trans_step.trans s₁ s₂ s₃ s₁_steps_to_s₂ s₂_steps_to_s₃ ih {
+      assume s₁_verified,
+      have : (⊢ₛ s₂), from preservation s₁_verified s₁_steps_to_s₂,
+      show is_value s₃ ∨ ∃s', s₃ ⟶ s', from ih this
     }
   end
 
 theorem soundness_source_programs {e: exp} {s: stack} {Q: propctx}:
-  (value.true ⊢ e: Q) → ((env.empty, e) ⟶* s) → (is_value s ∨ ∃h s', s ⟶ h, s') :=
+  (value.true ⊢ e: Q) → ((history.empty, env.empty, e) ⟶* s) → (is_value s ∨ ∃s', s ⟶ s') :=
 
   assume initial_verified: value.true ⊢ e: Q,
-  assume steps_to_s: (env.empty, e) ⟶* s,
+  assume steps_to_s: (history.empty, env.empty, e) ⟶* s,
   have (prop.term value.true ⋀ prop.term value.true) ⊢ e: Q,
   from strengthen_exp initial_verified (prop.term value.true ⋀ prop.term value.true)
        trivial_freevars (λσ, trivial_dominates),
-  have list.nil ⊢ₛ (env.empty, e), from stack.vcgen.top env.vcgen.empty this,
-  show is_value s ∨ ∃h s', s ⟶ h, s', from soundness steps_to_s list.nil this
+  have ⊢ₛ (history.empty, env.empty, e), from stack.vcgen.top env.vcgen.empty this,
+  show is_value s ∨ ∃s', s ⟶ s', from soundness steps_to_s this

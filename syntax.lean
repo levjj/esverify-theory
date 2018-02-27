@@ -22,14 +22,14 @@ inductive binop
 | eq    : binop
 | lt    : binop
 
-mutual inductive value, exp, term, spec, env
+mutual inductive value, exp, term, spec, env, history
 
--- v ∈ Values := true | false | n | <func f(x) R S {e}, σ>
+-- v ∈ Values := true | false | n | <func f(x) R S {e}, H, σ>
 with value: Type
 | true  : value
 | false : value
 | num   : ℤ → value
-| func  : var → var → spec → spec → exp → env → value
+| func  : var → var → spec → spec → exp → history → env → value
 
 -- e ∈ Expressions := ...
 with exp: Type
@@ -59,24 +59,20 @@ with spec: Type
 | or   : spec → spec → spec
 | func : term → var → spec → spec → spec
 
--- σ ∈ Environments := • | σ[x ↦ v]
+-- σ ∈ Environments := • | σ[x↦v]
 with env: Type
 | empty : env
-| cons  : var → value → env → env
+| cons  : env → var → value → env
 
--- s ∈ Stacks := (σ, e) | s · (σ, let y = f(x) in e)
+-- H ∈ CallHistories := • | H · call(<func f(x) R S e, H, σ>, v)
+with history: Type
+| empty : history
+| call : history → var → var → spec → spec → exp → history → env → value → history
+
+-- s ∈ Stacks := (H, σ, e) | s · (H, σ, let y = f(x) in e)
 inductive stack
-| top  : env → exp → stack
-| cons : stack → env → var → var → var → exp → stack
-
--- h ∈ HistoryItem := call((func f(x) R S e σ), v)
-inductive historyitem
-| nop  : historyitem
-| call : var → var → spec → spec → exp → env → value → historyitem
-
--- H ∈ CallHistories := ∅ | h • H
-@[reducible]
-def callhistory := list historyitem
+| top  : history → env → exp → stack
+| cons : stack → history → env → var → var → var → exp → stack
 
 -- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
 --                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P

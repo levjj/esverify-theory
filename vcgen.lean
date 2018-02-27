@@ -88,7 +88,7 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     (⊢ σ : Q) →
     (⊢ (σ[x ↦ value.num n]) : Q ⋀ x ≡ value.num n)
 
-| func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
+| func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {H: history} {Q₁ Q₂: prop} {Q₃: propctx}:
     f ∉ σ₁ →
     g ∉ σ₂ →
     x ∉ σ₂ →
@@ -97,36 +97,36 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     (⊢ σ₂ : Q₂) →
     FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
     FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
-    (Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) →
-    ⟪prop.implies (Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S⟫ →
-    (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) :
+    (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) →
+    ⟪prop.implies (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S⟫ →
+    (⊢ (σ₁[f ↦ value.func g x R S e H σ₂]) :
       (Q₁
-       ⋀ f ≡ value.func g x R S e σ₂
-       ⋀ prop.subst_env (σ₂[g↦value.func g x R S e σ₂]) (prop.func g x R (Q₃ (term.app g x) ⋀ S))))
+       ⋀ f ≡ value.func g x R S e H σ₂
+       ⋀ prop.subst_env (σ₂[g↦value.func g x R S e H σ₂]) (prop.func g x R (Q₃ (term.app g x) ⋀ S))))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
-inductive stack.vcgen : callhistory → stack → Prop
-notation H `⊢ₛ` s : 10 := stack.vcgen H s
+inductive stack.vcgen : stack → Prop
+notation `⊢ₛ` s : 10 := stack.vcgen s
 
-| top {H: callhistory} {P: prop} {σ: env} {e: exp} {Q: propctx}:
+| top {H: history} {P: prop} {σ: env} {e: exp} {Q: propctx}:
     (⊢ σ : P) →
     (H ⋀ P ⊢ e : Q) →
-    (H ⊢ₛ (σ, e))
+    (⊢ₛ (H, σ, e))
 
-| cons {H: callhistory} {P: prop} {s: stack} {σ₁ σ₂: env}
+| cons {H₁ H₂: history} {P: prop} {s: stack} {σ₁ σ₂: env}
        {f fx g x y: var} {R S: spec} {e₁ e₂: exp} {v: value} {Q: propctx}:
-    (H ⊢ₛ s) →
+    (⊢ₛ s) →
     (⊢ σ₁ : P) →
-    (σ₁ g = value.func f fx R S e₂ σ₂) →
+    (σ₁ g = value.func f fx R S e₂ H₂ σ₂) →
     (σ₁ x = v) →
     y ∉ σ₁ →
-    (H ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q) →
-    ⟪ prop.implies (H ⋀ P ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
-    ((σ₂[f↦value.func f fx R S e₂ σ₂][fx↦v], e₂) ⟶* s) →
-    (H ⊢ₛ (s · [σ₁, let y = g[x] in e₁]))
+    (H₁ ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q) →
+    ⟪ prop.implies (H₁ ⋀ P ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
+    ((H₂, σ₂[f↦value.func f fx R S e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
+    (⊢ₛ (s · [H₁, σ₁, let y = g[x] in e₁]))
 
-notation H `⊢ₛ` s : 10 := stack.vcgen H s
+notation `⊢ₛ` s : 10 := stack.vcgen s
 
 -- lemmas
 
@@ -139,8 +139,8 @@ lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x 
     }
   end
 
-lemma stack.vcgen.top.inv {H: callhistory} {σ: env} {e: exp}: (H ⊢ₛ (σ, e)) → ∃P Q, (⊢ σ: P) ∧ (H ⋀ P ⊢ e: Q) :=
-  assume top_verified: H ⊢ₛ (σ, e),
+lemma stack.vcgen.top.inv {H: history} {σ: env} {e: exp}: (⊢ₛ (H, σ, e)) → ∃P Q, (⊢ σ: P) ∧ (H ⋀ P ⊢ e: Q) :=
+  assume top_verified: ⊢ₛ (H, σ, e),
   begin
     cases top_verified,
     case stack.vcgen.top P Q env_verified e_verified {
@@ -210,30 +210,30 @@ lemma env.vcgen.inv {σ: env} {P: prop} {x: var} {v: value}:
         show ∃σ' Q', ⊢ (σ'[x↦v]) : Q', from ih this
       )
     },
-    case env.vcgen.func f σ₂ σ₁ g gx R S e Q₁ Q₂ Q₃ f_not_in_σ₁ g_not_in_σ₂ gx_not_in_σ₂ g_neq_gx
+    case env.vcgen.func f σ₂ σ₁ g gx R S e H Q₁ Q₂ Q₃ f_not_in_σ₁ g_not_in_σ₂ gx_not_in_σ₂ g_neq_gx
                         σ₁_verified σ₂_verified fv_R fv_S e_verified func_vc ih₁ ih₂ { from
-      have env.apply (σ₁[f↦value.func g gx R S e σ₂]) x = v, from σ_x_is_v,
-      have h1: (if f = x ∧ option.is_none (σ₁.apply x) then ↑(value.func g gx R S e σ₂) else σ₁.apply x) = v,
+      have env.apply (σ₁[f↦value.func g gx R S e H σ₂]) x = v, from σ_x_is_v,
+      have h1: (if f = x ∧ option.is_none (σ₁.apply x) then ↑(value.func g gx R S e H σ₂) else σ₁.apply x) = v,
       by { unfold env.apply at this, from this },
       if h2: f = x ∧ option.is_none (σ₁.apply x) then (
-        have ↑(value.func g gx R S e σ₂) = ↑v, by { simp[h2] at h1, from h1 },
-        have v_is_num: v = value.func g gx R S e σ₂, from (option.some.inj this).symm,
+        have ↑(value.func g gx R S e H σ₂) = ↑v, by { simp[h2] at h1, from h1 },
+        have v_is_num: v = value.func g gx R S e H σ₂, from (option.some.inj this).symm,
         have x_not_in_σ₁: x ∉ σ₁, from h2.left ▸ f_not_in_σ₁,
-        have ⊢ (σ₁[x↦value.func g gx R S e σ₂]) :
+        have ⊢ (σ₁[x↦value.func g gx R S e H σ₂]) :
                   (Q₁
-                  ⋀ x ≡ value.func g gx R S e σ₂
-                  ⋀ prop.subst_env (σ₂[g↦value.func g gx R S e σ₂]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))),
+                  ⋀ x ≡ value.func g gx R S e H σ₂
+                  ⋀ prop.subst_env (σ₂[g↦value.func g gx R S e H σ₂]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))),
         from env.vcgen.func x_not_in_σ₁ g_not_in_σ₂ gx_not_in_σ₂ g_neq_gx
                             σ₁_verified σ₂_verified fv_R fv_S e_verified func_vc,
         have ⊢ (σ₁[x↦v]) :
                   (Q₁
-                  ⋀ x ≡ value.func g gx R S e σ₂
-                  ⋀ prop.subst_env (σ₂[g↦value.func g gx R S e σ₂]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))),
+                  ⋀ x ≡ value.func g gx R S e H σ₂
+                  ⋀ prop.subst_env (σ₂[g↦value.func g gx R S e H σ₂]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))),
         from v_is_num.symm ▸ this,
         show ∃σ₁ Q', ⊢ (σ₁[x↦v]) : Q',
         from exists.intro σ₁ (exists.intro (Q₁
-                  ⋀ x ≡ value.func g gx R S e σ₂
-                  ⋀ prop.subst_env (σ₂[g↦value.func g gx R S e σ₂]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))) this)
+                  ⋀ x ≡ value.func g gx R S e H σ₂
+                  ⋀ prop.subst_env (σ₂[g↦value.func g gx R S e H σ₂]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))) this)
       ) else (
         have (σ₁.apply x) = v, by { simp[h2] at h1, from h1 },
         show ∃σ₁ Q₁, ⊢ (σ₁[x↦v]) : Q₁, from ih₁ this
@@ -265,8 +265,8 @@ lemma env.vcgen.num.inv {σ: env} {x: var} {n: ℕ} {Q: prop}:
     case env.vcgen.num h1 h2 { from ⟨h1, h2⟩ }
   end
 
-lemma env.vcgen.func.inv {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q: prop}:
-      (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) : Q) →
+lemma env.vcgen.func.inv {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {H: history} {Q: prop}:
+      (⊢ (σ₁[f ↦ value.func g x R S e H σ₂]) : Q) →
       ∃Q₁ Q₂ Q₃,
       f ∉ σ₁ ∧
       g ∉ σ₂ ∧
@@ -276,13 +276,13 @@ lemma env.vcgen.func.inv {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q
       (⊢ σ₂ : Q₂) ∧
       FV R.to_prop ⊆ FV Q₂ ∪ { g, x } ∧
       FV S.to_prop ⊆ FV Q₂ ∪ { g, x } ∧
-      (Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) ∧
-      ⟪prop.implies (Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S⟫ ∧
+      (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) ∧
+      ⟪prop.implies (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S⟫ ∧
       (Q = (Q₁ ⋀
-           ((f ≡ (value.func g x R S e σ₂)) ⋀
-           prop.subst_env (σ₂[g↦value.func g x R S e σ₂])
+           ((f ≡ (value.func g x R S e H σ₂)) ⋀
+           prop.subst_env (σ₂[g↦value.func g x R S e H σ₂])
            (prop.func g x R (Q₃ (term.app g ↑x) ⋀ S))))) :=
-  assume h : ⊢ (σ₁[f ↦ value.func g x R S e σ₂]) : Q,
+  assume h : ⊢ (σ₁[f ↦ value.func g x R S e H σ₂]) : Q,
   begin
     cases h,
     case env.vcgen.func Q₁ Q₂ Q₃ f_not_in_σ₁ g_not_in_σ₂ x_not_in_σ₂ g_neq_x
@@ -315,17 +315,17 @@ lemma env.vcgen.copy {σ₁ σ₂: env} {P₁ P₂} {x y: var} {v: value}:
       from env.vcgen.num y_not_in_σ₁ σ₁_verified,
       show ∃P₃, ⊢ (σ₁[y↦value.num n]) : P₃, from exists.intro (P₁ ⋀ y ≡ value.num n) this
     },
-    case env.vcgen.func σ₃ f fx R S e Q₃ Q₄ Q₂ x_not_in_σ₂ f_not_in_σ₃ fx_not_in_σ₃
+    case env.vcgen.func σ₃ f fx R S e H Q₃ Q₄ Q₂ x_not_in_σ₂ f_not_in_σ₃ fx_not_in_σ₃
                         f_neq_fx σ₂_verified σ₃_verified fv_R fv_S e_verified func_vc { from
-      have ⊢ (σ₁[y↦value.func f fx R S e σ₃]) : (P₁
-        ⋀ y ≡ value.func f fx R S e σ₃
-        ⋀ prop.subst_env (σ₃[f↦value.func f fx R S e σ₃]) (prop.func f fx R (Q₃ (term.app f fx) ⋀ S))),
+      have ⊢ (σ₁[y↦value.func f fx R S e H σ₃]) : (P₁
+        ⋀ y ≡ value.func f fx R S e H σ₃
+        ⋀ prop.subst_env (σ₃[f↦value.func f fx R S e H σ₃]) (prop.func f fx R (Q₃ (term.app f fx) ⋀ S))),
       from env.vcgen.func y_not_in_σ₁ f_not_in_σ₃ fx_not_in_σ₃
                         f_neq_fx σ₁_verified σ₃_verified fv_R fv_S e_verified func_vc,
-      show ∃P₃, ⊢ (σ₁[y↦value.func f fx R S e σ₃]) : P₃,
+      show ∃P₃, ⊢ (σ₁[y↦value.func f fx R S e H σ₃]) : P₃,
       from exists.intro (P₁
-       ⋀ y ≡ value.func f fx R S e σ₃
-       ⋀ prop.subst_env (σ₃[f↦value.func f fx R S e σ₃]) (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)))
+       ⋀ y ≡ value.func f fx R S e H σ₃
+       ⋀ prop.subst_env (σ₃[f↦value.func f fx R S e H σ₃]) (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)))
       this
     }
   end
