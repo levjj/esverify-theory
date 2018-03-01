@@ -252,7 +252,7 @@ end
 def dominates': prop → prop → env → Prop
 | P' P σ :=
     (σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P') ∧
+    (calls_env σ P' ⊆ calls_env σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
@@ -281,10 +281,10 @@ axiom or_dist_of_no_instantiations {P Q: prop}:
   no_instantiations Q → ((P ⋁ Q).instantiated = (P.instantiated ⋁ Q.erased))
 
 axiom and_dist_of_no_instantiations_n {P Q: prop}:
-  no_instantiations Q → ((P ⋀ Q).instantiated_n = (P.instantiated_n ⋀ Q.erased))
+  no_instantiations Q → ((P ⋀ Q).instantiated_n = (P.instantiated_n ⋀ Q.erased_n))
 
 axiom or_dist_of_no_instantiations_n {P Q: prop}:
-  no_instantiations Q → ((P ⋁ Q).instantiated_n = (P.instantiated_n ⋁ Q.erased))
+  no_instantiations Q → ((P ⋁ Q).instantiated_n = (P.instantiated_n ⋁ Q.erased_n))
 
 axiom free_in_erased_of_free_in_instantiated {P: prop} {x: var}:
    x ∈ FV P.instantiated → x ∈ FV P.erased
@@ -322,6 +322,16 @@ axiom valid_env.instantiated_and {σ: env} {P Q: prop}:
 axiom valid_env.instantiated_or {σ: env} {P Q: prop}:
   (σ ⊨ P.instantiated ⋁ Q.instantiated) →
   σ ⊨ (P ⋁ Q).instantiated
+
+-- if a conjunction or disjunciton is valid with cross-instantiations
+-- then its parts are valid, as losing instantiations in positive positions is fine
+axiom valid_env.instantiated_n_and_elim {σ: env} {P Q: prop}:
+  (σ ⊨ (P ⋀ Q).instantiated_n) →
+  (σ ⊨ P.instantiated_n ⋀ Q.instantiated_n)
+
+axiom valid_env.instantiated_n_or_elim {σ: env} {P Q: prop}:
+  (σ ⊨ (P ⋁ Q).instantiated) →
+  (σ ⊨ P.instantiated_n ⋁ Q.instantiated_n)
 
 -- if P and P' have the same substituted triggers and every quantifier
 -- in P' is dominated by a quantifier in P then any
@@ -398,7 +408,7 @@ lemma valid.instantiated_implies {P Q: prop}:
 
 lemma dominates_of {σ: env} {P P': prop}:
     (σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) →
-    (calls_env σ P = calls_env σ P') →
+    (calls_env σ P' ⊆ calls_env σ P) →
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
@@ -406,7 +416,7 @@ lemma dominates_of {σ: env} {P P': prop}:
     dominates σ P P' :=
   
   assume h_impl: σ ⊨ vc.implies P.instantiated_n P'.instantiated_n,
-  assume h_calls: calls_env σ P = calls_env σ P',
+  assume h_calls: calls_env σ P' ⊆ calls_env σ P,
   assume h_quantifiers:
     ∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -415,7 +425,7 @@ lemma dominates_of {σ: env} {P P': prop}:
   
   have h: 
     ((σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P') ∧
+    (calls_env σ P' ⊆ calls_env σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
@@ -424,7 +434,7 @@ lemma dominates_of {σ: env} {P P': prop}:
   have
     dominates' P' P σ = (
     ((σ ⊨ vc.implies P.instantiated_n P'.instantiated_n) ∧
-    (calls_env σ P = calls_env σ P') ∧
+    (calls_env σ P' ⊆ calls_env σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P ∧
@@ -710,6 +720,17 @@ lemma prop.has_quantifier_n.exis.inv {q: callquantifier} {x: var} {P: prop}:
     cases exis_has_quantifier_n,
     from a
   end
+
+lemma prop.has_call_env.term.inv {c: calltrigger} {t: term} {σ: env}:
+      c ∉ calls_env σ t :=
+  assume : c ∈ calls_env σ t,
+  have c ∈ (calltrigger.subst σ) '' calls t, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls t)
+      (λa, «false») c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls t,
+    show «false», from prop.has_call.term.inv this
+  )
 
 lemma prop.has_call_env.and₁ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
       c ∈ calls_env σ P₁ → c ∈ calls_env σ (P₁ ⋀ P₂) :=

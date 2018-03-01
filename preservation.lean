@@ -1,5 +1,7 @@
 import .syntax .notations .logic .evaluation .vcgen .bindings
 
+set_option max_memory 4048
+
 lemma same_free_and_left {P P' Q: prop}: FV P' = FV P → (FV (P' ⋀ Q) = FV (P ⋀ Q)) :=
   assume free_P'_P: FV P' = FV P,
   set.eq_of_subset_of_subset (
@@ -27,39 +29,24 @@ lemma same_free_and_left {P P' Q: prop}: FV P' = FV P → (FV (P' ⋀ Q) = FV (P
   )
 
 lemma same_calls_and_left {P P' Q: prop} {σ: env}:
-      calls_env σ P' = calls_env σ P → (calls_env σ (P' ⋀ Q) = calls_env σ (P ⋀ Q)) :=
-  assume calls_P'_P: calls_env σ P' = calls_env σ P,
-  set.eq_of_subset_of_subset (
-    assume c: calltrigger,
-    assume : c ∈ calls_env σ (P' ⋀ Q),
-    or.elim (prop.has_call_env.and.inv this) (
-      assume : c ∈ calls_env σ P',
-      have c ∈ calls_env σ P, from calls_P'_P ▸ this,
-      show c ∈ calls_env σ (P ⋀ Q), from prop.has_call_env.and₁ this
-    )
-    (
-      assume : c ∈ calls_env σ Q,
-      show c ∈ calls_env σ (P ⋀ Q), from prop.has_call_env.and₂ this
-    )
+      calls_env σ P' ⊆ calls_env σ P → (calls_env σ (P' ⋀ Q) ⊆ calls_env σ (P ⋀ Q)) :=
+  assume calls_P'_P: calls_env σ P' ⊆ calls_env σ P,
+  assume c: calltrigger,
+  assume : c ∈ calls_env σ (P' ⋀ Q),
+  or.elim (prop.has_call_env.and.inv this) (
+    assume : c ∈ calls_env σ P',
+    have c ∈ calls_env σ P, from set.mem_of_mem_of_subset this calls_P'_P,
+    show c ∈ calls_env σ (P ⋀ Q), from prop.has_call_env.and₁ this
   )
   (
-    assume c: calltrigger,
-    assume : c ∈ calls_env σ (P ⋀ Q),
-    or.elim (prop.has_call_env.and.inv this) (
-      assume : c ∈ calls_env σ P,
-      have c ∈ calls_env σ P', from calls_P'_P.symm ▸ this,
-      show c ∈ calls_env σ (P' ⋀ Q), from prop.has_call_env.and₁ this
-    )
-    (
-      assume : c ∈ calls_env σ Q,
-      show c ∈ calls_env σ (P' ⋀ Q), from prop.has_call_env.and₂ this
-    )
+    assume : c ∈ calls_env σ Q,
+    show c ∈ calls_env σ (P ⋀ Q), from prop.has_call_env.and₂ this
   )
 
 lemma dominates_self: ∀ {P: prop} {σ: env}, dominates σ P P
 | P σ :=
   have h_impl: σ ⊨ vc.implies P.instantiated_n P.instantiated_n, from valid_env.mpr id,
-  have h_calls: calls_env σ P = calls_env σ P, from rfl,
+  have h_calls: calls_env σ P ⊆ calls_env σ P, from set.subset.refl (calls_env σ P),
   have h_quantifiers:
     (∀(t': term) (x: var) (Q₁: prop) (h: callquantifier.mk t' x Q₁ ∈ quantifiers P),
                           have Q₁.size < P.size, from quantifiers_smaller_than_prop.left h,
@@ -82,15 +69,15 @@ lemma dominates_and_left {P P' Q: prop} {σ: env}:
   have dominates' P P' σ, from h1,
   have h2:
     ((σ ⊨ vc.implies P'.instantiated_n P.instantiated_n) ∧
-    (calls_env σ P' = calls_env σ P) ∧
+    (calls_env σ P ⊆ calls_env σ P') ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P),
                           have Q'.size < P.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P' ∧
                           (∀v: value, dominates' Q' Q (σ[x↦v])))),
   by { unfold1 dominates' at this, from this },
 
-  have calls_env σ P' = calls_env σ P, from h2.right.left,
-  have h_calls: calls_env σ (P' ⋀ Q) = calls_env σ (P ⋀ Q), from same_calls_and_left this,
+  have calls_env σ P ⊆ calls_env σ P', from h2.right.left,
+  have h_calls: calls_env σ (P ⋀ Q) ⊆ calls_env σ (P' ⋀ Q), from same_calls_and_left this,
   have h_quantifiers:
     (∀(t': term) (x: var) (Q₁: prop) (h: callquantifier.mk t' x Q₁ ∈ quantifiers (P ⋀ Q)),
                           have Q₁.size < (P ⋀ Q).size, from quantifiers_smaller_than_prop.left h,
@@ -138,7 +125,8 @@ lemma dominates_and_symm {P₁ P₂: prop} {σ: env}:
   have h2: calls_env σ (P₁ ⋀ P₂) = (calltrigger.subst σ) '' calls (P₂ ⋀ P₁),
   from this ▸ h1,
   have calls_env σ (P₂ ⋀ P₁) = (calltrigger.subst σ) '' calls (P₂ ⋀ P₁), by unfold calls_env,
-  have h_calls: calls_env σ (P₁ ⋀ P₂) = calls_env σ (P₂ ⋀ P₁), from eq.trans h2 this.symm,
+  have calls_env σ (P₂ ⋀ P₁) = calls_env σ (P₁ ⋀ P₂), from eq.trans this h2.symm,
+  have h_calls: calls_env σ (P₂ ⋀ P₁) ⊆ calls_env σ (P₁ ⋀ P₂), from set.subset_of_eq this,
 
   have h_quantifiers:
     (∀(t₁: term) (x: var) (Q₁: prop) (h: callquantifier.mk t₁ x Q₁ ∈ quantifiers (P₂ ⋀ P₁)),
@@ -173,7 +161,8 @@ lemma dominates_and_comm {P₁ P₂ P₃: prop} {σ: env}:
   have h2: calls_env σ (P₁ ⋀ P₂ ⋀ P₃) = (calltrigger.subst σ) '' calls ((P₁ ⋀ P₂) ⋀ P₃),
   from this ▸ h1,
   have calls_env σ ((P₁ ⋀ P₂) ⋀ P₃) = (calltrigger.subst σ) '' calls ((P₁ ⋀ P₂) ⋀ P₃), by unfold calls_env,
-  have h_calls: calls_env σ (P₁ ⋀ P₂ ⋀ P₃) = calls_env σ ((P₁ ⋀ P₂) ⋀ P₃), from eq.trans h2 this.symm,
+  have calls_env σ ((P₁ ⋀ P₂) ⋀ P₃) = calls_env σ (P₁ ⋀ P₂ ⋀ P₃), from eq.trans this h2.symm,
+  have h_calls: calls_env σ ((P₁ ⋀ P₂) ⋀ P₃) ⊆ calls_env σ (P₁ ⋀ P₂ ⋀ P₃), from set.subset_of_eq this,
 
   have h_quantifiers:
     (∀(t₁: term) (x: var) (Q₁: prop) (h: callquantifier.mk t₁ x Q₁ ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃)),
@@ -197,6 +186,42 @@ lemma dominates_and_comm {P₁ P₂ P₃: prop} {σ: env}:
 
   show dominates σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃), from dominates_of h_impl h_calls h_quantifiers
 
+lemma dominates_and_rcomm {P₁ P₂ P₃: prop} {σ: env}:
+      dominates σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃) :=
+
+  have h_impl: σ ⊨ vc.implies ((P₁ ⋀ P₂) ⋀ P₃).instantiated_n (P₁ ⋀ P₂ ⋀ P₃).instantiated_n,
+  from valid_env.mpr valid_env.and_comm_with_instantiations.mpr,
+
+  have h1: calls_env σ (P₁ ⋀ P₂ ⋀ P₃) = (calltrigger.subst σ) '' calls (P₁ ⋀ P₂ ⋀ P₃), by unfold calls_env,
+  have calls (P₁ ⋀ P₂ ⋀ P₃) = calls ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_call.and.comm,
+  have h2: calls_env σ (P₁ ⋀ P₂ ⋀ P₃) = (calltrigger.subst σ) '' calls ((P₁ ⋀ P₂) ⋀ P₃),
+  from this ▸ h1,
+  have calls_env σ ((P₁ ⋀ P₂) ⋀ P₃) = (calltrigger.subst σ) '' calls ((P₁ ⋀ P₂) ⋀ P₃), by unfold calls_env,
+  have calls_env σ ((P₁ ⋀ P₂) ⋀ P₃) = calls_env σ (P₁ ⋀ P₂ ⋀ P₃), from eq.trans this h2.symm,
+  have h_calls: calls_env σ (P₁ ⋀ P₂ ⋀ P₃) ⊆ calls_env σ ((P₁ ⋀ P₂) ⋀ P₃), from set.subset_of_eq this.symm,
+
+  have h_quantifiers:
+    (∀(t₁: term) (x: var) (Q₁: prop) (h: callquantifier.mk t₁ x Q₁ ∈ quantifiers (P₁ ⋀ P₂ ⋀ P₃)),
+                          have Q₁.size < (P₁ ⋀ P₂ ⋀ P₃).size, from quantifiers_smaller_than_prop.left h,
+    ∃(t₂: term) (Q₂: prop), callquantifier.mk t₂ x Q₂ ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃) ∧
+                          (∀v: value, dominates' Q₁ Q₂ (σ[x↦v]))), from (
+
+    assume (t₁: term) (x:var) (Q₁: prop),
+    assume t₁_Q₁_in_c: callquantifier.mk t₁ x Q₁ ∈ quantifiers (P₁ ⋀ P₂ ⋀ P₃),
+    have quantifiers (P₁ ⋀ P₂ ⋀ P₃) = quantifiers ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_quantifier.and.comm,
+    have t₁_Q₁_in: callquantifier.mk t₁ x Q₁ ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃), from this ▸ t₁_Q₁_in_c,
+    have (∀v: value, dominates' Q₁ Q₁ (σ[x↦v])), from (
+      assume v: value,
+      dominates_self
+    ),
+
+    show ∃(t₂: term) (Q₂: prop), callquantifier.mk t₂ x Q₂ ∈ quantifiers ((P₁ ⋀ P₂) ⋀ P₃) ∧
+                                  (∀v: value, dominates' Q₁ Q₂ (σ[x↦v])),
+    from exists.intro t₁ (exists.intro Q₁ ⟨t₁_Q₁_in, this⟩)
+  ),
+
+  show dominates σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃), from dominates_of h_impl h_calls h_quantifiers
+
 lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
       dominates σ P₁ P₂ → dominates σ P₂ P₃ → dominates σ P₁ P₃
 | P₁ P₂ P₃ σ :=
@@ -204,7 +229,7 @@ lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
   have dominates' P₂ P₁ σ, from h1,
   have h2:
     ((σ ⊨ vc.implies P₁.instantiated_n P₂.instantiated_n) ∧
-    (calls_env σ P₁ = calls_env σ P₂) ∧
+    (calls_env σ P₂ ⊆ calls_env σ P₁) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P₂),
                           have Q'.size < P₂.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P₁ ∧
@@ -215,7 +240,7 @@ lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
   have dominates' P₃ P₂ σ, from h3,
   have h4:
     ((σ ⊨ vc.implies P₂.instantiated_n P₃.instantiated_n) ∧
-    (calls_env σ P₂ = calls_env σ P₃) ∧
+    (calls_env σ P₃ ⊆ calls_env σ P₂) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers P₃),
                           have Q'.size < P₃.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers P₂ ∧
@@ -226,7 +251,7 @@ lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
   have h_impl: σ ⊨ vc.implies P₁.instantiated_n P₃.instantiated_n,
   from valid_env.implies.trans h2.left h4.left,
 
-  have h_calls: calls_env σ P₁ = calls_env σ P₃, from eq.trans h2.right.left h4.right.left,
+  have h_calls: calls_env σ P₃ ⊆ calls_env σ P₁, from set.subset.trans h4.right.left h2.right.left,
 
   have h_quantifiers:
     (∀(t₃: term) (x: var) (Q₃: prop) (h: callquantifier.mk t₃ x Q₃ ∈ quantifiers P₃),
@@ -268,13 +293,7 @@ lemma dominates_not_not: ∀ {P: prop} {σ: env}, dominates σ P.not.not P
     have σ ⊨ P.instantiated_n.not.not, from this ▸ h2,
     show σ ⊨ P.instantiated_n, from valid_env.neg_neg.mp this
   ),
-  have h_calls: calls_env σ P.not.not = calls_env σ P, from set.eq_of_subset_of_subset (
-    assume c: calltrigger,
-    assume : c ∈ calls_env σ P.not.not,
-    have c ∈ calls_n_env σ P.not, from prop.has_call_env.not.inv this,
-    show c ∈ calls_env σ P, from prop.has_call_n_env.not.inv this
-  )
-  (
+  have h_calls: calls_env σ P ⊆ calls_env σ P.not.not, from (
     assume c: calltrigger,
     assume : c ∈ calls_env σ P,
     have c ∈ calls_n_env σ P.not, from prop.has_call_env.not this,
@@ -308,13 +327,7 @@ lemma dominates_of_not_not: ∀ {P: prop} {σ: env}, dominates σ P P.not.not
     have P.not.not.instantiated_n = P.not.instantiated.not, from not_dist_instantiated_n,
     show σ ⊨ P.not.not.instantiated_n, from this.symm ▸ h2
   ),
-  have h_calls: calls_env σ P = calls_env σ P.not.not, from set.eq_of_subset_of_subset (
-    assume c: calltrigger,
-    assume : c ∈ calls_env σ P,
-    have c ∈ calls_n_env σ P.not, from prop.has_call_env.not this,
-    show c ∈ calls_env σ P.not.not, from prop.has_call_n_env.not this
-  )
-  (
+  have h_calls: calls_env σ P.not.not ⊆ calls_env σ P, from (
     assume c: calltrigger,
     assume : c ∈ calls_env σ P.not.not,
     have c ∈ calls_n_env σ P.not, from prop.has_call_env.not.inv this,
@@ -337,6 +350,280 @@ lemma dominates_of_not_not: ∀ {P: prop} {σ: env}, dominates σ P P.not.not
     exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
   ),
   show dominates σ P P.not.not, from dominates_of h_impl h_calls h_quantifiers
+
+lemma dominates_true (σ: env) (P: prop): dominates σ P value.true :=
+  have h_impl: σ ⊨ vc.implies P.instantiated_n (prop.term value.true).instantiated_n, from valid_env.mpr (
+    assume : σ ⊨ P.instantiated_n,
+    have h1: σ ⊨ value.true, from valid_env.true,
+    have (prop.term value.true).erased = vc.term value.true, by unfold prop.erased,
+    have σ ⊨ (prop.term value.true).erased, from this ▸ h1,
+    have σ ⊨ (prop.term value.true).instantiated, from valid_env.instantiated_of_erased this,
+    show σ ⊨ (prop.term value.true).instantiated_n, from valid_env.instantiated_n_of_instantiated this
+  ),
+  have h_calls: calls_env σ value.true ⊆ calls_env σ P, from (
+    assume c: calltrigger,
+    assume : c ∈ calls_env σ value.true,
+    show c ∈ calls_env σ P, from absurd this prop.has_call_env.term.inv
+  ),
+  have h_quantifiers:
+    (∀(t': term) (x: var) (Q₁: prop) (h: callquantifier.mk t' x Q₁ ∈ quantifiers value.true),
+    ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P ∧
+                          (∀v: value, dominates' Q₁ Q₂ (σ[x↦v]))), from (
+    assume (t₁: term) (x:var) (Q₁: prop),
+    assume : callquantifier.mk t₁ x Q₁ ∈ quantifiers value.true,
+    show ∃(t: term) (Q₂: prop), callquantifier.mk t x Q₂ ∈ quantifiers P ∧
+                                (∀v: value, dominates' Q₁ Q₂ (σ[x↦v])),
+    from absurd this prop.has_quantifier.term.inv
+  ),
+  show dominates σ P value.true, from dominates_of h_impl h_calls h_quantifiers
+
+lemma exp.vcgen.inj {P: prop} {Q: propctx} {e: exp}: (P ⊢ e : Q) → ∀Q', (P ⊢ e : Q') → (Q = Q') :=
+  assume h1: P ⊢ e : Q,
+  begin
+    induction h1,
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have h3: (Q₁ = Q₁_1), from ih_1 Q₁_1 a_15,
+    rw[←h3] at a_16,
+    have : (Q₂ = Q₂_1), from ih_2 Q₂_1 a_16,
+    rw[this],
+    rw[h3],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_6,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_8,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_8,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q₁ = Q₁_1), from ih_1 Q₁_1 a_5,
+    rw[this],
+    have : (Q₂ = Q₂_1), from ih_2 Q₂_1 a_6,
+    rw[this],
+    refl,
+
+    intros Q' h2,
+    cases h2,
+    refl
+  end
+
+lemma env.vcgen.inj {P: prop} {σ: env}: (⊢ σ : P) → ∀Q, (⊢ σ : Q) → (P = Q) :=
+  assume h1: ⊢ σ : P,
+  begin
+    induction h1,
+
+    intros Q h2,
+    cases h2,
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have : (Q = Q_1), from ih_1 Q_1 a_3,
+    rw[this],
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have : (Q = Q_1), from ih_1 Q_1 a_3,
+    rw[this],
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have : (Q = Q_1), from ih_1 Q_1 a_3,
+    rw[this],
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have h3: (Q₁ = Q₁_1), from ih_1 Q₁_1 a_15,
+    rw[h3],
+    have h4: (Q₂ = Q₂_1), from ih_2 Q₂_1 a_16,
+    rw[←h4] at a_20,
+    have : (Q₃ = Q₃_1), from exp.vcgen.inj a_9 Q₃_1 a_20,
+    rw[this],
+    refl
+  end
+
+lemma env_dominates_rest {P: prop} {σ: env} {x: var} {v: value}:
+      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ ∀σ', dominates σ' P Q) :=
+  assume σ_verified: ⊢ (σ[x↦v]) : P,
+  begin
+    cases σ_verified,
+    case env.vcgen.tru Q _ σ_verified { from
+      have ∀σ', dominates σ' (prop.and Q (x ≡ value.true)) Q, from (
+        assume σ': env,
+        have h_impl: σ' ⊨ vc.implies (Q ⋀ x ≡ value.true).instantiated_n Q.instantiated_n, from valid_env.mpr (
+          assume h2: σ' ⊨ (Q ⋀ (x ≡ value.true)).instantiated_n,
+          have no_instantiations (x ≡ value.true), from no_instantiations.term,
+          have (Q ⋀ (x ≡ value.true)).instantiated_n = (Q.instantiated_n ⋀ prop.erased_n (x ≡ value.true)),
+          from and_dist_of_no_instantiations_n this,
+          have σ' ⊨ (Q.instantiated_n ⋀ prop.erased_n (x ≡ value.true)), from this ▸ h2,
+          show σ' ⊨ Q.instantiated_n, from (valid_env.and.elim this).left
+        ),
+        have h_calls: calls_env σ' Q ⊆ calls_env σ' (Q ⋀ x ≡ value.true), from (
+          assume c: calltrigger,
+          assume : c ∈ calls_env σ' Q,
+          show c ∈ calls_env σ' (Q ⋀ x ≡ value.true), from prop.has_call_env.and₁ this
+        ),
+        have h_quantifiers:
+          (∀(t': term) (y: var) (Q₁: prop) (h: callquantifier.mk t' y Q₁ ∈ quantifiers Q),
+                                have Q₁.size < Q.size, from quantifiers_smaller_than_prop.left h,
+          ∃(t: term) (Q₂: prop), callquantifier.mk t y Q₂ ∈ quantifiers (Q ⋀ x ≡ value.true) ∧
+                                (∀v: value, dominates' Q₁ Q₂ (σ'[y↦v]))), from (
+          assume (t₁: term) (y:var) (Q₁: prop),
+          assume h: callquantifier.mk t₁ y Q₁ ∈ quantifiers Q,
+          have h2: callquantifier.mk t₁ y Q₁ ∈ quantifiers (Q ⋀ x ≡ value.true), from prop.has_quantifier.and₁ h,
+          have Q₁.size < (Q ⋀ x ≡ value.true).size, from quantifiers_smaller_than_prop.left h2,
+          have (∀v: value, dominates' Q₁ Q₁ (σ'[y↦v])), from (
+            assume v: value,
+            dominates_self
+          ),
+          exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
+        ),
+        show dominates σ' (Q ⋀ x ≡ value.true) Q, from dominates_of h_impl h_calls h_quantifiers
+      ),
+      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates σ' (prop.and Q (x ≡ value.true)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    },
+    case env.vcgen.fls Q _ σ_verified { from
+      have ∀σ', dominates σ' (prop.and Q (x ≡ value.false)) Q, from (
+        assume σ': env,
+        have h_impl: σ' ⊨ vc.implies (Q ⋀ x ≡ value.false).instantiated_n Q.instantiated_n, from valid_env.mpr (
+          assume h2: σ' ⊨ (Q ⋀ (x ≡ value.false)).instantiated_n,
+          have no_instantiations (x ≡ value.false), from no_instantiations.term,
+          have (Q ⋀ (x ≡ value.false)).instantiated_n = (Q.instantiated_n ⋀ prop.erased_n (x ≡ value.false)),
+          from and_dist_of_no_instantiations_n this,
+          have σ' ⊨ (Q.instantiated_n ⋀ prop.erased_n (x ≡ value.false)), from this ▸ h2,
+          show σ' ⊨ Q.instantiated_n, from (valid_env.and.elim this).left
+        ),
+        have h_calls: calls_env σ' Q ⊆ calls_env σ' (Q ⋀ x ≡ value.false), from (
+          assume c: calltrigger,
+          assume : c ∈ calls_env σ' Q,
+          show c ∈ calls_env σ' (Q ⋀ x ≡ value.false), from prop.has_call_env.and₁ this
+        ),
+        have h_quantifiers:
+          (∀(t': term) (y: var) (Q₁: prop) (h: callquantifier.mk t' y Q₁ ∈ quantifiers Q),
+                                have Q₁.size < Q.size, from quantifiers_smaller_than_prop.left h,
+          ∃(t: term) (Q₂: prop), callquantifier.mk t y Q₂ ∈ quantifiers (Q ⋀ x ≡ value.false) ∧
+                                (∀v: value, dominates' Q₁ Q₂ (σ'[y↦v]))), from (
+          assume (t₁: term) (y:var) (Q₁: prop),
+          assume h: callquantifier.mk t₁ y Q₁ ∈ quantifiers Q,
+          have h2: callquantifier.mk t₁ y Q₁ ∈ quantifiers (Q ⋀ x ≡ value.false), from prop.has_quantifier.and₁ h,
+          have Q₁.size < (Q ⋀ x ≡ value.false).size, from quantifiers_smaller_than_prop.left h2,
+          have (∀v: value, dominates' Q₁ Q₁ (σ'[y↦v])), from (
+            assume v: value,
+            dominates_self
+          ),
+          exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
+        ),
+        show dominates σ' (Q ⋀ x ≡ value.false) Q, from dominates_of h_impl h_calls h_quantifiers
+      ),
+      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates σ' (prop.and Q (x ≡ value.false)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    },
+    case env.vcgen.num n Q _ σ_verified { from
+      have ∀σ', dominates σ' (prop.and Q (x ≡ value.num n)) Q, from (
+        assume σ': env,
+        have h_impl: σ' ⊨ vc.implies (Q ⋀ x ≡ value.num n).instantiated_n Q.instantiated_n, from valid_env.mpr (
+          assume h2: σ' ⊨ (Q ⋀ (x ≡ value.num n)).instantiated_n,
+          have no_instantiations (x ≡ value.num n), from no_instantiations.term,
+          have (Q ⋀ (x ≡ value.num n)).instantiated_n = (Q.instantiated_n ⋀ prop.erased_n (x ≡ value.num n)),
+          from and_dist_of_no_instantiations_n this,
+          have σ' ⊨ (Q.instantiated_n ⋀ prop.erased_n (x ≡ value.num n)), from this ▸ h2,
+          show σ' ⊨ Q.instantiated_n, from (valid_env.and.elim this).left
+        ),
+        have h_calls: calls_env σ' Q ⊆ calls_env σ' (Q ⋀ x ≡ value.num n), from (
+          assume c: calltrigger,
+          assume : c ∈ calls_env σ' Q,
+          show c ∈ calls_env σ' (Q ⋀ x ≡ value.num n), from prop.has_call_env.and₁ this
+        ),
+        have h_quantifiers:
+          (∀(t': term) (y: var) (Q₁: prop) (h: callquantifier.mk t' y Q₁ ∈ quantifiers Q),
+                                have Q₁.size < Q.size, from quantifiers_smaller_than_prop.left h,
+          ∃(t: term) (Q₂: prop), callquantifier.mk t y Q₂ ∈ quantifiers (Q ⋀ x ≡ value.num n) ∧
+                                (∀v: value, dominates' Q₁ Q₂ (σ'[y↦v]))), from (
+          assume (t₁: term) (y:var) (Q₁: prop),
+          assume h: callquantifier.mk t₁ y Q₁ ∈ quantifiers Q,
+          have h2: callquantifier.mk t₁ y Q₁ ∈ quantifiers (Q ⋀ x ≡ value.num n), from prop.has_quantifier.and₁ h,
+          have Q₁.size < (Q ⋀ x ≡ value.num n).size, from quantifiers_smaller_than_prop.left h2,
+          have (∀v: value, dominates' Q₁ Q₁ (σ'[y↦v])), from (
+            assume v: value,
+            dominates_self
+          ),
+          exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
+        ),
+        show dominates σ' (Q ⋀ x ≡ value.num n) Q, from dominates_of h_impl h_calls h_quantifiers
+      ),
+      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates σ' (prop.and Q (x ≡ value.num n)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    },
+    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
+         fx_not_in_σ₂ f_neq_fx σ_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
+      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
+                                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
+      have ∀σ', dominates σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) Q, from (
+        assume σ': env,
+        have h_impl: σ' ⊨ vc.implies (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp).instantiated_n Q.instantiated_n,
+        from valid_env.mpr (
+          assume : σ' ⊨ (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp).instantiated_n,
+          have σ' ⊨ Q.instantiated_n ⋀ (↑(x ≡ value.func f fx R S e H σ₂) ⋀ funcp).instantiated_n,
+          from valid_env.instantiated_n_and_elim this,
+          show σ' ⊨ Q.instantiated_n, from (valid_env.and.elim this).left
+        ),
+        have h_calls: calls_env σ' Q ⊆ calls_env σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp), from (
+          assume c: calltrigger,
+          assume : c ∈ calls_env σ' Q,
+          show c ∈ calls_env σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp), from prop.has_call_env.and₁ this
+        ),
+        have h_quantifiers:
+          (∀(t': term) (y: var) (Q₁: prop) (h: callquantifier.mk t' y Q₁ ∈ quantifiers Q),
+                                have Q₁.size < Q.size, from quantifiers_smaller_than_prop.left h,
+          ∃(t: term) (Q₂: prop), callquantifier.mk t y Q₂ ∈ quantifiers (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) ∧
+                                (∀v: value, dominates' Q₁ Q₂ (σ'[y↦v]))), from (
+          assume (t₁: term) (y:var) (Q₁: prop),
+          assume h: callquantifier.mk t₁ y Q₁ ∈ quantifiers Q,
+          have h2: callquantifier.mk t₁ y Q₁ ∈ quantifiers (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp),
+          from prop.has_quantifier.and₁ h,
+          have Q₁.size < (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp).size, from quantifiers_smaller_than_prop.left h2,
+          have (∀v: value, dominates' Q₁ Q₁ (σ'[y↦v])), from (
+            assume v: value,
+            dominates_self
+          ),
+          exists.intro t₁ (exists.intro Q₁ ⟨h2, this⟩)
+        ),
+        show dominates σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) Q, from dominates_of h_impl h_calls h_quantifiers
+      ),
+      show ∃Q_1, (⊢ σ : Q_1) ∧ ∀σ', dominates σ' (prop.and Q ((x ≡ (value.func f fx R S e H σ₂)) ⋀ funcp)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    }
+  end
 
 lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates σ P' P → σ ⊨ vc.implies (prop.implies P Q).instantiated (prop.implies P' Q).instantiated :=
@@ -367,6 +654,16 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
     have σ ⊨ (P'.not ⋁ Q).instantiated.not.not, from this ▸ h9,
     show σ ⊨ (P'.not ⋁ Q).instantiated, from valid_env.neg_neg.mp this
   )
+
+lemma dominates_shuffle {P Q R S: prop} {σ: env}:
+      (σ ⊨ (P ⋀ Q ⋀ R ⋀ S).instantiated_n) → (σ ⊨ ((P ⋀ Q ⋀ R) ⋀ S).instantiated_n) :=
+  assume : σ ⊨ (P ⋀ Q ⋀ R ⋀ S).instantiated_n,
+  have h1: σ ⊨ ((Q ⋀ R ⋀ S) ⋀ P).instantiated_n, from valid_env.and_symm_with_instantiations this,
+  have dominates σ (Q ⋀ R ⋀ S) ((Q ⋀ R) ⋀ S), from dominates_and_comm,
+  have σ ⊨ (((Q ⋀ R) ⋀ S) ⋀ P).instantiated_n,
+  from valid_env.mp (valid_env.strengthen_and_with_dominating_instantiations this) h1,
+  have σ ⊨ (P ⋀ ((Q ⋀ R) ⋀ S)).instantiated_n, from valid_env.and_symm_with_instantiations this,
+  show σ ⊨ ((P ⋀ Q ⋀ R) ⋀ S).instantiated_n, from valid_env.and_comm_with_instantiations.mp this
 
 lemma strengthen_vc {P P' Q S: prop} {σ: env}:
   dominates σ P' P → (σ ⊨ (prop.implies (P ⋀ Q) S).instantiated) → σ ⊨ (prop.implies (P' ⋀ Q) S).instantiated :=
@@ -562,48 +859,45 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
     }
   end
 
-lemma exp.preservation {H: history} {σ σ': env} {P P': prop} {e e': exp} {Q Q': propctx}:
-      (⊢ σ : P) → (H ⋀ P ⊢ e : Q) → ((H, σ, e) ⟶ (H, σ', e')) → (⊢ σ' : P') ∧ (H ⋀ P' ⊢ e' : Q') :=
+lemma exp.preservation {R: spec} {H: history} {σ σ': env} {P: prop} {e e': exp} {Q: propctx}:
+      (⊢ σ : P) → FV (spec.to_prop R) ⊆ FV P → (σ ⊨ R.to_prop.instantiated) → (R ⋀ H ⋀ P ⊢ e : Q) →
+      ((R, H, σ, e) ⟶ (R, H, σ', e')) → ⊢ₛ (R, H, σ', e') :=
   sorry
+  
 
 theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
   assume s_verified:  ⊢ₛ s,
   assume s_steps: s ⟶ s',
   begin
     cases s_verified,
-    case stack.vcgen.top σ e H Q P σ_verified e_verified {
+    case stack.vcgen.top σ e P Q H R σ_verified fv_R R_valid e_verified {
       cases s_steps,
       case step.tru x e { from
-        have (⊢ (σ[x↦value.true]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ[x↦value.true], e), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ[x↦value.true], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
       case step.fals x e { from
-        have (⊢ (σ[x↦value.false]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ[x↦value.false], e), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ[x↦value.false], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
       case step.num n e x { from
-        have (⊢ (σ[x↦value.num n]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ[x↦value.num n], e), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ[x↦value.num n], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.closure R S f x e₁ e₂ { from
-        have (⊢ (σ[f↦value.func f x R S e₁ H σ]) : P) ∧ (H ⋀ P ⊢ e₂ : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ[f↦value.func f x R S e₁ H σ], e₂), from stack.vcgen.top this.left this.right,
+      case step.closure R' S' f x e₁ e₂ { from
+        show ⊢ₛ (R, H, σ[f↦value.func f x R' S' e₁ H σ], e₂),
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
       case step.unop op x y e { from
-        have (⊢ (σ[y↦v]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ[y↦v], e), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ[y↦v], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
       case step.binop op x y z e { from
-        have (⊢ (σ[z↦v]) : P) ∧ (H ⋀ P ⊢ e : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ[z↦v], e), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ[z↦v], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.app f x y S H₂ g σ₂ R gx e₁ e₂ vₓ f_is_func x_is_vₓ {
+      case step.app f x y S₂ H₂ g σ₂ R₂ gx e₁ e₂ vₓ f_is_func x_is_vₓ {
         cases e_verified,
         case exp.vcgen.app Q f_free x_free y_not_free e₂_verified func_vc { from
 
-          have h5: ⊢ₛ (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁), from (
+          have h5: ⊢ₛ (R₂, H₂, σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ], e₁), from (
 
-            have ∃σ' Q', ⊢ (σ'[f ↦ value.func g gx R S e₁ H₂ σ₂]) : Q',
+            have ∃σ' Q', ⊢ (σ'[f ↦ value.func g gx R₂ S₂ e₁ H₂ σ₂]) : Q',
             from env.vcgen.inv σ_verified f_is_func,
             let ⟨σ', Q', ha1⟩ := this in
 
@@ -614,24 +908,24 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
               g ≠ gx ∧
               (⊢ σ' : Q₁) ∧
               (⊢ σ₂ : Q₂) ∧
-              gx ∈ FV R.to_prop ∧
-              FV R.to_prop ⊆ FV Q₂ ∪ { g, gx } ∧
-              FV S.to_prop ⊆ FV Q₂ ∪ { g, gx } ∧
-              (H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R ⊢ e₁ : Q₃) ∧
-              ⟪prop.implies (H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R ⋀ Q₃ (term.app g gx)) S⟫ ∧
+              gx ∈ FV R₂.to_prop ∧
+              FV R₂.to_prop ⊆ FV Q₂ ∪ { g, gx } ∧
+              FV S₂.to_prop ⊆ FV Q₂ ∪ { g, gx } ∧
+              (H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂ ⊢ e₁ : Q₃) ∧
+              ⟪prop.implies (H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂ ⋀ Q₃ (term.app g gx)) S₂⟫ ∧
               (Q' = (Q₁ ⋀
-                  ((f ≡ (value.func g gx R S e₁ H₂ σ₂)) ⋀
-                  prop.subst_env (σ₂[g↦value.func g gx R S e₁ H₂ σ₂])
-                  (prop.func g gx R (Q₃ (term.app g gx) ⋀ S))))),
+                  ((f ≡ (value.func g gx R₂ S₂ e₁ H₂ σ₂)) ⋀
+                  prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                  (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂))))),
             from env.vcgen.func.inv ha1,
 
             let ⟨Q₁, Q₂, Q₃, ha2⟩ := this in
             let Q₂' := (Q₂ ⋀
-                  ((g ≡ (value.func g gx R S e₁ H₂ σ₂)) ⋀
-                  prop.subst_env (σ₂[g↦value.func g gx R S e₁ H₂ σ₂])
-                  (prop.func g gx R (Q₃ (term.app g gx) ⋀ S)))) in
+                  ((g ≡ (value.func g gx R₂ S₂ e₁ H₂ σ₂)) ⋀
+                  prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                  (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂)))) in
 
-            have ha3: ⊢ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]) : Q₂',
+            have ha3: ⊢ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]) : Q₂',
             from env.vcgen.func
                  ha2.right.left
                  ha2.right.left
@@ -649,8 +943,8 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
             from env.vcgen.inv σ_verified x_is_vₓ,
             let ⟨σ'', Q'', ha4⟩ := this in
 
-            have gx ∉ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]), from (
-              assume : gx ∈ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]),
+            have gx ∉ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]), from (
+              assume : gx ∈ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]),
               or.elim (env.contains.inv this) (
                 assume : gx = g,
                 show «false», from ha2.right.right.right.left this.symm
@@ -659,26 +953,48 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                 show «false», from ha2.right.right.left this
               )
             ),
-            have ∃P₃, ⊢ (σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ]) : P₃,
+            have ∃P₃, ⊢ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ]) : P₃,
             from env.vcgen.copy ha3 this ha4,
             let ⟨P₃, ha5⟩ := this in
 
-            have ha6: H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R ⊢ e₁ : Q₃,
+            have ha6: H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂ ⊢ e₁ : Q₃,
             from ha2.right.right.right.right.right.right.right.right.right.left,
 
-            have ha7: FV (↑H₂ ⋀ P₃) = FV (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R), from (
-              have ha8: FV P₃ = FV (Q₂ ⋀ spec.func g gx R S ⋀ R), from (
-                have hb1: FV P₃ = (σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ]).dom, from (free_iff_contains ha5).symm,
-                have hb2: (σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ]).dom
-                        = (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]).dom ∪ set.insert gx ∅, from env.dom.inv,
-                have hb3: (σ₂[g↦value.func g gx R S e₁ H₂ σ₂]).dom
+            have ha7: FV R₂.to_prop ⊆ FV P₃, from (
+              have hb1: FV P₃ = (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ]).dom, from (free_iff_contains ha5).symm,
+              have hb2: (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ]).dom
+                      = (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]).dom ∪ set.insert gx ∅, from env.dom.inv,
+              have hb3: (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]).dom
+                      = σ₂.dom ∪ set.insert g ∅, from env.dom.inv,
+              have hb4: FV P₃ = σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅, from eq.trans hb1 (hb3 ▸ hb2),
+              have hb5: FV P₃ = σ₂.dom ∪ {g, gx}, by {simp at hb4, rw[set.two_elems_of_insert] at hb4, from hb4},
+
+              have hb6: FV Q₂ = σ₂.dom, from (free_iff_contains ha2.right.right.right.right.right.left).symm,
+
+              have hb7: FV R₂.to_prop ⊆ σ₂.dom ∪ {g, gx}, from (
+                assume x: var,
+                assume : x ∈ FV R₂.to_prop,
+                have x ∈ FV Q₂ ∪ {g, gx},
+                from set.mem_of_mem_of_subset this ha2.right.right.right.right.right.right.right.left,
+                show x ∈ σ₂.dom ∪ {g, gx}, from hb6 ▸ this
+              ),
+              show FV R₂.to_prop ⊆ FV P₃, from hb5.symm ▸ hb7
+            ),
+
+            have ha8: FV (↑R₂ ⋀ ↑H₂ ⋀ P₃) = FV (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from (
+              have ha8: FV (P₃ ⋀ ↑R₂) = FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from (
+                have hb1: FV P₃ = (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ]).dom, from (free_iff_contains ha5).symm,
+                have hb2: (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ]).dom
+                        = (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]).dom ∪ set.insert gx ∅, from env.dom.inv,
+                have hb3: (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]).dom
                         = σ₂.dom ∪ set.insert g ∅, from env.dom.inv,
                 have hb4: FV P₃ = σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅, from eq.trans hb1 (hb3 ▸ hb2),
-
-                let forallp := (prop.implies R.to_prop (prop.pre g gx)
-                              ⋀ prop.implies (prop.post g gx) S.to_prop) in
-
-                have hb5: FV (Q₂ ⋀ spec.func g gx R S ⋀ R) = σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅,
+                have hb8: FV (P₃ ⋀ R₂) = FV P₃ ∪ FV R₂.to_prop, from free_in_prop.and_elim,
+                have FV P₃ ∪ FV R₂.to_prop = FV P₃, from set.union_eq_self_of_subset_right ha7,
+                have hb9: FV (P₃ ⋀ R₂) = FV P₃, from eq.trans hb8 this,
+                let forallp := (prop.implies R₂.to_prop (prop.pre g gx)
+                              ⋀ prop.implies (prop.post g gx) S₂.to_prop) in
+                have hb5: FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂) = σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅,
                 from set.eq_of_subset_of_subset (
                   assume x: var,
 
@@ -709,7 +1025,7 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                     )
                   ),
 
-                  assume : x ∈ FV (Q₂ ⋀ spec.func g gx R S ⋀ R),
+                  assume : x ∈ FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
 
                   or.elim (free_in_prop.and.inv this) (
                     assume hb2: x ∈ FV Q₂,
@@ -719,9 +1035,9 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                     show x ∈ σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅,
                     from set.mem_union_left (set.insert gx ∅) this
                   ) (
-                    assume : x ∈ FV (prop.func g gx R S ⋀ R),
+                    assume : x ∈ FV (prop.func g gx R₂ S₂ ⋀ R₂),
                     or.elim (free_in_prop.and.inv this) (
-                      assume : x ∈ FV (prop.func g gx R S),
+                      assume : x ∈ FV (prop.func g gx R₂ S₂),
                       or.elim (free_in_prop.and.inv this) (
                         assume : free_in_prop x (term.unop unop.isFunc g),
                         have free_in_term x (term.unop unop.isFunc g), from free_in_prop.term.inv this,
@@ -745,9 +1061,9 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                         ) (
                           assume : free_in_prop x forallp,
                           or.elim (free_in_prop.and.inv this) (
-                            assume : free_in_prop x (prop.implies R.to_prop (prop.pre g gx)),
+                            assume : free_in_prop x (prop.implies R₂.to_prop (prop.pre g gx)),
                             or.elim (free_in_prop.implies.inv this) (
-                              assume : x ∈ FV R.to_prop,
+                              assume : x ∈ FV R₂.to_prop,
                               have x ∈ FV Q₂ ∪ {g, gx},
                               from set.mem_of_mem_of_subset this ha2.right.right.right.right.right.right.right.left,
                               show x ∈ σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅, from hb6 this
@@ -770,7 +1086,7 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                               )
                             )
                           ) (
-                            assume : free_in_prop x (prop.implies (prop.post g gx) S.to_prop),
+                            assume : free_in_prop x (prop.implies (prop.post g gx) S₂.to_prop),
                             or.elim (free_in_prop.implies.inv this) (
                               assume : free_in_prop x (prop.post g gx),
                               have free_in_term x g ∨ free_in_term x gx, from free_in_prop.post.inv this,
@@ -789,7 +1105,7 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                                 from set.mem_union_right (σ₂.dom ∪ set.insert g ∅) this
                               )
                             ) (
-                              assume : free_in_prop x S.to_prop,
+                              assume : free_in_prop x S₂.to_prop,
                               have x ∈ FV Q₂ ∪ {g, gx},
                               from set.mem_of_mem_of_subset this
                                    ha2.right.right.right.right.right.right.right.right.left,
@@ -799,7 +1115,7 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                         )
                       ) 
                     ) (
-                      assume : x ∈ FV R.to_prop,
+                      assume : x ∈ FV R₂.to_prop,
                       have x ∈ FV Q₂ ∪ {g, gx},
                       from set.mem_of_mem_of_subset this ha2.right.right.right.right.right.right.right.left,
                       show x ∈ σ₂.dom ∪ set.insert g ∅ ∪ set.insert gx ∅, from hb6 this
@@ -814,152 +1130,231 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
                       assume hb2: x ∈ σ₂.dom,
                       have FV Q₂ = σ₂.dom, from (free_iff_contains ha2.right.right.right.right.right.left).symm,
                       have x ∈ FV Q₂, from this.symm ▸ hb2,
-                      show x ∈ FV (Q₂ ⋀ spec.func g gx R S ⋀ R), from free_in_prop.and₁ this
+                      show x ∈ FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from free_in_prop.and₁ this
                     ) (
                       assume : x ∈ set.insert g ∅,
                       have x = g, from (set.mem_singleton_iff x g).mp this,
                       have free_in_term x g, from this ▸ free_in_term.var x,
                       have free_in_term x (term.unop unop.isFunc g), from free_in_term.unop this,
                       have free_in_prop x (term.unop unop.isFunc g), from free_in_prop.term this,
-                      have x ∈ FV (prop.func g gx R S), from free_in_prop.and₁ this,
-                      have x ∈ FV (prop.func g gx R S ⋀ R), from free_in_prop.and₁ this,
-                      show x ∈ FV (Q₂ ⋀ spec.func g gx R S ⋀ R), from free_in_prop.and₂ this
+                      have x ∈ FV (prop.func g gx R₂ S₂), from free_in_prop.and₁ this,
+                      have x ∈ FV (prop.func g gx R₂ S₂ ⋀ R₂), from free_in_prop.and₁ this,
+                      show x ∈ FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from free_in_prop.and₂ this
                     )
                   ) (
                     assume : x ∈ set.insert gx ∅,
                     have x = gx, from (set.mem_singleton_iff x gx).mp this,
-                    have x ∈ FV R.to_prop,
+                    have x ∈ FV R₂.to_prop,
                     from this.symm ▸ ha2.right.right.right.right.right.right.left,
-                    have x ∈ FV (prop.func g gx R S ⋀ R), from free_in_prop.and₂ this,
-                    show x ∈ FV (Q₂ ⋀ spec.func g gx R S ⋀ R), from free_in_prop.and₂ this
+                    have x ∈ FV (prop.func g gx R₂ S₂ ⋀ R₂), from free_in_prop.and₂ this,
+                    show x ∈ FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from free_in_prop.and₂ this
                   )
                 ),
 
-                show FV P₃ = FV (Q₂ ⋀ spec.func g gx R S ⋀ R), from eq.trans hb4 hb5.symm
+                have FV P₃ = FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from eq.trans hb4 hb5.symm,
+                show FV (P₃ ⋀ ↑R₂) = FV (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from eq.trans hb9 this
               ),
-              show FV (↑H₂ ⋀ P₃) = FV (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R), by calc
-                   FV (↑H₂ ⋀ P₃) = FV (P₃ ⋀ ↑H₂) : free_in_prop.and_symm
-                             ... = FV ((Q₂ ⋀ spec.func g gx R S ⋀ R) ⋀ ↑H₂) : same_free_and_left ha8
-                             ... = FV (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R) : free_in_prop.and_symm
+              show FV (↑R₂ ⋀ ↑H₂ ⋀ P₃) = FV (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), by calc
+                   FV (↑R₂ ⋀ ↑H₂ ⋀ P₃) = FV ((↑H₂ ⋀ P₃) ⋀ ↑R₂) : free_in_prop.and_symm
+                             ... = FV (↑H₂ ⋀ P₃ ⋀ ↑R₂) : free_in_prop.and_comm.symm
+                             ... = FV ((P₃ ⋀ ↑R₂) ⋀ ↑H₂) : free_in_prop.and_symm
+                             ... = FV ((Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂) ⋀ ↑H₂) : same_free_and_left ha8
+                             ... = FV (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂) : free_in_prop.and_symm
             ),
 
-            have ∀σ, dominates σ (H₂ ⋀ P₃) (H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R), from (
+            have ha9: σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ] ⊨ prop.instantiated (spec.to_prop R₂),
+            from (
+              sorry
+            ),
+
+            have ∀σ, dominates σ (R₂ ⋀ H₂ ⋀ P₃) (H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from (
               assume σ: env,
 
-              have hb1: dominates σ P₃ (Q₂ ⋀ spec.func g gx R S ⋀ R), from (
-                sorry
+              have hb1: dominates σ (R₂ ⋀ H₂ ⋀ P₃) ((H₂ ⋀ P₃) ⋀ R₂),
+              from dominates_and_symm,
+
+              have hb2: dominates σ ((H₂ ⋀ P₃) ⋀ R₂) (H₂ ⋀ P₃ ⋀ R₂),
+              from dominates_and_rcomm,
+
+              have hb3: dominates σ (↑H₂ ⋀ P₃ ⋀ ↑R₂) ((P₃ ⋀ ↑R₂) ⋀ H₂),
+              from dominates_and_symm,
+
+              have hb4: dominates σ (P₃ ⋀ ↑R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from (
+                have hb1: dominates σ P₃ (Q₂ ⋀ spec.func g gx R₂ S₂), from (
+                  sorry
+                ),
+
+                have hb2: dominates σ (P₃ ⋀ ↑R₂) ((Q₂ ⋀ spec.func g gx R₂ S₂) ⋀ R₂),
+                from dominates_and_left hb1,
+
+                have hb3: dominates σ ((Q₂ ⋀ spec.func g gx R₂ S₂) ⋀ R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
+                from dominates_and_rcomm,
+
+                show dominates σ (P₃ ⋀ ↑R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
+                from dominates.trans hb2 hb3
               ),
 
-              have hb2: dominates σ (↑H₂ ⋀ P₃) (P₃ ⋀ ↑H₂), from dominates_and_symm,
-              have dominates σ (P₃ ⋀ ↑H₂) ((Q₂ ⋀ spec.func g gx R S ⋀ R) ⋀ ↑H₂),
-              from dominates_and_left hb1,
-              have hb3: dominates σ (↑H₂ ⋀ P₃) ((Q₂ ⋀ spec.func g gx R S ⋀ R) ⋀ ↑H₂),
-              from dominates.trans hb2 this,
-              have dominates σ ((Q₂ ⋀ spec.func g gx R S ⋀ R) ⋀ ↑H₂) (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R),
-              from dominates_and_symm,
-              show dominates σ (H₂ ⋀ P₃) (H₂ ⋀ Q₂ ⋀ spec.func g gx R S ⋀ R),
-              from dominates.trans hb3 this
-            ),
-            have ha9: H₂ ⋀ P₃ ⊢ e₁ : Q₃,
-            from strengthen_exp ha6 (H₂ ⋀ P₃) ha7 this,
+              have hb5: dominates σ ((P₃ ⋀ ↑R₂) ⋀ H₂) ((Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂) ⋀ H₂),
+              from dominates_and_left hb4,
 
-            show ⊢ₛ (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁),
-            from stack.vcgen.top ha5 ha9
+              have hb6: dominates σ ((Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂) ⋀ H₂) (↑H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
+              from dominates_and_symm,
+
+              show dominates σ (R₂ ⋀ H₂ ⋀ P₃) (H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
+              from dominates.trans (dominates.trans (dominates.trans (dominates.trans hb1 hb2) hb3) hb5) hb6
+            ),
+            have R₂ ⋀ H₂ ⋀ P₃ ⊢ e₁ : Q₃,
+            from strengthen_exp ha6 (R₂ ⋀ H₂ ⋀ P₃) ha8 this,
+
+            show ⊢ₛ (R₂, H₂, σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ], e₁),
+            from stack.vcgen.top ha5 ha7 ha9 this
           ),
 
           have h6: y ∉ σ, from (
             have y ∉ FV P, from (
               assume : y ∈ FV P,
               have y ∈ FV (↑H ⋀ P), from free_in_prop.and₂ this,
+              have y ∈ FV (R.to_prop ⋀ ↑H ⋀ P), from free_in_prop.and₂ this,
               show «false», from y_not_free this
             ),
             show y ∉ σ, from mt (free_of_contains σ_verified) this
           ),
 
-          have h7: (H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e₂ : Q), from (
-            have ha1: FV (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
-                   =  FV ((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x), from free_in_prop.and_comm,
-            have ∀σ, dominates σ (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
-                             ((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x), from (
-              assume σ: env,
-              show dominates σ (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
-                               ((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
-              from dominates_and_comm
+          have h7: (R ⋀ H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e₂ : Q), from (
+            have ha1: FV (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                   =  FV ((↑R ⋀ (↑H ⋀ P)) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x), from (
+
+              have haa1: FV (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                       = FV ((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from free_in_prop.and_comm,
+
+              have haa2: FV (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                       = FV ((↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑R),
+              from free_in_prop.and_symm,
+
+              have haa3: FV ((↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑R)
+                       = FV (((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑ R),
+              from same_free_and_left haa1,
+
+              have haa4: FV (((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑R)
+                       = FV (↑R ⋀ (↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from free_in_prop.and_symm,
+              
+              have haa5: FV (↑R ⋀ (↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                       = FV ((↑R ⋀ (↑H ⋀ P)) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from free_in_prop.and_comm,
+              
+              show FV (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                =  FV ((↑R ⋀ (↑H ⋀ P)) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from eq.trans (eq.trans (eq.trans haa2 haa3) haa4) haa5
             ),
-            show (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e₂ : Q),
-            from strengthen_exp e₂_verified (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ha1 this
+
+            have ∀σ, dominates σ (R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                             ((↑R ⋀ (↑H ⋀ P)) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x), from (
+              assume σ: env,
+
+              have haa1: dominates σ (↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                               ((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from dominates_and_comm,
+
+              have haa2: dominates σ (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                                     ((↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑R),
+              from dominates_and_symm,
+
+              have haa3: dominates σ ((↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑R)
+                                     (((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑ R),
+              from dominates_and_left haa1,
+
+              have haa4: dominates σ (((↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ⋀ ↑R)
+                                     (↑R ⋀ (↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from dominates_and_symm,
+              
+              have haa5: dominates σ (↑R ⋀ (↑H ⋀ P) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                                     ((↑R ⋀ (↑H ⋀ P)) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from dominates_and_comm,
+              
+              show dominates σ (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
+                               ((↑R ⋀ (↑H ⋀ P)) ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
+              from dominates.trans (dominates.trans (dominates.trans haa2 haa3) haa4) haa5
+            ),
+            show (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e₂ : Q),
+            from strengthen_exp e₂_verified (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x) ha1 this
           ),
 
-          have h8: ⟪ prop.implies (↑H ⋀ P ⋀ prop.call f x) (↑(term.unop unop.isFunc f) ⋀ prop.pre f x) ⟫, from (
+          have h8: ⟪ prop.implies (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x) (↑(term.unop unop.isFunc f) ⋀ prop.pre f x) ⟫, from (
             assume σ: env,
-            have ha0: σ ⊨ (((↑H ⋀ P) ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
+            have ha0: σ ⊨ (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not
+                          ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
             from func_vc σ,
 
             have ha1: no_instantiations (term.unop unop.isFunc f), from no_instantiations.term,
             have ha2: no_instantiations (prop.pre f x), from no_instantiations.pre,
             have ha3: no_instantiations (↑(term.unop unop.isFunc f) ⋀ prop.pre f x), from no_instantiations.and ha1 ha2,
-            have (((↑H ⋀ P) ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated
-               = (((↑H ⋀ P) ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
+            have (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated
+               = (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated
+                      ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
             from or_dist_of_no_instantiations ha3,
-            have σ ⊨ (((↑H ⋀ P) ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
+            have σ ⊨ (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
             from this ▸ ha0,
             or.elim (valid_env.or.elim this) (
-              assume ha4: σ ⊨ ((↑H ⋀ P) ⋀ prop.call f x).not.instantiated,
-              have ((↑H ⋀ P) ⋀ prop.call f x).not.instantiated = ((↑H ⋀ P) ⋀ prop.call f x).instantiated_n.not,
+              assume ha4: σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated,
+              have ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated
+                 = ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n.not,
               from not_dist_instantiated,
-              have σ ⊨ ((↑H ⋀ P) ⋀ prop.call f x).instantiated_n.not, from this ▸ ha4,
-              have ha5: σ ⊨ (↑H ⋀ P ⋀ prop.call f x).instantiated_n.not, from valid_env.mt (valid_env.mpr (
-                assume : σ ⊨ (↑H ⋀ P ⋀ prop.call f x).instantiated_n,
-                show σ ⊨ ((↑H ⋀ P) ⋀ prop.call f x).instantiated_n, from valid_env.and_comm_with_instantiations.mp this
+              have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n.not, from this ▸ ha4,
+              have ha5: σ ⊨ (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).instantiated_n.not, from valid_env.mt (valid_env.mpr (
+                assume : σ ⊨ (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).instantiated_n,
+                show σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n,
+                from dominates_shuffle this
               )) this,
-              have (↑H ⋀ P ⋀ prop.call f x).not.instantiated = (↑H ⋀ P ⋀ prop.call f x).instantiated_n.not,
+              have (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not.instantiated = (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).instantiated_n.not,
               from not_dist_instantiated,
-              have σ ⊨ (↑H ⋀ P ⋀ prop.call f x).not.instantiated, from this.symm ▸ ha5,
+              have σ ⊨ (↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not.instantiated, from this.symm ▸ ha5,
 
-              have ha6: σ ⊨ ((↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁
+              have ha6: σ ⊨ ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁
                         (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
               from valid_env.or₁ this,
 
-              have ((↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated
-                = ((↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
+              have ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated
+                = ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
               from or_dist_of_no_instantiations ha3,
 
-              have σ ⊨ ((↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
+              have σ ⊨ ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
               from this.symm ▸ ha6,
-              show σ ⊨ (prop.implies (H ⋀ P ⋀ prop.call f x) (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
+              show σ ⊨ (prop.implies (R ⋀ H ⋀ P ⋀ prop.call f x)
+                                      (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
               from this
             ) (
               assume : σ ⊨ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased,
-              have ha4: σ ⊨ ((↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁
+              have ha4: σ ⊨ ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁
                         (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
               from valid_env.or₂ this,
 
-              have ((↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated
-                = ((↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
+              have ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated
+                = ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not.instantiated ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased),
               from or_dist_of_no_instantiations ha3,
 
-              have σ ⊨ ((↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
+              have σ ⊨ ((↑R ⋀ ↑H ⋀ P ⋀ prop.call f x).not ⋁ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
               from this.symm ▸ ha4,
-              show σ ⊨ (prop.implies (H ⋀ P ⋀ prop.call f x) (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
+              show σ ⊨ (prop.implies (R ⋀ H ⋀ P ⋀ prop.call f x)
+                                     (↑(term.unop unop.isFunc f) ⋀ prop.pre f x)).instantiated,
               from this
             )
           ),
 
-          have h9: (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁)
-              ⟶* (H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁),
+          have h9: (R₂, H₂, σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ], e₁)
+              ⟶* (R₂, H₂, σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ], e₁),
           from trans_step.rfl,
 
-          show ⊢ₛ ((H₂, σ₂[g↦value.func g gx R S e₁ H₂ σ₂][gx↦vₓ], e₁) · [H, σ, let y = f[x] in e₂]),
-          from stack.vcgen.cons h5 σ_verified f_is_func x_is_vₓ h6 h7 h8 h9
+          show ⊢ₛ ((R₂, H₂, σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ], e₁) · [R, H, σ, letapp y = f[x] in e₂]),
+          from stack.vcgen.cons h5 σ_verified fv_R R_valid f_is_func x_is_vₓ h6 h7 h8 h9
         }
       },
       case step.ite_true x e₁ e₂ { from
-        have (⊢ σ : P) ∧ (H ⋀ P ⊢ e₂ : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ, e₂), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ, e₂), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
       case step.ite_false x e₁ e₂ { from
-        have (⊢ σ : P) ∧ (H ⋀ P ⊢ e₁ : Q), from exp.preservation σ_verified e_verified s_steps,
-        show ⊢ₛ (H, σ, e₁), from stack.vcgen.top this.left this.right
+        show ⊢ₛ (R, H, σ, e₁), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       }
     },
     case stack.vcgen.cons {-- H P s' σ σ' f g x y fx R S e vₓ Q s'_verified _ g_is_func x_is_v _ cont _ _ ih {

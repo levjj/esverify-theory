@@ -917,6 +917,30 @@ lemma free_in_propctx.exis.inv {x fx: var} {Q: propctx} {t: term}:
   have x ∈ FV (prop.exis fx (Q.apply t)), from this ▸ x_free_in_eQt,
   show x ≠ fx ∧ x ∈ FV (Q t), from free_in_prop.exis.inv this
 
+lemma free_in_prop.and_elim {P₁ P₂: prop}:
+      FV (P₁ ⋀ P₂) = FV P₁ ∪ FV P₂ :=
+  set.eq_of_subset_of_subset (
+    assume x: var,
+    assume : x ∈ FV (P₁ ⋀ P₂),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₁,
+      show x ∈ FV P₁ ∪ FV P₂, from set.mem_union_left (FV P₂) this
+    ) (
+      assume : x ∈ FV P₂,
+      show x ∈ FV P₁ ∪ FV P₂, from set.mem_union_right (FV P₁) this
+    )
+  ) (
+    assume x: var,
+    assume : x ∈ FV P₁ ∪ FV P₂,
+    or.elim (set.mem_or_mem_of_mem_union this) (
+      assume : x ∈ FV P₁,
+      show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
+    ) (
+      assume : x ∈ FV P₂,
+      show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this
+    )
+  )
+
 lemma free_in_prop.and_comm {P₁ P₂ P₃: prop}:
       FV (P₁ ⋀ P₂ ⋀ P₃) = FV ((P₁ ⋀ P₂) ⋀ P₃) :=
   set.eq_of_subset_of_subset (

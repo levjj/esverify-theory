@@ -56,7 +56,7 @@ axiom valid.eq.binop {op: binop} {v₁ v₂ v: value}:
 -- equality `f(x)=y` as new axiom for closed values f, x, y and the resulting set
 -- of axioms is still sound due to deterministic evaluation.
 axiom valid.eq.app {vₓ v: value} {σ σ': env} {H H': history} {f x y: var} {R S: spec} {e: exp}:
-  (H, σ[x↦vₓ], e) ⟶* (H', σ', exp.return y) ∧
+  (R, H, σ[x↦vₓ], e) ⟶* (R, H', σ', exp.return y) ∧
   (σ' y = some v)
   →
   ⊨ term.app (value.func f x R S e H σ) vₓ ≡ v
@@ -75,10 +75,15 @@ axiom valid.pre₂ {v₁ v₂: value} {op: binop}:
 
 -- can write pre and post to extract pre- and postcondition of function values
 
-axiom valid.pre {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp} {H: history}:
+axiom valid.pre.mp {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp} {H: history}:
   (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ R.to_prop.instantiated_n)
   →
   ⊨ vc.pre (value.func f x R S e H σ) vₓ
+
+axiom valid.pre.mpr {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp} {H: history}:
+  (⊨ vc.pre (value.func f x R S e H σ) vₓ)
+  →
+  (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ R.to_prop.instantiated)
 
 axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp} {H: history}:
   (⊢ σ : Q) →

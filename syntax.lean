@@ -69,10 +69,10 @@ with history: Type
 | empty : history
 | call : history → var → var → spec → spec → exp → history → env → value → history
 
--- s ∈ Stacks := (H, σ, e) | s · (H, σ, let y = f(x) in e)
+-- s ∈ Stacks := (R, H, σ, e) | s · (R, H, σ, let y = f(x) in e)
 inductive stack
-| top  : history → env → exp → stack
-| cons : stack → history → env → var → var → var → exp → stack
+| top  : spec → history → env → exp → stack
+| cons : stack → spec → history → env → var → var → var → exp → stack
 
 -- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
 --                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P

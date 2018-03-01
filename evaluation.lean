@@ -35,53 +35,54 @@ noncomputable def binop.apply: binop → value → value → option value
 inductive step : stack → stack → Prop
 notation s₁ `⟶` s₂:100 := step s₁ s₂
 
-| ctx {s s': stack} {H: history} {σ: env} {y f x: var} {e: exp}:
+| ctx {s s': stack} {R: spec} {H: history} {σ: env} {y f x: var} {e: exp}:
     (s ⟶ s') →
-    (s · [H, σ, let y = f[x] in e] ⟶ (s' · [H, σ, let y = f[x] in e]))
+    (s · [R, H, σ, letapp y = f[x] in e] ⟶ (s' · [R, H, σ, letapp y = f[x] in e]))
 
-| tru {H: history} {σ: env} {x: var} {e: exp}:
-    (H, σ, lett x = true in e) ⟶ (H, σ[x↦value.true], e)
+| tru {R: spec} {H: history} {σ: env} {x: var} {e: exp}:
+    (R, H, σ, lett x = true in e) ⟶ (R, H, σ[x↦value.true], e)
 
-| fals {H: history} {σ: env} {x: var} {e: exp}:
-    (H, σ, letf x = false in e) ⟶ (H, σ[x↦value.false], e)
+| fals {R: spec} {H: history} {σ: env} {x: var} {e: exp}:
+    (R, H, σ, letf x = false in e) ⟶ (R, H, σ[x↦value.false], e)
 
-| num {H: history} {σ: env} {x: var} {e: exp} {n: ℤ}:
-    (H, σ, letn x = n in e) ⟶ (H, σ[x↦value.num n], e)
+| num {R: spec} {H: history} {σ: env} {x: var} {e: exp} {n: ℤ}:
+    (R, H, σ, letn x = n in e) ⟶ (R, H, σ[x↦value.num n], e)
 
-| closure {H: history} {σ: env} {R S: spec} {f x: var} {e₁ e₂: exp}:
-    (H, σ, letf f[x] req R ens S {e₁} in e₂) ⟶ 
-    (H, σ[f↦value.func f x R S e₁ H σ], e₂)
+| closure {H: history} {σ: env} {R' R S: spec} {f x: var} {e₁ e₂: exp}:
+    (R', H, σ, letf f[x] req R ens S {e₁} in e₂) ⟶ 
+    (R', H, σ[f↦value.func f x R S e₁ H σ], e₂)
 
-| unop {H: history} {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
+| unop {R: spec} {H: history} {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
     (σ x = v₁) →
     (unop.apply op v₁ = v) →
-    ((H, σ, letop y = op [x] in e) ⟶ (H, σ[y↦v], e))
+    ((R, H, σ, letop y = op [x] in e) ⟶ (R, H, σ[y↦v], e))
 
-| binop {H: history} {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
+| binop {R: spec} {H: history} {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
     (σ x = v₁) →
     (σ y = v₂) →
     (binop.apply op v₁ v₂ = v) →
-    ((H, σ, letop2 z = op [x, y] in e) ⟶ (H, σ[z↦v], e))
+    ((R, H, σ, letop2 z = op [x, y] in e) ⟶ (R, H, σ[z↦v], e))
 
-| app {H H': history} {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {v: value}:
+| app {H H': history} {σ σ': env} {R' R S: spec} {f g x y z: var} {e e': exp} {v: value}:
     (σ f = value.func g z R S e H' σ') →
     (σ x = v) →
-    ((H, σ, letapp y = f[x] in e') ⟶
-    ((H', σ'[g↦value.func g z R S e H' σ'][z↦v], e) · [H, σ, let y = f[x] in e']))
+    ((R', H, σ, letapp y = f[x] in e') ⟶
+    ((R, H', σ'[g↦value.func g z R S e H' σ'][z↦v], e) · [R', H, σ, letapp y = f[x] in e']))
 
-| return {H₁ H₂ H₃: history} {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R S: spec} {e e': exp} {v vₓ: value}:
+| return {H₁ H₂ H₃: history} {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R₁ R₂ R S: spec} {e e': exp} {v vₓ: value}:
     (σ₁ z = v) →
     (σ₂ f = value.func g gx R S e H₃ σ₃) →
     (σ₂ x = vₓ) →
-    ((H₁, σ₁, exp.return z) · [H₂, σ₂, let y = f[x] in e'] ⟶ (H₂ · call g gx R S e H₃ σ₃ vₓ, σ₂[y↦v], e'))
+    ((R₁, H₁, σ₁, exp.return z) · [R₂, H₂, σ₂, letapp y = f[x] in e'] ⟶
+    (R₂, H₂ · call g gx R S e H₃ σ₃ vₓ, σ₂[y↦v], e'))
 
-| ite_true {H: history} {σ: env} {e₁ e₂: exp} {x: var}:
+| ite_true {R: spec} {H: history} {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.true) →
-    ((H, σ, exp.ite x e₁ e₂) ⟶ (H, σ, e₁))
+    ((R, H, σ, exp.ite x e₁ e₂) ⟶ (R, H, σ, e₁))
 
-| ite_false {H: history} {σ: env} {e₁ e₂: exp} {x: var}:
+| ite_false {R: spec} {H: history} {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.false) →
-    ((H, σ, exp.ite x e₁ e₂) ⟶ (H, σ, e₂))
+    ((R, H, σ, exp.ite x e₁ e₂) ⟶ (R, H, σ, e₂))
 
 notation s₁ `⟶` s₂:100 := step s₁ s₂
 

@@ -1,18 +1,32 @@
 import .syntax .etc
 
--- p → q: prop
+-- P → Q
 
 @[reducible]
-def spec.implies(p q: spec): spec := spec.or (spec.not p) q
+def spec.implies(P Q: spec): spec := spec.or (spec.not P) Q
 
 @[reducible]
-def prop.implies(p q: prop): prop := prop.or (prop.not p) q
+def prop.implies(P Q: prop): prop := prop.or (prop.not P) Q
 
 @[reducible]
-def propctx.implies(p q: propctx): propctx := propctx.or (propctx.not p) q
+def propctx.implies(P Q: propctx): propctx := propctx.or (propctx.not P) Q
 
 @[reducible]
-def vc.implies(p q: vc): vc := vc.or (vc.not p) q
+def vc.implies(P Q: vc): vc := vc.or (vc.not P) Q
+
+-- P ↔ Q
+
+@[reducible]
+def spec.iff(P Q: spec): spec := spec.and (spec.implies P Q) (spec.implies Q P)
+
+@[reducible]
+def prop.iff(P Q: prop): prop := prop.and (prop.implies P Q) (prop.implies Q P)
+
+@[reducible]
+def propctx.iff(P Q: propctx): propctx := propctx.and (propctx.implies P Q) (propctx.implies Q P)
+
+@[reducible]
+def vc.iff(P Q: vc): vc := vc.and (vc.implies P Q) (vc.implies Q P)
 
 -- P ⋀ Q
 class has_and (α : Type) := (and : α → α → α) 
@@ -59,11 +73,11 @@ notation `letapp` y `=`:1 f `[`:1 x `]`:1 `in` e := exp.app y f x e
 -- σ[x ↦ v]
 notation e `[` x `↦` v `]` := env.cons e x v
 
--- κ · [H, σ, let y = f [ x ] in e]
-notation st `·` `[` H `,` env `,` `let` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st H env y f x e
-
 -- (H, σ, e) : stack
-instance : has_coe (history × env × exp) stack := ⟨λe, stack.top e.1 e.2.1 e.2.2⟩
+instance : has_coe (spec × history × env × exp) stack := ⟨λe, stack.top e.1 e.2.1 e.2.2.1 e.2.2.2⟩
+
+-- κ · [H, σ, let y = f [ x ] in e]
+notation st `·` `[` R `,` H `,` env `,` `letapp` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st R H env y f x e
 
 -- env lookup as function application
 
@@ -76,6 +90,10 @@ def env.apply: env → var → option value
 | (σ[x↦v]) y :=
   have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
   if x = y ∧ option.is_none (σ.apply y) then v else σ.apply y
+
+def env.rest: env → env
+| env.empty := env.empty
+| (σ[x↦v])  := σ
 
 instance : has_coe_to_fun env := ⟨λ _, var → option value, env.apply⟩
 

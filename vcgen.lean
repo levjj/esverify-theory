@@ -111,22 +111,26 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 inductive stack.vcgen : stack → Prop
 notation `⊢ₛ` s : 10 := stack.vcgen s
 
-| top {H: history} {P: prop} {σ: env} {e: exp} {Q: propctx}:
+| top {R: spec} {H: history} {P: prop} {σ: env} {e: exp} {Q: propctx}:
     (⊢ σ : P) →
-    (H ⋀ P ⊢ e : Q) →
-    (⊢ₛ (H, σ, e))
+    FV R.to_prop ⊆ FV P →
+    (σ ⊨ R.to_prop.instantiated) →
+    (R ⋀ H ⋀ P ⊢ e : Q) →
+    (⊢ₛ (R, H, σ, e))
 
 | cons {H₁ H₂: history} {P: prop} {s: stack} {σ₁ σ₂: env}
-       {f fx g x y: var} {R S: spec} {e₁ e₂: exp} {v: value} {Q: propctx}:
+       {f fx g x y: var} {R S R': spec} {e₁ e₂: exp} {v: value} {Q: propctx}:
     (⊢ₛ s) →
     (⊢ σ₁ : P) →
+    FV R'.to_prop ⊆ FV P →
+    (σ₁ ⊨ R'.to_prop.instantiated) →
     (σ₁ g = value.func f fx R S e₂ H₂ σ₂) →
     (σ₁ x = v) →
     y ∉ σ₁ →
-    (H₁ ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q) →
-    ⟪ prop.implies (H₁ ⋀ P ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
-    ((H₂, σ₂[f↦value.func f fx R S e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
-    (⊢ₛ (s · [H₁, σ₁, let y = g[x] in e₁]))
+    (R' ⋀ H₁ ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q) →
+    ⟪ prop.implies (R' ⋀ H₁ ⋀ P ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
+    ((R, H₂, σ₂[f↦value.func f fx R S e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
+    (⊢ₛ (s · [R', H₁, σ₁, letapp y = g[x] in e₁]))
 
 notation `⊢ₛ` s : 10 := stack.vcgen s
 
@@ -141,12 +145,14 @@ lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x 
     }
   end
 
-lemma stack.vcgen.top.inv {H: history} {σ: env} {e: exp}: (⊢ₛ (H, σ, e)) → ∃P Q, (⊢ σ: P) ∧ (H ⋀ P ⊢ e: Q) :=
-  assume top_verified: ⊢ₛ (H, σ, e),
+lemma stack.vcgen.top.inv {R: spec} {H: history} {σ: env} {e: exp}:
+  (⊢ₛ (R, H, σ, e)) → ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated) ∧ (R ⋀ H ⋀ P ⊢ e: Q) :=
+  assume top_verified: ⊢ₛ (R, H, σ, e),
   begin
     cases top_verified,
-    case stack.vcgen.top P Q env_verified e_verified {
-      show ∃P Q, (⊢ σ: P) ∧ (H ⋀ P ⊢ e: Q), from exists.intro P (exists.intro Q ⟨env_verified, e_verified⟩)
+    case stack.vcgen.top P Q env_verified fv_R R_valid e_verified {
+      show ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated) ∧ (R ⋀ H ⋀ P ⊢ e: Q),
+      from exists.intro P (exists.intro Q ⟨env_verified, ⟨fv_R, ⟨R_valid, e_verified⟩⟩⟩) 
     }
   end
 

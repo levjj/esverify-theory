@@ -192,3 +192,36 @@ lemma set.three_elems_mem₃ {α: Type} {a b c d: α}: (a = d) → a ∈ ({b, c,
 
 lemma set.forall_not_mem_of_eq_empty {α: Type} {s: set α}: s = ∅ → ∀ x, x ∉ s :=
   by simp[set.set_eq_def]
+
+lemma set.two_elems_of_insert {α: Type} {a b: α}: set.insert a ∅ ∪ set.insert b ∅ = {a, b} :=
+  set.eq_of_subset_of_subset (
+    assume x: α,
+    assume : x ∈ set.insert a ∅ ∪ set.insert b ∅,
+    or.elim (set.mem_or_mem_of_mem_union this) (
+      assume : x ∈ set.insert a ∅,
+      have x ∈ {a}, from @eq.subst (set α) (λc, x ∈ c) (set.insert a ∅) {a} (set.singleton_def a).symm this,
+      show x ∈ {a, b}, by { simp, left, simp at this, from this }
+    ) (
+      assume : x ∈ set.insert b ∅,
+      have x ∈ {b}, from @eq.subst (set α) (λc, x ∈ c) (set.insert b ∅) {b} (set.singleton_def b).symm this,
+      show x ∈ {a, b}, by { simp, right, simp at this, from this }
+    )
+  ) (
+    assume x: α,
+    assume : x ∈ {a, b},
+    or.elim (set.two_elems_mem this) (
+      assume : x = a,
+      have x ∈ set.insert a ∅, from (set.mem_singleton_iff x a).mpr this,
+      show x ∈ set.insert a ∅ ∪ set.insert b ∅, from set.mem_union_left (set.insert b ∅) this
+    ) (
+      assume : x = b,
+      have x ∈ set.insert b ∅, from (set.mem_singleton_iff x b).mpr this,
+      show x ∈ set.insert a ∅ ∪ set.insert b ∅, from set.mem_union_right (set.insert a ∅) this
+    )
+  )
+
+lemma set.subset_of_eq {α: Type} {a b: set α}: (a = b) → (a ⊆ b) :=
+  assume a_eq_b: a = b,
+  assume x: α,
+  assume : x ∈ a,
+  show x ∈ b, from a_eq_b ▸ this
