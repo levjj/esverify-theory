@@ -1164,7 +1164,27 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
 
             have ha9: σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ] ⊨ prop.instantiated (spec.to_prop R₂),
             from (
-              sorry
+              have h1: no_instantiations (term.unop unop.isFunc f), from no_instantiations.term,
+              have h2: no_instantiations (prop.pre f x), from no_instantiations.pre,
+              have no_instantiations (↑(term.unop unop.isFunc f) ⋀ prop.pre f x), from no_instantiations.and h1 h2,
+              have h3: σ ⊨ (↑(term.unop unop.isFunc f) ⋀ prop.pre f x).erased,
+              from consequent_of_H_P_call σ_verified R_valid func_vc this,
+              have (prop.and (prop.term (term.unop unop.isFunc f)) (prop.pre f x)).erased
+                = ((prop.term (term.unop unop.isFunc f)).erased ⋀ (prop.pre f x).erased), by unfold prop.erased,
+              have σ ⊨ ((prop.term (term.unop unop.isFunc f)).erased ⋀ (prop.pre f x).erased), from this ▸ h3,
+              have h4: σ ⊨ (prop.pre f x).erased, from (valid_env.and.elim this).right,
+              have (prop.pre f x).erased = vc.pre f x, by unfold prop.erased,
+              have h5: σ ⊨ vc.pre f x, from this ▸ h4,
+              have vc.subst_env σ (vc.pre f x) = vc.pre (term.subst_env σ f) (term.subst_env σ x),
+              from vc.subst_env.pre,
+              have h6: ⊨ vc.pre (term.subst_env σ f) (term.subst_env σ x), from this ▸ h5,
+              have term.subst_env σ f = value.func g gx R₂ S₂ e₁ H₂ σ₂,
+              from (term.subst_env.var.right (value.func g gx R₂ S₂ e₁ H₂ σ₂)).mp f_is_func,
+              have h7: ⊨ vc.pre (value.func g gx R₂ S₂ e₁ H₂ σ₂) (term.subst_env σ x), from this ▸ h6,
+              have term.subst_env σ x = vₓ, from (term.subst_env.var.right vₓ).mp x_is_vₓ,
+              have ⊨ vc.pre (value.func g gx R₂ S₂ e₁ H₂ σ₂) vₓ, from this ▸ h7,
+              show (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ] ⊨ R₂.to_prop.instantiated),
+              from valid.pre.mpr this
             ),
 
             have ∀σ, dominates σ (R₂ ⋀ H₂ ⋀ P₃) (H₂ ⋀ Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from (

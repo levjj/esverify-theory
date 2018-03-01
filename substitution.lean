@@ -1521,6 +1521,30 @@ begin
   ... = vc.pre₂ op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end
 
+lemma vc.subst_env.pre {σ: env} {t₁ t₂: term}:
+      vc.subst_env σ (vc.pre t₁ t₂) = vc.pre (term.subst_env σ t₁) (term.subst_env σ t₂) :=
+begin
+  induction σ with σ' x v ih,
+
+  show (vc.subst_env env.empty (vc.pre t₁ t₂)
+      = vc.pre (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        vc.subst_env env.empty (vc.pre t₁ t₂)
+      = (vc.pre t₁ t₂) : by unfold vc.subst_env
+  ... = (vc.pre (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (vc.pre (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (vc.pre t₁ t₂)
+      = vc.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),
+  by calc
+        vc.subst_env (σ'[x↦v]) (vc.pre t₁ t₂)
+      = vc.subst x v (vc.subst_env σ' (vc.pre t₁ t₂)) : by unfold vc.subst_env
+  ... = vc.subst x v (vc.pre (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = vc.pre (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold vc.subst
+  ... = vc.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = vc.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
+end
+
 lemma vc.subst_env.univ {σ: env} {x: var} {P: vc}:
       (x ∉ σ) → (vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env σ P)) :=
 begin
