@@ -283,6 +283,47 @@ lemma dominates.trans: ∀ {P₁ P₂ P₃: prop} {σ: env},
   ),
   show dominates σ P₁ P₃, from dominates_of h_impl h_calls h_quantifiers
 
+lemma dominates_of_and₁ {P₁ P₂: prop} {σ: env}:
+      dominates σ (P₁ ⋀ P₂) P₁ :=
+
+  have h_impl: σ ⊨ vc.implies (P₁ ⋀ P₂).instantiated_n P₁.instantiated_n, from valid_env.mpr (
+    assume : σ ⊨ (P₁ ⋀ P₂).instantiated_n,
+    show σ ⊨ P₁.instantiated_n,
+    from (valid_env.and.elim (valid_env.instantiated_n_and_elim this)).left
+  ),
+
+  have h_calls: calls_env σ P₁ ⊆ calls_env σ (P₁ ⋀ P₂), from (
+    assume c: calltrigger,
+    assume : c ∈ calls_env σ P₁,
+    show c ∈ calls_env σ (P₁ ⋀ P₂), from prop.has_call_env.and₁ this
+  ),
+
+  have h_quantifiers:
+    (∀(t₁: term) (x: var) (Q₁: prop) (h: callquantifier.mk t₁ x Q₁ ∈ quantifiers P₁),
+                          have Q₁.size < P₁.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t₂: term) (Q₂: prop), callquantifier.mk t₂ x Q₂ ∈ quantifiers (P₁ ⋀ P₂) ∧
+                          (∀v: value, dominates' Q₁ Q₂ (σ[x↦v]))), from (
+
+    assume (t₁: term) (x:var) (Q₁: prop),
+    assume : callquantifier.mk t₁ x Q₁ ∈ quantifiers P₁,
+    have t₁_Q₁_in: callquantifier.mk t₁ x Q₁ ∈ quantifiers (P₁ ⋀ P₂), from prop.has_quantifier.and₁ this,
+    have (∀v: value, dominates' Q₁ Q₁ (σ[x↦v])), from (
+      assume v: value,
+      dominates_self
+    ),
+
+    show ∃(t₂: term) (Q₂: prop), callquantifier.mk t₂ x Q₂ ∈ quantifiers (P₁ ⋀ P₂) ∧
+                                  (∀v: value, dominates' Q₁ Q₂ (σ[x↦v])),
+    from exists.intro t₁ (exists.intro Q₁ ⟨t₁_Q₁_in, this⟩)
+  ),
+
+  show dominates σ (P₁ ⋀ P₂) P₁, from dominates_of h_impl h_calls h_quantifiers
+
+lemma dominates_of_and₂ {P₁ P₂: prop} {σ: env}: dominates σ (P₁ ⋀ P₂) P₂ :=
+  have h1: dominates σ (P₁ ⋀ P₂) (P₂ ⋀ P₁), from dominates_and_symm,
+  have h2: dominates σ (P₂ ⋀ P₁) P₂, from dominates_of_and₁,
+  show dominates σ (P₁ ⋀ P₂) P₂, from dominates.trans h1 h2
+
 lemma dominates_not_not: ∀ {P: prop} {σ: env}, dominates σ P.not.not P
 | P σ :=
   have h_impl: σ ⊨ vc.implies P.not.not.instantiated_n P.instantiated_n, from valid_env.mpr (
@@ -1200,18 +1241,58 @@ theorem preservation {s s': stack}: (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s') :=
               from dominates_and_symm,
 
               have hb4: dominates σ (P₃ ⋀ ↑R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂), from (
-                have hb1: dominates σ P₃ (Q₂ ⋀ spec.func g gx R₂ S₂), from (
+
+                have (∃Q, (⊢ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]) : Q) ∧ ∀σ', dominates σ' P₃ Q),
+                from env_dominates_rest ha5,
+                let ⟨Q₂'', ⟨hb1, hb2⟩⟩ := this in
+                have Q₂' = Q₂'', from env.vcgen.inj ha3 Q₂'' hb1,
+                have hb3: dominates σ P₃ Q₂', from this.symm ▸ hb2 σ,
+
+                have hb4: dominates σ (↑(g ≡ value.func g gx R₂ S₂ e₁ H₂ σ₂) ⋀
+                    prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                                   (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂)))
+                    (prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                                   (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂))),
+                from dominates_of_and₂,
+
+                have dominates σ (prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                                                      (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂)))
+                                      (spec.func g gx R₂ S₂), from (
                   sorry
                 ),
 
-                have hb2: dominates σ (P₃ ⋀ ↑R₂) ((Q₂ ⋀ spec.func g gx R₂ S₂) ⋀ R₂),
-                from dominates_and_left hb1,
+                have hb5: dominates σ (↑(g ≡ value.func g gx R₂ S₂ e₁ H₂ σ₂) ⋀
+                    prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                                   (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂))) (spec.func g gx R₂ S₂),
+                from dominates.trans hb4 this,
 
-                have hb3: dominates σ ((Q₂ ⋀ spec.func g gx R₂ S₂) ⋀ R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
+                have dominates σ Q₂' (Q₂ ⋀ spec.func g gx R₂ S₂), from (
+                  have hb6: dominates σ Q₂'
+                    ((↑(g ≡ value.func g gx R₂ S₂ e₁ H₂ σ₂) ⋀
+                    prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                                   (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂))) ⋀ Q₂),
+                  from dominates_and_symm,
+                  have hb7: dominates σ ((↑(g ≡ value.func g gx R₂ S₂ e₁ H₂ σ₂) ⋀
+                    prop.subst_env (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂])
+                                   (prop.func g gx R₂ (Q₃ (term.app g gx) ⋀ S₂))) ⋀ Q₂)
+                    (spec.func g gx R₂ S₂ ⋀ Q₂),
+                  from dominates_and_left hb5,
+                  have hb8: dominates σ (spec.func g gx R₂ S₂ ⋀ Q₂) (Q₂ ⋀ spec.func g gx R₂ S₂),
+                  from dominates_and_symm,
+                  show dominates σ Q₂' (Q₂ ⋀ spec.func g gx R₂ S₂),
+                  from dominates.trans (dominates.trans hb6 hb7) hb8
+                ),
+                have dominates σ P₃ (Q₂ ⋀ spec.func g gx R₂ S₂),
+                from dominates.trans hb3 this,
+
+                have hb8: dominates σ (P₃ ⋀ ↑R₂) ((Q₂ ⋀ spec.func g gx R₂ S₂) ⋀ R₂),
+                from dominates_and_left this,
+
+                have hb9: dominates σ ((Q₂ ⋀ spec.func g gx R₂ S₂) ⋀ R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
                 from dominates_and_rcomm,
 
                 show dominates σ (P₃ ⋀ ↑R₂) (Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂),
-                from dominates.trans hb2 hb3
+                from dominates.trans hb8 hb9
               ),
 
               have hb5: dominates σ ((P₃ ⋀ ↑R₂) ⋀ H₂) ((Q₂ ⋀ spec.func g gx R₂ S₂ ⋀ R₂) ⋀ H₂),
