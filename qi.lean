@@ -350,6 +350,9 @@ axiom valid_env.and_comm_with_instantiations {σ: env} {P₁ P₂ P₃: prop}:
 axiom valid_env.and_symm_with_instantiations {σ: env} {P₁ P₂: prop}:
   (σ ⊨ (P₁ ⋀ P₂).instantiated_p) → (σ ⊨ (P₂ ⋀ P₁).instantiated_p)
 
+axiom instantiated_p_eq_erased_p_without_calls {P: prop}:
+  (calls_p P = ∅) → (P.instantiated_p = P.erased_p)
+
 -- lemmas
 
 lemma valid.instantiated_n_of_erased_n {P: prop}: (⊨ P.erased_n) → ⊨ P.instantiated_n :=
@@ -447,18 +450,18 @@ begin
 
 end
 
-lemma prop.has_call.term.inv {c: calltrigger} {t: term}: c ∉ calls_p t :=
+lemma prop.has_call_p.term.inv {c: calltrigger} {t: term}: c ∉ calls_p t :=
   assume t_has_call: has_call_p c t,
   show «false», by cases t_has_call
 
-lemma prop.has_call.not.inv {c: calltrigger} {P: prop}: c ∈ calls_p P.not → c ∈ calls_n P :=
+lemma prop.has_call_p.not.inv {c: calltrigger} {P: prop}: c ∈ calls_p P.not → c ∈ calls_n P :=
   assume not_has_call: c ∈ calls_p P.not,
   begin
     cases not_has_call,
     from a
   end
 
-lemma prop.has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_p (P₁ ⋀ P₂) → c ∈ calls_p P₁ ∨ c ∈ calls_p P₂ :=
+lemma prop.has_call_p.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_p (P₁ ⋀ P₂) → c ∈ calls_p P₁ ∨ c ∈ calls_p P₂ :=
   assume and_has_call: c ∈ calls_p (P₁ ⋀ P₂),
   begin
     cases and_has_call,
@@ -466,7 +469,7 @@ lemma prop.has_call.and.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_p (P
     show c ∈ calls_p P₁ ∨ c ∈ calls_p P₂, from or.inr a
   end
 
-lemma prop.has_call.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_p (P₁ ⋁ P₂) → c ∈ calls_p P₁ ∨ c ∈ calls_p P₂ :=
+lemma prop.has_call_p.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_p (P₁ ⋁ P₂) → c ∈ calls_p P₁ ∨ c ∈ calls_p P₂ :=
   assume or_has_call: c ∈ calls_p (P₁ ⋁ P₂),
   begin
     cases or_has_call,
@@ -474,30 +477,30 @@ lemma prop.has_call.or.inv {c: calltrigger} {P₁ P₂: prop}: c ∈ calls_p (P�
     show c ∈ calls_p P₁ ∨ c ∈ calls_p P₂, from or.inr a
   end
 
-lemma prop.has_call.pre₁.inv {c: calltrigger} {op: unop} {t: term}: c ∉ calls_p (prop.pre₁ op t) :=
+lemma prop.has_call_p.pre₁.inv {c: calltrigger} {op: unop} {t: term}: c ∉ calls_p (prop.pre₁ op t) :=
   assume pre_has_call: c ∈ calls_p (prop.pre₁ op t),
   show «false», by cases pre_has_call
 
-lemma prop.has_call.pre₂.inv {c: calltrigger} {op: binop} {t₁ t₂: term}: c ∉ calls_p (prop.pre₂ op t₁ t₂) :=
+lemma prop.has_call_p.pre₂.inv {c: calltrigger} {op: binop} {t₁ t₂: term}: c ∉ calls_p (prop.pre₂ op t₁ t₂) :=
   assume pre_has_call: c ∈ calls_p (prop.pre₂ op t₁ t₂),
   show «false», by cases pre_has_call
 
-lemma prop.has_call.pre.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_p (prop.pre t₁ t₂) :=
+lemma prop.has_call_p.pre.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_p (prop.pre t₁ t₂) :=
   assume pre_has_call: c ∈ calls_p (prop.pre t₁ t₂),
   show «false», by cases pre_has_call
 
-lemma prop.has_call.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_p (prop.post t₁ t₂) :=
+lemma prop.has_call_p.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_p (prop.post t₁ t₂) :=
   assume post_has_call: c ∈ calls_p (prop.post t₁ t₂),
   show «false», by cases post_has_call
 
-lemma prop.has_call.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
+lemma prop.has_call_p.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
       c ∉ calls_p (prop.forallc x t P) :=
   assume forall_has_call: c ∈ calls_p (prop.forallc x t P),
   begin
     cases forall_has_call
   end
 
-lemma prop.has_call.exis.inv {c: calltrigger} {x: var} {P: prop}: c ∈ calls_p (prop.exis x P) → c ∈ calls_p P :=
+lemma prop.has_call_p.exis.inv {c: calltrigger} {x: var} {P: prop}: c ∈ calls_p (prop.exis x P) → c ∈ calls_p P :=
   assume exis_has_call: c ∈ calls_p (prop.exis x P),
   begin
     cases exis_has_call,
@@ -690,7 +693,7 @@ lemma prop.has_call_p_subst.term.inv {c: calltrigger} {t: term} {σ: env}:
       (λa, «false») c this (
     assume c': calltrigger,
     assume : c' ∈ calls_p t,
-    show «false», from prop.has_call.term.inv this
+    show «false», from prop.has_call_p.term.inv this
   )
 
 lemma prop.has_call_p_subst.and₁ {c: calltrigger} {P₁ P₂: prop} {σ: env}:
@@ -749,7 +752,7 @@ lemma prop.has_call_p_subst.not.inv {c: calltrigger} {P: prop} {σ: env}:
       (λa, a ∈ calls_n_subst σ P) c this (
     assume c': calltrigger,
     assume : c' ∈ calls_p P.not,
-    have c' ∈ calls_n P, from prop.has_call.not.inv this,
+    have c' ∈ calls_n P, from prop.has_call_p.not.inv this,
     show calltrigger.subst σ c' ∈ calls_n_subst σ P, from set.mem_image this rfl
   )
 
@@ -773,7 +776,7 @@ lemma prop.has_call_p_subst.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}
       (λa, a ∈ calls_p_subst σ P₁ ∨ a ∈ calls_p_subst σ P₂) c this (
     assume c': calltrigger,
     assume : c' ∈ calls_p (P₁ ⋀ P₂),
-    or.elim (prop.has_call.and.inv this) (
+    or.elim (prop.has_call_p.and.inv this) (
       assume : c' ∈ calls_p P₁,
       have calltrigger.subst σ c' ∈ calls_p_subst σ P₁, from set.mem_image this rfl,
       show calltrigger.subst σ c' ∈ calls_p_subst σ P₁
@@ -790,7 +793,7 @@ lemma no_instantiations.term {t: term}: no_instantiations t :=
   have h1: calls_p t = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p t,
-    show «false», from prop.has_call.term.inv this
+    show «false», from prop.has_call_p.term.inv this
   ),
   have h2: calls_n t = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
@@ -814,7 +817,7 @@ lemma no_instantiations.not {P: prop}: no_instantiations P → no_instantiations
   have h1: calls_p P.not = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p P.not,
-    have c_in_calls_p_P: c ∈ calls_n P, from prop.has_call.not.inv this,
+    have c_in_calls_p_P: c ∈ calls_n P, from prop.has_call_p.not.inv this,
     have c_not_in_calls_p_P: c ∉ calls_n P, from set.forall_not_mem_of_eq_empty no_calls_n_in_P c,
     show «false», from c_not_in_calls_p_P c_in_calls_p_P
   ),
@@ -848,7 +851,7 @@ lemma no_instantiations.and {P₁ P₂: prop}:
   have h1: calls_p (P₁ ⋀ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p (P₁ ⋀ P₂),
-    have c ∈ calls_p P₁ ∨ c ∈ calls_p P₂, from prop.has_call.and.inv this,
+    have c ∈ calls_p P₁ ∨ c ∈ calls_p P₂, from prop.has_call_p.and.inv this,
     or.elim this (
       assume c_in_calls_p_P₁: c ∈ calls_p P₁,
       have c_not_in_calls_p_P₁: c ∉ calls_p P₁, from set.forall_not_mem_of_eq_empty no_calls_p_in_P₁ c,
@@ -910,7 +913,7 @@ lemma no_instantiations.or {P₁ P₂: prop}:
   have h1: calls_p (P₁ ⋁ P₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p (P₁ ⋁ P₂),
-    have c ∈ calls_p P₁ ∨ c ∈ calls_p P₂, from prop.has_call.or.inv this,
+    have c ∈ calls_p P₁ ∨ c ∈ calls_p P₂, from prop.has_call_p.or.inv this,
     or.elim this (
       assume c_in_calls_p_P₁: c ∈ calls_p P₁,
       have c_not_in_calls_p_P₁: c ∉ calls_p P₁, from set.forall_not_mem_of_eq_empty no_calls_p_in_P₁ c,
@@ -969,7 +972,7 @@ lemma no_instantiations.pre {t₁ t₂: term}: no_instantiations (prop.pre t₁ 
   have h1: calls_p (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p (prop.pre t₁ t₂),
-    show «false», from prop.has_call.pre.inv this
+    show «false», from prop.has_call_p.pre.inv this
   ),
   have h2: calls_n (prop.pre t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
@@ -992,7 +995,7 @@ lemma no_instantiations.pre₁ {t: term} {op: unop}: no_instantiations (prop.pre
   have h1: calls_p (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p (prop.pre₁ op t),
-    show «false», from prop.has_call.pre₁.inv this
+    show «false», from prop.has_call_p.pre₁.inv this
   ),
   have h2: calls_n (prop.pre₁ op t) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
@@ -1015,7 +1018,7 @@ lemma no_instantiations.pre₂ {t₁ t₂: term} {op: binop}: no_instantiations 
   have h1: calls_p (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p (prop.pre₂ op t₁ t₂),
-    show «false», from prop.has_call.pre₂.inv this
+    show «false», from prop.has_call_p.pre₂.inv this
   ),
   have h2: calls_n (prop.pre₂ op t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
@@ -1038,7 +1041,7 @@ lemma no_instantiations.post {t₁ t₂: term}: no_instantiations (prop.post t�
   have h1: calls_p (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
     assume : c ∈ calls_p (prop.post t₁ t₂),
-    show «false», from prop.has_call.post.inv this
+    show «false», from prop.has_call_p.post.inv this
   ),
   have h2: calls_n (prop.post t₁ t₂) = ∅, from set.eq_empty_of_forall_not_mem (
     assume c: calltrigger,
@@ -1331,12 +1334,36 @@ lemma free_of_erased_free {x: var} {P: prop}: (x ∈ FV P.erased_p ∨ x ∈ FV 
   have x ∈ FV P.erased_n ∨ x ∈ FV P.erased_p, from this.symm,
   show x ∈ FV P, from free_of_erased_n_free this
 
+lemma prop.has_call_p.and_union {P₁ P₂: prop}:
+      calls_p (P₁ ⋀ P₂) = calls_p P₁ ∪ calls_p P₂ :=
+  set.eq_of_subset_of_subset (
+    assume c: calltrigger,
+    assume : c ∈ calls_p (P₁ ⋀ P₂),
+    or.elim (prop.has_call_p.and.inv this) (
+      assume : c ∈ calls_p P₁,
+      show c ∈ calls_p P₁ ∪ calls_p P₂, from set.mem_union_left (calls_p P₂) this
+    ) (
+      assume : c ∈ calls_p P₂,
+      show c ∈ calls_p P₁ ∪ calls_p P₂, from set.mem_union_right (calls_p P₁) this
+    )
+  ) (
+    assume c: calltrigger,
+    assume : c ∈ calls_p P₁ ∪ calls_p P₂,
+    or.elim (set.mem_or_mem_of_mem_union this) (
+      assume : c ∈ calls_p P₁,
+      show c ∈ calls_p (P₁ ⋀ P₂), from prop.has_call_p.and₁ this
+    ) (
+      assume : c ∈ calls_p P₂,
+      show c ∈ calls_p (P₁ ⋀ P₂), from prop.has_call_p.and₂ this
+    )
+  )
+
 lemma prop.has_call_p.and.symm {P₁ P₂: prop}:
       calls_p (P₁ ⋀ P₂) = calls_p (P₂ ⋀ P₁) :=
   set.eq_of_subset_of_subset (
     assume c: calltrigger,
     assume : c ∈ calls_p (P₁ ⋀ P₂),
-    or.elim (prop.has_call.and.inv this) (
+    or.elim (prop.has_call_p.and.inv this) (
       assume : c ∈ calls_p P₁,
       show c ∈ calls_p (P₂ ⋀ P₁), from prop.has_call_p.and₂ this
     ) (
@@ -1346,7 +1373,7 @@ lemma prop.has_call_p.and.symm {P₁ P₂: prop}:
   ) (
     assume c: calltrigger,
     assume : c ∈ calls_p (P₂ ⋀ P₁),
-    or.elim (prop.has_call.and.inv this) (
+    or.elim (prop.has_call_p.and.inv this) (
       assume : c ∈ calls_p P₂,
       show c ∈ calls_p (P₁ ⋀ P₂), from prop.has_call_p.and₂ this
     ) (
@@ -1384,13 +1411,13 @@ lemma prop.has_call_p.and.comm {P₁ P₂ P₃: prop}:
   set.eq_of_subset_of_subset (
     assume c: calltrigger,
     assume : c ∈ calls_p (P₁ ⋀ P₂ ⋀ P₃),
-    or.elim (prop.has_call.and.inv this) (
+    or.elim (prop.has_call_p.and.inv this) (
       assume : c ∈ calls_p P₁,
       have c ∈ calls_p (P₁ ⋀ P₂), from prop.has_call_p.and₁ this,
       show c ∈ calls_p ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_call_p.and₁ this
     ) (
       assume : c ∈ calls_p (P₂ ⋀ P₃),
-      or.elim (prop.has_call.and.inv this) (
+      or.elim (prop.has_call_p.and.inv this) (
         assume : c ∈ calls_p P₂,
         have c ∈ calls_p (P₁ ⋀ P₂), from prop.has_call_p.and₂ this,
         show c ∈ calls_p ((P₁ ⋀ P₂) ⋀ P₃), from prop.has_call_p.and₁ this
@@ -1402,9 +1429,9 @@ lemma prop.has_call_p.and.comm {P₁ P₂ P₃: prop}:
   ) (
     assume c: calltrigger,
     assume : c ∈ calls_p ((P₁ ⋀ P₂) ⋀ P₃),
-    or.elim (prop.has_call.and.inv this) (
+    or.elim (prop.has_call_p.and.inv this) (
       assume : c ∈ calls_p (P₁ ⋀ P₂),
-      or.elim (prop.has_call.and.inv this) (
+      or.elim (prop.has_call_p.and.inv this) (
         assume : c ∈ calls_p P₁,
         show c ∈ calls_p (P₁ ⋀ P₂ ⋀ P₃), from prop.has_call_p.and₁ this
       ) (
@@ -1473,3 +1500,221 @@ lemma same_calls_p_and_left {P P' Q: prop} {σ: env}:
     assume : c ∈ calls_p_subst σ Q,
     show c ∈ calls_p_subst σ (P ⋀ Q), from prop.has_call_p_subst.and₂ this
   )
+
+lemma prop.has_call_of_subst_has_call {P: prop} {c: calltrigger} {y: var} {v: value}:
+          (c ∈ calls_p (prop.subst y v P) → ∃c', c' ∈ calls_p P) ∧
+          (c ∈ calls_n (prop.subst y v P) → ∃c', c' ∈ calls_n P) :=
+  begin
+    induction P,
+    case prop.term t {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.not P₁ P₁_ih {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      have h2, from prop.has_call_p.not.inv h,
+      have h3, from P₁_ih.right h2,
+      cases h3 with c' a,
+      from ⟨c', prop.has_call_p.not a⟩,
+
+      intro h,
+      unfold prop.subst at h,
+      have h2, from prop.has_call_n.not.inv h,
+      have h3, from P₁_ih.left h2,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_n.not h3⟩,
+    },
+    case prop.and P₂ P₃ P₂_ih P₃_ih {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      have h2, from prop.has_call_p.and.inv h,
+      cases h2,
+      have h3, from P₂_ih.left a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_p.and₁ h3⟩,
+      have h3, from P₃_ih.left a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_p.and₂ h3⟩,
+
+      intro h,
+      unfold prop.subst at h,
+      have h2, from prop.has_call_n.and.inv h,
+      cases h2,
+      have h3, from P₂_ih.right a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_n.and₁ h3⟩,
+      have h3, from P₃_ih.right a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_n.and₂ h3⟩,
+    },
+    case prop.or P₄ P₅ P₄_ih P₅_ih {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      have h2, from prop.has_call_p.or.inv h,
+      cases h2,
+      have h3, from P₄_ih.left a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_p.or₁ h3⟩,
+      have h3, from P₅_ih.left a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_p.or₂ h3⟩,
+
+      intro h,
+      unfold prop.subst at h,
+      have h2, from prop.has_call_n.or.inv h,
+      cases h2,
+      have h3, from P₄_ih.right a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_n.or₁ h3⟩,
+      have h3, from P₅_ih.right a,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_n.or₂ h3⟩,
+    },
+    case prop.pre t₁ t₂ {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.pre₁ op t {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.pre₂ op t₁ t₂ {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.post t₁ t₂ {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.call t₁ t₂ {
+      split,
+
+      intro h,
+      existsi (calltrigger.mk t₁ t₂),
+      apply prop.has_call_p.calltrigger,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.forallc z t P ih {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h,
+
+      intro h,
+      unfold prop.subst at h,
+      cases h
+    },
+    case prop.exis z P ih {
+      split,
+
+      intro h,
+      unfold prop.subst at h,
+      by_cases (y = z) with h2,
+      simp[h2] at h,
+      existsi c,
+      from h,
+
+      simp[h2] at h,
+      have h2, from prop.has_call_p.exis.inv h,
+      have h3, from ih.left h2,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_p.exis h3⟩,
+
+      intro h,
+
+      unfold prop.subst at h,
+      by_cases (y = z) with h2,
+      simp[h2] at h,
+      existsi c,
+      from h,
+
+      simp[h2] at h,
+      have h2, from prop.has_call_n.exis.inv h,
+      have h3, from ih.right h2,
+      cases h3 with c' h3,
+      from ⟨c', prop.has_call_n.exis h3⟩
+    }
+  end
+
+lemma prop.has_call_of_subst_env_has_call {P: prop} {σ: env}:
+          (∀c, c ∈ calls_p (prop.subst_env σ P) → ∃c', c' ∈ calls_p P) ∧
+          (∀c, c ∈ calls_n (prop.subst_env σ P) → ∃c', c' ∈ calls_n P) :=
+  begin
+    induction σ with σ' y v ih,
+
+    split,
+
+    intro c,
+    intro h,
+    unfold prop.subst_env at h,
+    existsi c,
+    from h,
+
+    intro c,
+    intro h,
+    unfold prop.subst_env at h,
+    existsi c,
+    from h,
+
+    split,
+
+    intro c,
+    intro h,
+    unfold prop.subst_env at h,
+    have h2, from prop.has_call_of_subst_has_call.left h,
+    cases h2 with c' h3,
+    from ih.left c' h3,
+
+    intro c,
+    intro h,
+    unfold prop.subst_env at h,
+    have h2, from prop.has_call_of_subst_has_call.right h,
+    cases h2 with c' h3,
+    from ih.right c' h3,
+  end

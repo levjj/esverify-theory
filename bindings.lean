@@ -1,6 +1,6 @@
 import data.set
 
-import .syntax .freevars .vcgen
+import .syntax .notations .freevars .substitution .vcgen
 
 lemma free_of_contains {P: prop} {σ: env} {x: var}: (⊢ σ : P) → x ∈ σ → x ∈ FV P :=
   assume env_verified: ⊢ σ : P,

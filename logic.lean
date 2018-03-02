@@ -289,6 +289,27 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
     show σ ⊨ P₃, from valid_env.mp h2 this
   )
 
+lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
+      (σ ⊨ prop.instantiated_p (x ≡ v)) → (σ x = v) :=
+  assume : σ ⊨ prop.instantiated_p (x ≡ v),
+  have h1: σ ⊨ prop.erased_p (x ≡ v), from valid_env.erased_p_of_instantiated_p this,
+  have prop.erased_p (prop.term (x ≡ v)) = vc.term (x ≡ v),
+  by unfold prop.erased_p,
+  have σ ⊨ vc.term (x ≡ v), from this.symm ▸ h1,
+  have h2: ⊨ vc.subst_env σ (vc.term (x ≡ v)), from this,
+  have vc.subst_env σ (vc.term (x ≡ v)) = vc.term (term.subst_env σ (x ≡ v)),
+  from vc.subst_env.term,
+  have h3: ⊨ vc.term (term.subst_env σ (x ≡ v)), from this ▸ h2,
+  have term.subst_env σ (x ≡ v) = (term.subst_env σ x ≡ term.subst_env σ v),
+  from term.subst_env.binop,
+  have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
+  have term.subst_env σ v = v, from term.subst_env.value,
+  let σx := term.subst_env σ x in
+  have ⊨ (σx ≡ v), from this ▸ h4,
+  have ⊨ (σx ≡ v) ≡ value.true, from valid.eq.true.mp this,
+  have binop.apply binop.eq σx v = some value.true, from valid.eq.binop.mpr this,
+  sorry
+
 lemma history_valid {H: history}: ⟪calls_to_prop H⟫ :=
   assume σ: env,
   begin
