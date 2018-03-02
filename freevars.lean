@@ -617,6 +617,33 @@ begin
   end
 end
 
+instance {σ: env} {x: var} : decidable (env.contains σ x) :=
+  let r := env.apply σ x in
+  have h: r = env.apply σ x, from rfl,
+  @option.rec_on value (λa, (r = a) → decidable (env.contains σ x)) r
+  (
+    assume : r = none,
+    have env.apply σ x = none, from eq.trans h this,
+    have ¬ (x ∈ σ), from env.contains_apply_equiv.left.mp this,
+    is_false this
+  ) (
+    assume v: value,
+    assume : r = some v,
+    have env.apply σ x = some v, from eq.trans h this,
+    have ∃v, env.apply σ x = some v, from exists.intro v this,
+    have x ∈ σ, from env.contains_apply_equiv.right.mp this,
+    is_true this
+  ) rfl
+  -- match r with
+  --   | some v := have env.apply σ x = some v, by refl, --from eq.trans h.symm rfl,
+  --               have ∃v, env.apply σ x = some v, from exists.intro v this,
+  --               have x ∈ σ, from env.contains_apply_equiv.right.mp this,
+  --               is_true this
+  --   | none   := have env.apply σ x = none, from sorry,
+  --               have ¬ (x ∈ σ), from env.contains_apply_equiv.left.mp this,
+  --               is_false this
+  -- end
+
 lemma free_in_termctx.hole.inv {x: var} {t: term}:
       x ∈ FV (• t) → x ∈ FV t :=
   assume x_free_in_t: x ∈ FV (• t),

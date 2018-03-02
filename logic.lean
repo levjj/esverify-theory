@@ -5,11 +5,6 @@ import .syntax .notations .evaluation .substitution .qi .vcgen .bindings
 axiom valid.tru:
   ⊨ value.true
 
-axiom valid.not {P: vc}:
-  ¬ (⊨ P)
-  ↔
-  ⊨ P.not
-
 axiom valid.and {P Q: vc}:
   (⊨ P) ∧ (⊨ Q)
   ↔
@@ -20,17 +15,18 @@ axiom valid.or {P Q: vc}:
   ↔
   ⊨ P ⋁ Q
 
-axiom valid.implies  {P Q: vc}:
-  (⊨ P) → (⊨ Q)
+axiom valid.not.term {t: term}:
+  (⊨ term.unop unop.not t)
   ↔
-  ⊨ vc.implies P Q
+  ⊨ vc.not t
 
-axiom valid.univ {x: var} {P: vc}:
-  (∀v, ⊨ vc.subst x v P)
-  ↔
-  ⊨ vc.univ x P
+-- no contradictions
+axiom valid.contradiction {P: vc}:
+  ¬ (⊨ P ⋀ P.not)
 
--- axioms for equality
+-- law of excluded middle
+axiom valid.em {P: vc}:
+  (⊨ P ⋁ P.not)
 
 -- a term is valid if it equals true
 axiom valid.eq.true {t: term}:
@@ -38,13 +34,18 @@ axiom valid.eq.true {t: term}:
   ↔
   ⊨ t ≡ value.true
 
+axiom valid.univ {x: var} {P: vc}:
+  (∀v, ⊨ vc.subst x v P)
+  ↔
+  ⊨ vc.univ x P
+
 -- unary and binary operators are decidable, so equalities with operators are decidable
-axiom valid.eq.unop {op: unop} {vₓ v: value}:
+axiom valid.unop {op: unop} {vₓ v: value}:
   unop.apply op vₓ = some v
   ↔
   ⊨ term.unop op vₓ ≡ v
 
-axiom valid.eq.binop {op: binop} {v₁ v₂ v: value}:
+axiom valid.binop {op: binop} {v₁ v₂ v: value}:
   binop.apply op v₁ v₂ = some v
   ↔
   ⊨ term.binop op v₁ v₂ ≡ v
@@ -55,7 +56,7 @@ axiom valid.eq.binop {op: binop} {v₁ v₂ v: value}:
 -- However, given a complete evaluation derivation of a function call, we can add the
 -- equality `f(x)=y` as new axiom for closed values f, x, y and the resulting set
 -- of axioms is still sound due to deterministic evaluation.
-axiom valid.eq.app {vₓ v: value} {σ σ': env} {H H': history} {f x y: var} {R S: spec} {e: exp}:
+axiom valid.app {vₓ v: value} {σ σ': env} {H H': history} {f x y: var} {R S: spec} {e: exp}:
   (R, H, σ[x↦vₓ], e) ⟶* (R, H', σ', exp.return y) ∧
   (σ' y = some v)
   →
@@ -92,7 +93,57 @@ axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R
   →
   (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ (Q₂ (term.app f x) ⋀ S.to_prop).instantiated_n)
 
+-- assume that only closed VCs can be validated
+axiom valid.closed {P: vc}:
+  (⊨ P) → (∀x, x ∉ FV P)
+
 -- lemmas
+
+lemma valid.false.elim {P: vc}: (⊨ vc.implies value.false P) :=
+  have h1: ⊨ value.true, from valid.tru,
+  have unop.apply unop.not value.false = value.true, by unfold unop.apply,
+  have ⊨ term.unop unop.not value.false ≡ value.true, from valid.unop.mp this,
+  have ⊨ term.unop unop.not value.false, from valid.eq.true.mpr this,
+  have ⊨ vc.not value.false, from valid.not.term.mp this,
+  have ⊨ vc.not value.false ⋁ P, from valid.or.mp (or.inl this),
+  show ⊨ vc.implies value.false P, from this
+
+lemma valid.implies {P Q: vc}: (⊨ P) → (⊨ Q) ↔ ⊨ vc.implies P Q :=
+  iff.intro (
+    assume h1: (⊨ P) → (⊨ Q),
+    have ⊨ P ⋁ P.not, from valid.em,
+    or.elim (valid.or.mpr this) (
+      assume : ⊨ P,
+      have ⊨ Q, from h1 this,
+      show ⊨ P.not ⋁ Q, from valid.or.mp (or.inr this)
+    ) (
+      assume : ⊨ P.not,
+      show ⊨ P.not ⋁ Q, from valid.or.mp (or.inl this)
+    )
+  ) (
+    assume h1: (⊨ P.not ⋁ Q),
+    assume h2: (⊨ P),
+    or.elim (valid.or.mpr h1) (
+      assume : ⊨ P.not,
+      have ⊨ P ⋀ P.not, from valid.and.mp ⟨h2, this⟩,
+      show ⊨ Q, from false.elim (valid.contradiction this)
+    ) id
+  )
+
+lemma valid.not {P: vc}: ¬ (⊨ P) ↔ ⊨ P.not :=
+  iff.intro (
+    assume h1: ¬ (⊨ P),
+    have ⊨ P ⋁ P.not, from valid.em,
+    or.elim (valid.or.mpr this) (
+      assume : ⊨ P,
+      show ⊨ P.not, from absurd this h1
+    ) id
+  ) (
+    assume h2: ⊨ P.not,
+    assume h3: ⊨ P,
+    have ⊨ (P ⋀ P.not), from valid.and.mp ⟨h3, h2⟩,
+    show «false», from valid.contradiction this
+  )
 
 lemma valid.neg_neg {P: vc}: (⊨ P.not.not) ↔ ⊨ P :=
   iff.intro (
@@ -133,7 +184,7 @@ lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
                                   (classical.prop_decidable (v = v))
                                   value value.true value.false, by unfold binop.apply,
   have binop.apply binop.eq v v = value.true, by simp[this],
-  have ⊨ ((v ≡ v) ≡ value.true), from valid.eq.binop.mp this,
+  have ⊨ ((v ≡ v) ≡ value.true), from valid.binop.mp this,
   show ⊨ (v ≡ v), from valid.eq.true.mpr this
 
 lemma valid.implies.trans {P₁ P₂ P₃: vc}:
@@ -306,8 +357,14 @@ lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
   have term.subst_env σ v = v, from term.subst_env.value,
   let σx := term.subst_env σ x in
   have ⊨ (σx ≡ v), from this ▸ h4,
-  have ⊨ (σx ≡ v) ≡ value.true, from valid.eq.true.mp this,
-  have binop.apply binop.eq σx v = some value.true, from valid.eq.binop.mpr this,
+  have h5: ⊨ (σx ≡ v) ≡ value.true, from valid.eq.true.mp this,
+  have x ∈ σ, from by_contradiction (
+    assume : x ∉ σ,
+
+    show «false», from sorry
+  ),
+  -- have binop.apply binop.eq σx v = some value.true, from valid.binop.mpr this,
+  have binop.apply binop.eq v v = some value.true, from sorry,
   sorry
 
 lemma history_valid {H: history}: ⟪calls_to_prop H⟫ :=
@@ -480,7 +537,7 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
 
       have h2: ⊨ prop.instantiated_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)), from (
         have unop.apply unop.isFunc vf = value.true, by unfold unop.apply,
-        have ⊨ (term.unop unop.isFunc vf ≡ value.true), from valid.eq.unop.mp this,
+        have ⊨ (term.unop unop.isFunc vf ≡ value.true), from valid.unop.mp this,
         have ⊨ term.unop unop.isFunc vf, from valid.eq.true.mpr this,
         have h3: ⊨ term.unop unop.isFunc (term.subst_env (σ₂[g↦vf]) g), from g_subst.symm ▸ this,
         have term.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g) = term.unop unop.isFunc (term.subst_env (σ₂[g↦vf]) g),
