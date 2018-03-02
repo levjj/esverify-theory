@@ -260,9 +260,9 @@ instance call_to_prop: has_coe history prop := ⟨calls_to_prop⟩
 
 -- instantiation is axiomatized in qi.lean
 
-constant prop.instantiated: prop → vc
-
 constant prop.instantiated_n: prop → vc
+
+constant prop.instantiated_p: prop → vc
 
 -- validity is axiomatized in logic.lean
 

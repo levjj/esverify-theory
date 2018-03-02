@@ -55,7 +55,7 @@ def vc.subst_env: env → vc → vc
 
 notation σ `⊨` p: 20 := valid (vc.subst_env σ p)
 
-notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated P)
+notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated_n P)
 
 -- lemmas
 

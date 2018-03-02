@@ -114,7 +114,7 @@ notation `⊢ₛ` s : 10 := stack.vcgen s
 | top {R: spec} {H: history} {P: prop} {σ: env} {e: exp} {Q: propctx}:
     (⊢ σ : P) →
     FV R.to_prop ⊆ FV P →
-    (σ ⊨ R.to_prop.instantiated) →
+    (σ ⊨ R.to_prop.instantiated_n) →
     (R ⋀ H ⋀ P ⊢ e : Q) →
     (⊢ₛ (R, H, σ, e))
 
@@ -123,7 +123,7 @@ notation `⊢ₛ` s : 10 := stack.vcgen s
     (⊢ₛ s) →
     (⊢ σ₁ : P) →
     FV R'.to_prop ⊆ FV P →
-    (σ₁ ⊨ R'.to_prop.instantiated) →
+    (σ₁ ⊨ R'.to_prop.instantiated_n) →
     (σ₁ g = value.func f fx R S e₂ H₂ σ₂) →
     (σ₁ x = v) →
     y ∉ σ₁ →
@@ -146,12 +146,12 @@ lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x 
   end
 
 lemma stack.vcgen.top.inv {R: spec} {H: history} {σ: env} {e: exp}:
-  (⊢ₛ (R, H, σ, e)) → ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated) ∧ (R ⋀ H ⋀ P ⊢ e: Q) :=
+  (⊢ₛ (R, H, σ, e)) → ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated_n) ∧ (R ⋀ H ⋀ P ⊢ e: Q) :=
   assume top_verified: ⊢ₛ (R, H, σ, e),
   begin
     cases top_verified,
     case stack.vcgen.top P Q env_verified fv_R R_valid e_verified {
-      show ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated) ∧ (R ⋀ H ⋀ P ⊢ e: Q),
+      show ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated_n) ∧ (R ⋀ H ⋀ P ⊢ e: Q),
       from exists.intro P (exists.intro Q ⟨env_verified, ⟨fv_R, ⟨R_valid, e_verified⟩⟩⟩) 
     }
   end
