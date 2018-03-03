@@ -10,10 +10,20 @@ axiom valid.and {P Q: vc}:
   ↔
   ⊨ P ⋀ Q
 
-axiom valid.or {P Q: vc}:
-  (⊨ P) ∨ (⊨ Q)
-  ↔
+axiom valid.or.left {P Q: vc}:
+  (⊨ P) → 
+  closed Q →
   ⊨ P ⋁ Q
+
+axiom valid.or.right {P Q: vc}:
+  closed P →
+  (⊨ Q) → 
+  ⊨ P ⋁ Q
+
+axiom valid.or.elim {P Q: vc}:
+  (⊨ P ⋁ Q)
+  →
+  (⊨ P) ∨ (⊨ Q)
 
 axiom valid.not.term {t: term}:
   (⊨ term.unop unop.not t)
@@ -26,6 +36,7 @@ axiom valid.contradiction {P: vc}:
 
 -- law of excluded middle
 axiom valid.em {P: vc}:
+  closed P →
   (⊨ P ⋁ P.not)
 
 -- a term is valid if it equals true
@@ -93,65 +104,69 @@ axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R
   →
   (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ (Q₂ (term.app f x) ⋀ S.to_prop).instantiated_n)
 
--- assume that only closed VCs can be validated
+-- only closed VCs can be validated
 axiom valid.closed {P: vc}:
-  (⊨ P) → (∀x, x ∉ FV P)
+  (⊨ P) → closed P
 
 -- lemmas
 
-lemma valid.false.elim {P: vc}: (⊨ vc.implies value.false P) :=
+lemma valid.false.elim {P: vc}: closed P → (⊨ vc.implies value.false P) :=
+  assume P_closed: closed P,
   have h1: ⊨ value.true, from valid.tru,
   have unop.apply unop.not value.false = value.true, by unfold unop.apply,
   have ⊨ term.unop unop.not value.false ≡ value.true, from valid.unop.mp this,
   have ⊨ term.unop unop.not value.false, from valid.eq.true.mpr this,
   have ⊨ vc.not value.false, from valid.not.term.mp this,
-  have ⊨ vc.not value.false ⋁ P, from valid.or.mp (or.inl this),
+  have ⊨ vc.not value.false ⋁ P, from valid.or.left this P_closed,
   show ⊨ vc.implies value.false P, from this
 
-lemma valid.implies {P Q: vc}: (⊨ P) → (⊨ Q) ↔ ⊨ vc.implies P Q :=
-  iff.intro (
-    assume h1: (⊨ P) → (⊨ Q),
-    have ⊨ P ⋁ P.not, from valid.em,
-    or.elim (valid.or.mpr this) (
-      assume : ⊨ P,
-      have ⊨ Q, from h1 this,
-      show ⊨ P.not ⋁ Q, from valid.or.mp (or.inr this)
-    ) (
-      assume : ⊨ P.not,
-      show ⊨ P.not ⋁ Q, from valid.or.mp (or.inl this)
-    )
+lemma valid.implies.mp {P Q: vc}: closed P → closed Q → ((⊨ P) → (⊨ Q)) → ⊨ vc.implies P Q :=
+  assume P_closed: closed P,
+  assume Q_closed: closed Q,
+  assume h1: (⊨ P) → (⊨ Q),
+  have ⊨ P ⋁ P.not, from valid.em P_closed,
+  or.elim (valid.or.elim this) (
+    assume : ⊨ P,
+    have ⊨ Q, from h1 this,
+    show ⊨ P.not ⋁ Q, from valid.or.right (vc.closed.not P_closed) this
   ) (
-    assume h1: (⊨ P.not ⋁ Q),
-    assume h2: (⊨ P),
-    or.elim (valid.or.mpr h1) (
-      assume : ⊨ P.not,
-      have ⊨ P ⋀ P.not, from valid.and.mp ⟨h2, this⟩,
-      show ⊨ Q, from false.elim (valid.contradiction this)
-    ) id
+    assume : ⊨ P.not,
+    show ⊨ P.not ⋁ Q, from valid.or.left this Q_closed
   )
 
-lemma valid.not {P: vc}: ¬ (⊨ P) ↔ ⊨ P.not :=
-  iff.intro (
-    assume h1: ¬ (⊨ P),
-    have ⊨ P ⋁ P.not, from valid.em,
-    or.elim (valid.or.mpr this) (
-      assume : ⊨ P,
-      show ⊨ P.not, from absurd this h1
-    ) id
-  ) (
-    assume h2: ⊨ P.not,
-    assume h3: ⊨ P,
-    have ⊨ (P ⋀ P.not), from valid.and.mp ⟨h3, h2⟩,
-    show «false», from valid.contradiction this
-  )
+lemma valid.implies.mpr {P Q: vc}: (⊨ vc.implies P Q) → (⊨ P) → (⊨ Q) :=
+  assume h1: (⊨ P.not ⋁ Q),
+  assume h2: (⊨ P),
+  or.elim (valid.or.elim h1) (
+    assume : ⊨ P.not,
+    have ⊨ P ⋀ P.not, from valid.and.mp ⟨h2, this⟩,
+    show ⊨ Q, from false.elim (valid.contradiction this)
+  ) id
+
+lemma valid.not.mp {P: vc}: closed P → (¬ ⊨ P) → ⊨ P.not :=
+  assume P_closed: closed P,
+  assume h1: ¬ (⊨ P),
+  have ⊨ P ⋁ P.not, from valid.em P_closed,
+  or.elim (valid.or.elim this) (
+    assume : ⊨ P,
+    show ⊨ P.not, from absurd this h1
+  ) id
+
+lemma valid.not.mpr {P: vc}: (⊨ P.not) → ¬ ⊨ P :=
+  assume h2: ⊨ P.not,
+  assume h3: ⊨ P,
+  have ⊨ (P ⋀ P.not), from valid.and.mp ⟨h3, h2⟩,
+  show «false», from valid.contradiction this
 
 lemma valid.neg_neg {P: vc}: (⊨ P.not.not) ↔ ⊨ P :=
   iff.intro (
     assume : ⊨ P.not.not,
+    have P_not_closed: closed P.not, from vc.closed.not.inv (valid.closed this),
+    have P_closed: closed P, from vc.closed.not.inv P_not_closed,
     have h1: ¬ ⊨ P.not, from valid.not.mpr this,
     have h2: ¬ ¬ ⊨ P, from (
       assume : ¬ ⊨ P,
-      have ⊨ P.not, from valid.not.mp this,
+      have ⊨ P.not, from valid.not.mp P_closed this,
       show «false», from h1 this
     ),
     show ⊨ P, from classical.by_contradiction (
@@ -165,11 +180,12 @@ lemma valid.neg_neg {P: vc}: (⊨ P.not.not) ↔ ⊨ P :=
       have ¬ ⊨ P, from valid.not.mpr this,
       show «false», from this h1
     ),
-    show ⊨ P.not.not, from valid.not.mp h2
+    show ⊨ P.not.not, from valid.not.mp (vc.closed.not (valid.closed h1)) h2
   )
 
 lemma valid.mt {P Q: vc}: (⊨ vc.implies P Q) → (⊨ Q.not) → ⊨ P.not :=
   assume h1: ⊨ vc.implies P Q,
+  have P_closed: closed P, from (vc.closed.implies.inv (valid.closed h1)).left,
   assume : ⊨ Q.not,
   have h2: ¬ ⊨ Q, from valid.not.mpr this,
   have ¬ ⊨ P, from (
@@ -177,25 +193,30 @@ lemma valid.mt {P Q: vc}: (⊨ vc.implies P Q) → (⊨ Q.not) → ⊨ P.not :=
     have ⊨ Q, from valid.implies.mpr h1 this,
     show «false», from h2 this
   ),
-  show ⊨ P.not, from valid.not.mp this
+  show ⊨ P.not, from valid.not.mp P_closed this
 
 lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
-  have binop.apply binop.eq v v = @ite (v = v)
-                                  (classical.prop_decidable (v = v))
-                                  value value.true value.false, by unfold binop.apply,
-  have binop.apply binop.eq v v = value.true, by simp[this],
+  have binop.apply binop.eq v v = value.true, from binop.eq_of_equal_values,
   have ⊨ ((v ≡ v) ≡ value.true), from valid.binop.mp this,
   show ⊨ (v ≡ v), from valid.eq.true.mpr this
 
 lemma valid.implies.trans {P₁ P₂ P₃: vc}:
       (⊨ vc.implies P₁ P₂) → (⊨ vc.implies P₂ P₃) → ⊨ vc.implies P₁ P₃ :=
   assume h1: ⊨ vc.implies P₁ P₂,
+  have P₁_closed: closed P₁, from (vc.closed.implies.inv (valid.closed h1)).left,
   assume h2: ⊨ vc.implies P₂ P₃,
-  show ⊨ vc.implies P₁ P₃, from valid.implies.mp (
+  have P₃_closed: closed P₃, from (vc.closed.implies.inv (valid.closed h2)).right,
+  show ⊨ vc.implies P₁ P₃, from valid.implies.mp P₁_closed P₃_closed (
     assume : ⊨ P₁,
     have ⊨ P₂, from valid.implies.mpr h1 this,
     show ⊨ P₃, from valid.implies.mpr h2 this
   )
+
+lemma valid_env.closed {σ: env} {P: vc}: (σ ⊨ P) → closed_subst σ P :=
+  assume : σ ⊨ P,
+  have ⊨ vc.subst_env σ P, from this,
+  have closed (vc.subst_env σ P), from valid.closed this,
+  show closed_subst σ P, from vc.closed_subst_of_closed this
 
 lemma valid_env.true {σ: env}: σ ⊨ value.true :=
   have h1: ⊨ value.true, from valid.tru,
@@ -276,15 +297,19 @@ lemma valid_env.and.elim {σ: env} {P Q: vc}: (σ ⊨ P ⋀ Q) → (σ ⊨ P) �
   have ⊨ (vc.subst_env σ P ⋀ vc.subst_env σ Q), from this ▸ p_and_q_valid,
   show (σ ⊨ P) ∧ (σ ⊨ Q), from valid.and.mpr this
 
-lemma valid_env.or₁ {σ: env} {P Q: vc}: (σ ⊨ P) → σ ⊨ (P ⋁ Q) :=
-  assume : ⊨ vc.subst_env σ P,
-  have h: ⊨ vc.subst_env σ P ⋁ vc.subst_env σ Q, from valid.or.mp (or.inl this),
+lemma valid_env.or₁ {σ: env} {P Q: vc}: (σ ⊨ P) → closed_subst σ Q → σ ⊨ (P ⋁ Q) :=
+  assume h1: ⊨ vc.subst_env σ P,
+  assume : closed_subst σ Q,
+  have h2: closed (vc.subst_env σ Q), from vc.closed_of_closed_subst this,
+  have h: ⊨ vc.subst_env σ P ⋁ vc.subst_env σ Q, from valid.or.left h1 h2,
   have vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q), from vc.subst_env.or,
   show σ ⊨ (P ⋁ Q), from this.symm ▸ h
 
-lemma valid_env.or₂ {σ: env} {P Q: vc}: (σ ⊨ Q) → σ ⊨ (P ⋁ Q) :=
-  assume : ⊨ vc.subst_env σ Q,
-  have h: ⊨ vc.subst_env σ P ⋁ vc.subst_env σ Q, from valid.or.mp (or.inr this),
+lemma valid_env.or₂ {σ: env} {P Q: vc}: closed_subst σ P → (σ ⊨ Q) → σ ⊨ (P ⋁ Q) :=
+  assume : closed_subst σ P,
+  have h1: closed (vc.subst_env σ P), from vc.closed_of_closed_subst this,
+  assume h2: ⊨ vc.subst_env σ Q,
+  have h: ⊨ vc.subst_env σ P ⋁ vc.subst_env σ Q, from valid.or.right h1 h2,
   have vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q), from vc.subst_env.or,
   show σ ⊨ (P ⋁ Q), from this.symm ▸ h
 
@@ -292,22 +317,22 @@ lemma valid_env.or.elim {σ: env} {P Q: vc}: (σ ⊨ P ⋁ Q) → (σ ⊨ P) ∨
   assume p_or_q_valid: ⊨ vc.subst_env σ (P ⋁ Q),
   have vc.subst_env σ (P ⋁ Q) = (vc.subst_env σ P ⋁ vc.subst_env σ Q), from vc.subst_env.or,
   have ⊨ (vc.subst_env σ P ⋁ vc.subst_env σ Q), from this ▸ p_or_q_valid,
-  show (σ ⊨ P) ∨ (σ ⊨ Q), from valid.or.mpr this
+  show (σ ⊨ P) ∨ (σ ⊨ Q), from valid.or.elim this
 
-lemma valid_env.not {σ: env} {P: vc}: ¬ (σ ⊨ P) ↔ (σ ⊨ P.not) :=
-  iff.intro (
-    assume h1: ¬ (σ ⊨ P),
-    have h2: vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
-    have ¬ ⊨ (vc.subst_env σ P), from h2 ▸ h1,
-    have ⊨ (vc.subst_env σ P).not, from valid.not.mp this,
-    show σ ⊨ P.not, from h2.symm ▸ this
-  ) (
-    assume h1: σ ⊨ P.not,
-    have h2: vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
-    have ⊨ (vc.subst_env σ P).not, from h2 ▸ h1,
-    have ¬ ⊨ (vc.subst_env σ P), from valid.not.mpr this,
-    show ¬ (σ ⊨ P), from h2.symm ▸ this
-  )
+lemma valid_env.not.mp {σ: env} {P: vc}: closed_subst σ P → ¬ (σ ⊨ P) → (σ ⊨ P.not) :=
+  assume P_closed: closed_subst σ P,
+  assume h1: ¬ (σ ⊨ P),
+  have h2: vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+  have ¬ ⊨ (vc.subst_env σ P), from h2 ▸ h1,
+  have ⊨ (vc.subst_env σ P).not, from valid.not.mp (vc.closed_of_closed_subst P_closed) this,
+  show σ ⊨ P.not, from h2.symm ▸ this
+
+lemma valid_env.not.mpr {σ: env} {P: vc}: (σ ⊨ P.not) → ¬ (σ ⊨ P) :=
+  assume h1: σ ⊨ P.not,
+  have h2: vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
+  have ⊨ (vc.subst_env σ P).not, from h2 ▸ h1,
+  have ¬ ⊨ (vc.subst_env σ P), from valid.not.mpr this,
+  show ¬ (σ ⊨ P), from h2.symm ▸ this
 
 lemma valid_env.mp {σ: env} {P Q: vc}: (σ ⊨ vc.implies P Q) → (σ ⊨ P) → σ ⊨ Q :=
   assume impl: σ ⊨ (vc.implies P Q),
@@ -319,9 +344,14 @@ lemma valid_env.mp {σ: env} {P Q: vc}: (σ ⊨ vc.implies P Q) → (σ ⊨ P) �
   have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from this,
   show σ ⊨ Q, from valid.implies.mpr this p
 
-lemma valid_env.mpr {σ: env} {P Q: vc}: ((σ ⊨ P) → σ ⊨ Q) → σ ⊨ vc.implies P Q :=
+lemma valid_env.mpr {σ: env} {P Q: vc}:
+      closed_subst σ P → closed_subst σ Q → ((σ ⊨ P) → (σ ⊨ Q)) → σ ⊨ vc.implies P Q :=
+  assume : closed_subst σ P,
+  have P_closed: closed (vc.subst_env σ P), from vc.closed_of_closed_subst this,
+  assume : closed_subst σ Q,
+  have Q_closed: closed (vc.subst_env σ Q), from vc.closed_of_closed_subst this,
   assume : ((σ ⊨ P) → σ ⊨ Q),
-  have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from valid.implies.mp this,
+  have ⊨ vc.implies (vc.subst_env σ P) (vc.subst_env σ Q), from valid.implies.mp P_closed Q_closed this,
   have h1: ⊨ vc.or (vc.subst_env σ P).not (vc.subst_env σ Q), from this,
   have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
   have h2: ⊨ vc.or (vc.subst_env σ P.not) (vc.subst_env σ Q), from this.symm ▸ h1,
@@ -333,8 +363,10 @@ lemma valid_env.mpr {σ: env} {P Q: vc}: ((σ ⊨ P) → σ ⊨ Q) → σ ⊨ vc
 lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
       (σ ⊨ vc.implies P₁ P₂) → (σ ⊨ vc.implies P₂ P₃) → σ ⊨ vc.implies P₁ P₃ :=
   assume h1: σ ⊨ vc.implies P₁ P₂,
+  have P₁_closed: closed_subst σ P₁, from (vc.closed_subst.implies.inv (valid_env.closed h1)).left,
   assume h2: σ ⊨ vc.implies P₂ P₃,
-  show σ ⊨ vc.implies P₁ P₃, from valid_env.mpr (
+  have P₃_closed: closed_subst σ P₃, from (vc.closed_subst.implies.inv (valid_env.closed h2)).right,
+  show σ ⊨ vc.implies P₁ P₃, from valid_env.mpr P₁_closed P₃_closed (
     assume : σ ⊨ P₁,
     have σ ⊨ P₂, from valid_env.mp h1 this,
     show σ ⊨ P₃, from valid_env.mp h2 this
@@ -355,17 +387,26 @@ lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
   from term.subst_env.binop,
   have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
   have term.subst_env σ v = v, from term.subst_env.value,
-  let σx := term.subst_env σ x in
-  have ⊨ (σx ≡ v), from this ▸ h4,
-  have h5: ⊨ (σx ≡ v) ≡ value.true, from valid.eq.true.mp this,
+  have h5: ⊨ (term.subst_env σ x ≡ v), from this ▸ h4,
   have x ∈ σ, from by_contradiction (
     assume : x ∉ σ,
-
-    show «false», from sorry
+    have σ x = none, from env.contains_apply_equiv.left.mpr this,
+    have term.subst_env σ x = x, from term.subst_env.var.left.mp this,
+    have ⊨ (x ≡ v), from this ▸ h5,
+    have closed (vc.term (x ≡ v)), from valid.closed this,
+    have h6: closed (x ≡ v), from vc.closed.term.inv this,
+    have x ∈ FV (term.var x), from free_in_term.var x,
+    have x ∈ FV (x ≡ v), from free_in_term.binop₁ this,
+    show «false», from h6 x this
   ),
-  -- have binop.apply binop.eq σx v = some value.true, from valid.binop.mpr this,
-  have binop.apply binop.eq v v = some value.true, from sorry,
-  sorry
+  have ∃v', σ x = some v', from env.contains_apply_equiv.right.mpr this,
+  let ⟨v', h6⟩ := this in
+  have term.subst_env σ x = v', from (term.subst_env.var.right v').mp h6,
+  have ⊨ (v' ≡ v), from this ▸ h5,
+  have ⊨ (v' ≡ v) ≡ value.true, from valid.eq.true.mp this,
+  have binop.apply binop.eq v' v = some value.true, from valid.binop.mpr this,
+  have v' = v, from binop.eq.inv this,
+  show σ x = some v, from h6.symm ▸ (some.inj.inv this)
 
 lemma history_valid {H: history}: ⟪calls_to_prop H⟫ :=
   assume σ: env,

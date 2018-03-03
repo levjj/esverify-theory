@@ -22,6 +22,18 @@ lemma lt_of_add {n m: ℕ}: n < n + m + 1 ∧ m < n + m + 1 :=
   have h₂: m < n + m + 1, from lt_add_of_le_of_pos this zero_lt_one,
   ⟨h₁, h₂⟩
 
+lemma lt_of_x_s_y {x s y: ℕ}: s < x + (s + (y + 1)) :=
+  begin
+    rw[←add_assoc],
+    rw[←add_comm s x],
+    rw[add_assoc],
+    apply lt_add_of_pos_right s,
+    change 0 < x + (y + 1),
+    rw[←add_assoc],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
 -- auxiliary lemmas for option
 
 lemma some.inj.inv {α: Type} {a b: α}: a = b → (some a = some b) :=

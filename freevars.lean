@@ -63,7 +63,11 @@ def freevars.to_set: freevars → set var
 | (freevars.prop P) := λx, free_in_prop x P
 | (freevars.vc P)   := λx, free_in_vc x P
 
+@[reducible]
 def FV {α: Type} [h: has_fv α] (a: α): set var := (has_fv.fv a).to_set
+
+@[reducible]
+def closed {α: Type} [h: has_fv α] (a: α): Prop := ∀x, x ∉ FV a
 
 -- helper lemmas
 
@@ -634,15 +638,6 @@ instance {σ: env} {x: var} : decidable (env.contains σ x) :=
     have x ∈ σ, from env.contains_apply_equiv.right.mp this,
     is_true this
   ) rfl
-  -- match r with
-  --   | some v := have env.apply σ x = some v, by refl, --from eq.trans h.symm rfl,
-  --               have ∃v, env.apply σ x = some v, from exists.intro v this,
-  --               have x ∈ σ, from env.contains_apply_equiv.right.mp this,
-  --               is_true this
-  --   | none   := have env.apply σ x = none, from sorry,
-  --               have ¬ (x ∈ σ), from env.contains_apply_equiv.left.mp this,
-  --               is_false this
-  -- end
 
 lemma free_in_termctx.hole.inv {x: var} {t: term}:
       x ∈ FV (• t) → x ∈ FV t :=
@@ -1031,3 +1026,196 @@ lemma free_in_prop.and_symm {P₁ P₂: prop}:
       show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
     )
   )
+
+lemma prop.closed.and {P Q: prop}: closed P → closed Q → closed (P ⋀ Q) :=
+  assume P_closed: closed P,
+  assume Q_closed: closed Q,
+  show closed (P ⋀ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋀ Q),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P,
+      show «false», from P_closed x this
+    ) (
+      assume : x ∈ FV Q,
+      show «false», from Q_closed x this
+    )
+  )
+
+lemma prop.closed.or {P Q: prop}: closed P → closed Q → closed (P ⋁ Q) :=
+  assume P_closed: closed P,
+  assume Q_closed: closed Q,
+  show closed (P ⋁ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋁ Q),
+    or.elim (free_in_prop.or.inv this) (
+      assume : x ∈ FV P,
+      show «false», from P_closed x this
+    ) (
+      assume : x ∈ FV Q,
+      show «false», from Q_closed x this
+    )
+  )
+
+lemma prop.closed.not {P: prop}: closed P → closed P.not :=
+  assume P_closed: closed P,
+  show closed P.not, from (
+    assume x: var,
+    assume : x ∈ FV P.not,
+    have x ∈ FV P, from free_in_prop.not.inv this,
+    show «false», from P_closed x this
+  )
+
+lemma prop.closed.implies {P Q: prop}: closed P → closed Q → closed (prop.implies P Q) :=
+  assume P_closed: closed P,
+  have P_not_closed: closed P.not, from prop.closed.not P_closed,
+  assume Q_closed: closed Q,
+  show closed (P.not ⋁ Q), from prop.closed.or P_not_closed Q_closed
+
+lemma prop.closed.and.inv {P Q: prop}: closed (P ⋀ Q) → (closed P ∧ closed Q) :=
+  assume P_and_Q_closed: closed (P ⋀ Q),
+  have P_closed: closed P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this,
+    show «false», from P_and_Q_closed x this
+  ),
+  have Q_closed: closed Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋀ Q), from free_in_prop.and₂ this,
+    show «false», from P_and_Q_closed x this
+  ),
+  ⟨P_closed, Q_closed⟩
+
+lemma prop.closed.or.inv {P Q: prop}: closed (P ⋁ Q) → (closed P ∧ closed Q) :=
+  assume P_or_Q_closed: closed (P ⋁ Q),
+  have P_closed: closed P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋁ Q), from free_in_prop.or₁ this,
+    show «false», from P_or_Q_closed x this
+  ),
+  have Q_closed: closed Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋁ Q), from free_in_prop.or₂ this,
+    show «false», from P_or_Q_closed x this
+  ),
+  ⟨P_closed, Q_closed⟩
+
+lemma prop.closed.not.inv {P: prop}: closed P.not → closed P :=
+  assume P_not_closed: closed P.not,
+  show closed P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV P.not, from free_in_prop.not this,
+    show «false», from P_not_closed x this
+  )
+
+lemma prop.closed.implies.inv {P Q: prop}: closed (prop.implies P Q) → closed P ∧ closed Q :=
+  assume P_not_or_Q_closed: closed (P.not ⋁ Q),
+  have P_not_closed: closed P.not, from (prop.closed.or.inv P_not_or_Q_closed).left,
+  have P_closed: closed P, from prop.closed.not.inv P_not_closed,
+  have Q_closed: closed Q, from (prop.closed.or.inv P_not_or_Q_closed).right,
+  ⟨P_closed, Q_closed⟩
+
+lemma vc.closed.and {P Q: vc}: closed P → closed Q → closed (P ⋀ Q) :=
+  assume P_closed: closed P,
+  assume Q_closed: closed Q,
+  show closed (P ⋀ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋀ Q),
+    or.elim (free_in_vc.and.inv this) (
+      assume : x ∈ FV P,
+      show «false», from P_closed x this
+    ) (
+      assume : x ∈ FV Q,
+      show «false», from Q_closed x this
+    )
+  )
+
+lemma vc.closed.or {P Q: vc}: closed P → closed Q → closed (P ⋁ Q) :=
+  assume P_closed: closed P,
+  assume Q_closed: closed Q,
+  show closed (P ⋁ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋁ Q),
+    or.elim (free_in_vc.or.inv this) (
+      assume : x ∈ FV P,
+      show «false», from P_closed x this
+    ) (
+      assume : x ∈ FV Q,
+      show «false», from Q_closed x this
+    )
+  )
+
+lemma vc.closed.not {P: vc}: closed P → closed P.not :=
+  assume P_closed: closed P,
+  show closed P.not, from (
+    assume x: var,
+    assume : x ∈ FV P.not,
+    have x ∈ FV P, from free_in_vc.not.inv this,
+    show «false», from P_closed x this
+  )
+
+lemma vc.closed.implies {P Q: vc}: closed P → closed Q → closed (vc.implies P Q) :=
+  assume P_closed: closed P,
+  have P_not_closed: closed P.not, from vc.closed.not P_closed,
+  assume Q_closed: closed Q,
+  show closed (P.not ⋁ Q), from vc.closed.or P_not_closed Q_closed
+
+lemma vc.closed.term.inv {t: term}: closed (vc.term t) → closed t :=
+  assume h: closed (vc.term t),
+  assume x: var,
+  assume : x ∈ FV t,
+  have x ∈ FV (vc.term t), from free_in_vc.term this,
+  show «false», from h x this
+
+lemma vc.closed.and.inv {P Q: vc}: closed (P ⋀ Q) → (closed P ∧ closed Q) :=
+  assume P_and_Q_closed: closed (P ⋀ Q),
+  have P_closed: closed P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋀ Q), from free_in_vc.and₁ this,
+    show «false», from P_and_Q_closed x this
+  ),
+  have Q_closed: closed Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋀ Q), from free_in_vc.and₂ this,
+    show «false», from P_and_Q_closed x this
+  ),
+  ⟨P_closed, Q_closed⟩
+
+lemma vc.closed.or.inv {P Q: vc}: closed (P ⋁ Q) → (closed P ∧ closed Q) :=
+  assume P_or_Q_closed: closed (P ⋁ Q),
+  have P_closed: closed P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋁ Q), from free_in_vc.or₁ this,
+    show «false», from P_or_Q_closed x this
+  ),
+  have Q_closed: closed Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋁ Q), from free_in_vc.or₂ this,
+    show «false», from P_or_Q_closed x this
+  ),
+  ⟨P_closed, Q_closed⟩
+
+lemma vc.closed.not.inv {P: vc}: closed P.not → closed P :=
+  assume P_not_closed: closed P.not,
+  show closed P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV P.not, from free_in_vc.not this,
+    show «false», from P_not_closed x this
+  )
+
+lemma vc.closed.implies.inv {P Q: vc}: closed (vc.implies P Q) → closed P ∧ closed Q :=
+  assume P_not_or_Q_closed: closed (P.not ⋁ Q),
+  have P_not_closed: closed P.not, from (vc.closed.or.inv P_not_or_Q_closed).left,
+  have P_closed: closed P, from vc.closed.not.inv P_not_closed,
+  have Q_closed: closed Q, from (vc.closed.or.inv P_not_or_Q_closed).right,
+  ⟨P_closed, Q_closed⟩

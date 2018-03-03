@@ -12,7 +12,7 @@ def unop.apply: unop → value → option value
 | unop.isFunc _                          := value.false
 | _ _                                    := none
 
-noncomputable def binop.apply: binop → value → value → option value
+def binop.apply: binop → value → value → option value
 | binop.plus (value.num n₁) (value.num n₂)  := value.num (n₁ + n₂)
 | binop.minus (value.num n₁) (value.num n₂) := value.num (n₁ - n₂)
 | binop.times (value.num n₁) (value.num n₂) := value.num (n₁ * n₂)
@@ -25,9 +25,7 @@ noncomputable def binop.apply: binop → value → value → option value
 | binop.or value.true value.false           := value.true
 | binop.or value.false value.true           := value.true
 | binop.or value.false value.false          := value.false
-| binop.eq v₁ v₂                            := @ite (v₁ = v₂)
-                                               (classical.prop_decidable (v₁ = v₂))
-                                               value value.true value.false
+| binop.eq v₁ v₂                            := if v₁ = v₂ then value.true else value.false
 | binop.lt (value.num n₁) (value.num n₂)    := if n₁ < n₂ then value.true else value.false
 | _ _ _                                     := none
 
@@ -96,10 +94,8 @@ notation s `⟶*` s':100 := trans_step s s'
 -- lemmas
 
 lemma binop.eq_of_equal_values {v: value}: binop.apply binop.eq v v = value.true :=
-  have binop.apply binop.eq v v = @ite (v = v)
-                                  (classical.prop_decidable (v = v))
-                                  value value.true value.false, by unfold binop.apply,
-  show binop.apply binop.eq v v =  value.true, by simp[this]
+  have binop.apply binop.eq v v = (if v = v then value.true else value.false), by unfold binop.apply,
+  show binop.apply binop.eq v v = value.true, by simp[this]
 
 lemma unop.isFunc.inv {v: value}: unop.apply unop.isFunc v = value.true → 
       ∃ (f x: var) (R S: spec) (e: exp) (H: history) (σ: env), v = value.func f x R S e H σ :=
@@ -166,4 +162,15 @@ lemma unop.isBool.inv {v: value}: unop.apply unop.isBool v = value.true → (v =
       have value.true = value.false, from option.some.inj this,
       false.elim (value._mut_.no_confusion this)
     )
+  end
+
+lemma binop.eq.inv {v₁ v₂: value}: binop.apply binop.eq v₁ v₂ = value.true → (v₁ = v₂) :=
+  assume eq_is_true: binop.apply binop.eq v₁ v₂ = value.true,
+  begin
+    by_cases (v₁ = v₂),
+    from h,
+    unfold binop.apply at eq_is_true,
+    simp[h] at eq_is_true,
+    have h2, from option.some.inj eq_is_true,
+    contradiction
   end

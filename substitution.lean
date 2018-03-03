@@ -12,8 +12,13 @@ def term.subst (x: var) (v: value): term → term
 def term.subst_env: env → term → term
 | env.empty t := t
 | (σ[x↦v]) t :=
-    have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
+    have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
     term.subst x v (term.subst_env σ t)
+
+using_well_founded {
+  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
+  dec_tac := tactic.assumption
+}
 
 def prop.subst (x: var) (v: value): prop → prop
 | (prop.term t)        := term.subst x v t
@@ -31,8 +36,13 @@ def prop.subst (x: var) (v: value): prop → prop
 def prop.subst_env: env → prop → prop
 | env.empty P := P
 | (σ[x↦v]) P :=
-    have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
+    have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
     prop.subst x v (prop.subst_env σ P)
+
+using_well_founded {
+  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
+  dec_tac := tactic.assumption
+}
 
 def vc.subst (x: var) (v: value): vc → vc
 | (vc.term t)        := term.subst x v t
@@ -48,10 +58,18 @@ def vc.subst (x: var) (v: value): vc → vc
 def vc.subst_env: env → vc → vc
 | env.empty P := P
 | (σ[x↦v]) P :=
-    have σ.size < (σ[x ↦ v].size), from lt_of_add_one,
+    have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
     vc.subst x v (vc.subst_env σ P)
 
+using_well_founded {
+  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
+  dec_tac := tactic.assumption
+}
+
 -- notation
+
+@[reducible]
+def closed_subst {α: Type} [h: has_fv α] (σ: env) (a: α): Prop := FV a ⊆ σ.dom
 
 notation σ `⊨` p: 20 := valid (vc.subst_env σ p)
 
@@ -302,7 +320,7 @@ lemma unchanged_of_subst_nonfree_vc {P: vc} {x: var} {v: value}:
   end
 
 lemma unchanged_of_subst_env_nonfree_vc {P: vc}:
-    (∀x, x ∉ FV P) → (∀σ, vc.subst_env σ P = P) :=
+    closed P → (∀σ, vc.subst_env σ P = P) :=
   assume x_not_free: (∀x, x ∉ FV P),
   assume σ: env,
   begin
@@ -1151,6 +1169,322 @@ lemma prop.not_free_of_subst_env {x: var} {σ: env} {P: prop}: x ∈ σ → x �
     )
   end
 
+lemma prop.closed_of_closed_subst {σ: env} {P: prop}: closed_subst σ P → closed (prop.subst_env σ P) :=
+  assume P_closed_subst: closed_subst σ P,
+  show closed (prop.subst_env σ P), from (
+    assume x: var,
+    assume h1: x ∈ FV (prop.subst_env σ P),
+    have x ∈ FV P, from free_of_subst_env h1,
+    have x ∈ σ.dom, from P_closed_subst this,
+    have x ∈ σ, from this,
+    have h2: x ∉ FV (prop.subst_env σ P), from prop.not_free_of_subst_env this,
+    show «false», from h2 h1
+  )
+
+lemma vc.not_free_of_subst {x: var} {v: value} {P: vc}: x ∉ FV (vc.subst x v P) :=
+  assume x_free: x ∈ FV (vc.subst x v P),
+  begin
+    induction P,
+    case vc.term t { from (
+      have vc.subst x v (vc.term t) = (term.subst x v t), by unfold vc.subst,
+      have free_in_vc x (vc.term (term.subst x v t)), from this ▸ x_free,
+      have x ∈ FV (term.subst x v t), from free_in_vc.term.inv this,
+      show «false», from term.not_free_of_subst this
+    )},
+    case vc.not P₁ P₁_ih { from (
+      have vc.subst x v (vc.not P₁) = (P₁.subst x v).not, by unfold vc.subst,
+      have x ∈ FV (P₁.subst x v).not, from this ▸ x_free,
+      have x ∈ FV (P₁.subst x v), from free_in_vc.not.inv this,
+      show «false», from P₁_ih this
+    )},
+    case vc.and P₁ P₂ P₁_ih P₂_ih { from (
+      have vc.subst x v (vc.and P₁ P₂) = (P₁.subst x v ⋀ P₂.subst x v), by unfold vc.subst,
+      have x ∈ FV (P₁.subst x v ⋀ P₂.subst x v), from this ▸ x_free,
+      or.elim (free_in_vc.and.inv this) (
+        assume : x ∈ FV (P₁.subst x v),
+        show «false», from P₁_ih this
+      ) (
+        assume : x ∈ FV (P₂.subst x v),
+        show «false», from P₂_ih this
+      )
+    )},
+    case vc.or P₁ P₂ P₁_ih P₂_ih { from (
+      have vc.subst x v (vc.or P₁ P₂) = (P₁.subst x v ⋁ P₂.subst x v), by unfold vc.subst,
+      have x ∈ FV (P₁.subst x v ⋁ P₂.subst x v), from this ▸ x_free,
+      or.elim (free_in_vc.or.inv this) (
+        assume : x ∈ FV (P₁.subst x v),
+        show «false», from P₁_ih this
+      ) (
+        assume : x ∈ FV (P₂.subst x v),
+        show «false», from P₂_ih this
+      )
+    )},
+    case vc.pre t₁ t₂ { from (
+      have vc.subst x v (vc.pre t₁ t₂) = vc.pre (t₁.subst x v) (t₂.subst x v), by unfold vc.subst,
+      have x ∈ FV (vc.pre (t₁.subst x v) (t₂.subst x v)), from this ▸ x_free,
+      or.elim (free_in_vc.pre.inv this) (
+        assume : x ∈ FV (t₁.subst x v),
+        show «false», from term.not_free_of_subst this
+      ) (
+        assume : x ∈ FV (t₂.subst x v),
+        show «false», from term.not_free_of_subst this
+      )
+    )},
+    case vc.pre₁ op t { from (
+      have vc.subst x v (vc.pre₁ op t) = vc.pre₁ op (t.subst x v), by unfold vc.subst,
+      have x ∈ FV (vc.pre₁ op (t.subst x v)), from this ▸ x_free,
+      have x ∈ FV (t.subst x v), from free_in_vc.pre₁.inv this,
+      show «false», from term.not_free_of_subst this
+    )},
+    case vc.pre₂ op t₁ t₂ { from (
+      have vc.subst x v (vc.pre₂ op t₁ t₂) = vc.pre₂ op (t₁.subst x v) (t₂.subst x v),
+      by unfold vc.subst,
+      have x ∈ FV (vc.pre₂ op (t₁.subst x v) (t₂.subst x v)), from this ▸ x_free,
+      or.elim (free_in_vc.pre₂.inv this) (
+        assume : x ∈ FV (t₁.subst x v),
+        show «false», from term.not_free_of_subst this
+      ) (
+        assume : x ∈ FV (t₂.subst x v),
+        show «false», from term.not_free_of_subst this
+      )
+    )},
+    case vc.post t₁ t₂ { from (
+      have vc.subst x v (vc.post t₁ t₂) = vc.post (t₁.subst x v) (t₂.subst x v), by unfold vc.subst,
+      have x ∈ FV (vc.post (t₁.subst x v) (t₂.subst x v)), from this ▸ x_free,
+      or.elim (free_in_vc.post.inv this) (
+        assume : x ∈ FV (t₁.subst x v),
+        show «false», from term.not_free_of_subst this
+      ) (
+        assume : x ∈ FV (t₂.subst x v),
+        show «false», from term.not_free_of_subst this
+      )
+    )},
+    case vc.univ y P₁ P₁_ih { from (
+      have vc.subst x v (vc.univ y P₁)
+         = vc.univ y (if x = y then P₁ else P₁.subst x v), by unfold vc.subst,
+      have x ∈ FV (vc.univ y (if x = y then P₁ else P₁.subst x v)), from this ▸ x_free,
+      have y_neq_x: x ≠ y, from (free_in_vc.univ.inv this).left,
+      have x ∈ FV (vc.univ y (P₁.subst x v)), by { simp[y_neq_x] at this, from this },
+      have x ∈ FV (P₁.subst x v), from (free_in_vc.univ.inv this).right,
+      show «false», from P₁_ih this
+    )}
+  end
+
+lemma vc.not_free_of_subst_env {x: var} {σ: env} {P: vc}: x ∈ σ → x ∉ FV (vc.subst_env σ P) :=
+  assume x_in_σ: x ∈ σ,
+  assume x_free: x ∈ FV (vc.subst_env σ P),
+  begin
+    induction σ with σ' y v ih,
+
+    -- env.empty
+    show «false», by cases x_in_σ,
+
+    -- σ'[x↦v]
+    show «false», from (
+      have vc.subst_env (σ'[y↦v]) P = vc.subst y v (vc.subst_env σ' P), by unfold vc.subst_env,
+      have x ∈ FV (vc.subst y v (vc.subst_env σ' P)), from this ▸ x_free,
+      have x_neq_y: x ≠ y, from (free_in_vc.subst this).left,
+      have h: x ∈ FV (vc.subst_env σ' P), from (free_in_vc.subst this).right,
+      have x = y ∨ x ∈ σ', from env.contains.inv x_in_σ,
+      or.elim this (
+        assume : x = y,
+        show «false», from x_neq_y this
+      ) (
+        assume : x ∈ σ',
+        have x ∉ FV (vc.subst_env σ' P), from ih this,
+        show «false», from this h
+      )
+    )
+  end
+
+lemma vc.closed_of_closed_subst {σ: env} {P: vc}: closed_subst σ P → closed (vc.subst_env σ P) :=
+  assume P_closed_subst: closed_subst σ P,
+  show closed (vc.subst_env σ P), from (
+    assume x: var,
+    assume h1: x ∈ FV (vc.subst_env σ P),
+    have x ∈ FV P, from free_in_vc.subst_env h1,
+    have x ∈ σ.dom, from P_closed_subst this,
+    have x ∈ σ, from this,
+    have h2: x ∉ FV (vc.subst_env σ P), from vc.not_free_of_subst_env this,
+    show «false», from h2 h1
+  )
+
+lemma term.free_of_diff_subst {x y: var} {v: value} {t: term}: x ∈ FV t → x ≠ y → x ∈ FV (term.subst y v t) :=
+  assume x_free: x ∈ FV t,
+  assume x_neq_y: x ≠ y,
+  show x ∈ FV (term.subst y v t), from begin
+    induction t with v' z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+
+    show x ∈ FV (term.subst y v (term.value v')), by begin -- term.value
+      unfold term.subst,
+      from x_free
+    end,
+
+    show x ∈ FV (term.subst y v (term.var z)), by begin -- term.var
+      have : (x = z), from free_in_term.var.inv x_free,
+      rw[this] at x_neq_y,
+
+      have : (term.subst y v z = z), from term.subst.var.diff x_neq_y.symm,
+      change x ∈ FV (term.subst y v ↑z),
+      rw[this],
+      from x_free
+    end,
+
+    show x ∈ FV (term.subst y v (term.unop unop t₁)), by begin -- term.unop
+      unfold term.subst,
+      apply free_in_term.unop,
+      have : x ∈ FV t₁, from free_in_term.unop.inv x_free,
+      from t₁_ih this
+    end,
+
+    show x ∈ FV (term.subst y v (term.binop binop t₂ t₃)), by begin -- term.binop
+      unfold term.subst,
+      have : x ∈ FV t₂ ∨ x ∈ FV t₃, from free_in_term.binop.inv x_free,
+      cases this with h,
+      apply free_in_term.binop₁,
+      from t₂_ih h,
+      apply free_in_term.binop₂,
+      from t₃_ih a
+    end,
+
+    show x ∈ FV (term.subst y v (term.app t₄ t₅)), by begin -- term.binop
+      unfold term.subst,
+      have : x ∈ FV t₄ ∨ x ∈ FV t₅, from free_in_term.app.inv x_free,
+      cases this with h,
+      apply free_in_term.app₁,
+      from t₄_ih h,
+      apply free_in_term.app₂,
+      from t₅_ih a
+    end,
+  end
+
+lemma vc.free_of_diff_subst {x y: var} {v: value} {P: vc}: x ∈ FV P → x ≠ y → x ∈ FV (vc.subst y v P) :=
+  assume x_free: x ∈ FV P,
+  assume x_neq_y: x ≠ y,
+  show x ∈ FV (vc.subst y v P), from begin
+    induction P,
+    case vc.term t {
+      unfold vc.subst,
+      apply free_in_vc.term,
+      have h2, from free_in_vc.term.inv x_free,
+      from term.free_of_diff_subst h2 x_neq_y
+    },
+    case vc.not P₁ P₁_ih {
+      unfold vc.subst,
+      apply free_in_vc.not,
+      have h2, from free_in_vc.not.inv x_free,
+      from P₁_ih h2
+    },
+    case vc.and P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.subst,
+      have : x ∈ FV P₁ ∨ x ∈ FV P₂, from free_in_vc.and.inv x_free,
+      cases this with h,
+      apply free_in_vc.and₁,
+      from P₁_ih h,
+      apply free_in_vc.and₂,
+      from P₂_ih a
+    },
+    case vc.or P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.subst,
+      have : x ∈ FV P₁ ∨ x ∈ FV P₂, from free_in_vc.or.inv x_free,
+      cases this with h,
+      apply free_in_vc.or₁,
+      from P₁_ih h,
+      apply free_in_vc.or₂,
+      from P₂_ih a
+    },
+    case vc.pre t₁ t₂ {
+      unfold vc.subst,
+      have : x ∈ FV t₁ ∨ x ∈ FV t₂, from free_in_vc.pre.inv x_free,
+      cases this with h,
+      apply free_in_vc.pre₁,
+      from term.free_of_diff_subst h x_neq_y,
+      apply free_in_vc.pre₂,
+      from term.free_of_diff_subst a x_neq_y
+    },
+    case vc.pre₁ op t {
+      unfold vc.subst,
+      apply free_in_vc.preop,
+      have h2, from free_in_vc.pre₁.inv x_free,
+      from term.free_of_diff_subst h2 x_neq_y
+    },
+    case vc.pre₂ op t₁ t₂ {
+      unfold vc.subst,
+      have : x ∈ FV t₁ ∨ x ∈ FV t₂, from free_in_vc.pre₂.inv x_free,
+      cases this with h,
+      apply free_in_vc.preop₁,
+      from term.free_of_diff_subst h x_neq_y,
+      apply free_in_vc.preop₂,
+      from term.free_of_diff_subst a x_neq_y
+    },
+    case vc.post t₁ t₂ {
+      unfold vc.subst,
+      have : x ∈ FV t₁ ∨ x ∈ FV t₂, from free_in_vc.post.inv x_free,
+      cases this with h,
+      apply free_in_vc.post₁,
+      from term.free_of_diff_subst h x_neq_y,
+      apply free_in_vc.post₂,
+      from term.free_of_diff_subst a x_neq_y
+    },
+    case vc.univ z P₁ P₁_ih {
+      unfold vc.subst,
+      have h2, from free_in_vc.univ.inv x_free,
+      apply free_in_vc.univ,
+      from h2.left,
+      by_cases (y = z),
+      rw[h],
+      simp,
+      from h2.right,
+      simp[h],
+      from P₁_ih h2.right
+    }
+  end
+
+lemma vc.free_of_subst_env {x: var} {σ: env} {P: vc}: x ∈ FV P → x ∉ σ → x ∈ FV (vc.subst_env σ P) :=
+  assume x_free: x ∈ FV P,
+  assume x_not_in_σ: x ∉ σ,
+  show x ∈ FV (vc.subst_env σ P), begin
+    induction σ with σ' y v ih,
+
+    -- env.empty
+    show x ∈ FV (vc.subst_env env.empty P), begin
+      unfold vc.subst_env,
+      from x_free
+    end,
+
+    -- σ'[x↦v]
+    show x ∈ FV (vc.subst_env (σ'[y↦v]) P), begin
+      unfold vc.subst_env,
+      by_cases (x = y),
+      begin -- x = y
+        rw[h] at x_not_in_σ,
+        have : y ∈ (σ'[y↦v]), from env.contains.same,
+        contradiction
+      end,
+      begin -- x ≠ y
+        by_cases (x ∈ σ') with h2,
+        begin -- x ∈ σ'
+          have : x ∈ (σ'[y↦v]), from env.contains.rest h2,
+          contradiction
+        end,
+        begin -- x ∉ σ'
+          have : x ∈ FV (vc.subst_env σ' P), from ih h2,
+          from vc.free_of_diff_subst this h
+        end,
+      end
+    end
+  end
+
+lemma vc.closed_subst_of_closed {σ: env} {P: vc}: closed (vc.subst_env σ P) → closed_subst σ P :=
+  assume P_closed_subst: closed (vc.subst_env σ P),
+  show closed_subst σ P, from (
+    assume x: var,
+    assume h1: x ∈ FV P,
+    have ¬ x ∉ σ, from mt (vc.free_of_subst_env h1) (P_closed_subst x),
+    have x ∈ σ, from of_not_not this,
+    show x ∈ σ.dom, from this
+  )
+
 lemma term.subst_env.unop {σ: env} {op: unop} {t: term}:
       term.subst_env σ (term.unop op t) = term.unop op (term.subst_env σ t) :=
 begin
@@ -1571,3 +1905,193 @@ begin
        ... = vc.univ x (vc.subst_env (σ'[y↦v]) P) : by unfold vc.subst_env
   )
 end
+
+lemma prop.closed_subst.and {P Q: prop} {σ: env}: closed_subst σ P → closed_subst σ Q → closed_subst σ (P ⋀ Q) :=
+  assume P_closed: closed_subst σ P,
+  assume Q_closed: closed_subst σ Q,
+  show closed_subst σ (P ⋀ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋀ Q),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P,
+      show x ∈ σ.dom, from P_closed this
+    ) (
+      assume : x ∈ FV Q,
+      show x ∈ σ.dom, from Q_closed this
+    )
+  )
+
+lemma prop.closed_subst.or {P Q: prop} {σ: env}: closed_subst σ P → closed_subst σ Q → closed_subst σ (P ⋁ Q) :=
+  assume P_closed_subst: closed_subst σ P,
+  assume Q_closed_subst: closed_subst σ Q,
+  show closed_subst σ (P ⋁ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋁ Q),
+    or.elim (free_in_prop.or.inv this) (
+      assume : x ∈ FV P,
+      show x ∈ σ.dom, from P_closed_subst this
+    ) (
+      assume : x ∈ FV Q,
+      show x ∈ σ.dom, from Q_closed_subst this
+    )
+  )
+
+lemma prop.closed_subst.not {P: prop} {σ: env}: closed_subst σ P → closed_subst σ P.not :=
+  assume P_closed_subst: closed_subst σ P,
+  show closed_subst σ P.not, from (
+    assume x: var,
+    assume : x ∈ FV P.not,
+    have x ∈ FV P, from free_in_prop.not.inv this,
+    show x ∈ σ.dom, from P_closed_subst this
+  )
+
+lemma prop.closed_subst.implies {P Q: prop} {σ: env}:
+      closed_subst σ P → closed_subst σ Q → closed_subst σ (prop.implies P Q) :=
+  assume P_closed_subst: closed_subst σ P,
+  have P_not_closed_subst: closed_subst σ P.not, from prop.closed_subst.not P_closed_subst,
+  assume Q_closed_subst: closed_subst σ Q,
+  show closed_subst σ (P.not ⋁ Q), from prop.closed_subst.or P_not_closed_subst Q_closed_subst
+
+lemma prop.closed_subst.and.inv {P Q: prop} {σ: env}: closed_subst σ (P ⋀ Q) → (closed_subst σ P ∧ closed_subst σ Q) :=
+  assume P_and_Q_closed_subst: closed_subst σ (P ⋀ Q),
+  have P_closed_subst: closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this,
+    show x ∈ σ.dom, from P_and_Q_closed_subst this
+  ),
+  have Q_closed_subst: closed_subst σ Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋀ Q), from free_in_prop.and₂ this,
+    show x ∈ σ.dom, from P_and_Q_closed_subst this
+  ),
+  ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma prop.closed_subst.or.inv {P Q: prop} {σ: env}: closed_subst σ (P ⋁ Q) → (closed_subst σ P ∧ closed_subst σ Q) :=
+  assume P_or_Q_closed_subst: closed_subst σ (P ⋁ Q),
+  have P_closed_subst: closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋁ Q), from free_in_prop.or₁ this,
+    show x ∈ σ.dom, from P_or_Q_closed_subst this
+  ),
+  have Q_closed_subst: closed_subst σ Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋁ Q), from free_in_prop.or₂ this,
+    show x ∈ σ.dom, from P_or_Q_closed_subst this
+  ),
+  ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma prop.closed_subst.not.inv {P: prop} {σ: env}: closed_subst σ P.not → closed_subst σ P :=
+  assume P_not_closed_subst: closed_subst σ P.not,
+  show closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV P.not, from free_in_prop.not this,
+    show x ∈ σ.dom, from P_not_closed_subst this
+  )
+
+lemma prop.closed_subst.implies.inv {P Q: prop} {σ: env}:
+      closed_subst σ (prop.implies P Q) → closed_subst σ P ∧ closed_subst σ Q :=
+  assume P_not_or_Q_closed_subst: closed_subst σ (P.not ⋁ Q),
+  have P_not_closed_subst: closed_subst σ P.not, from (prop.closed_subst.or.inv P_not_or_Q_closed_subst).left,
+  have P_closed_subst: closed_subst σ P, from prop.closed_subst.not.inv P_not_closed_subst,
+  have Q_closed_subst: closed_subst σ Q, from (prop.closed_subst.or.inv P_not_or_Q_closed_subst).right,
+  ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma vc.closed_subst.and {P Q: vc} {σ: env}: closed_subst σ P → closed_subst σ Q → closed_subst σ (P ⋀ Q) :=
+  assume P_closed_subst: closed_subst σ P,
+  assume Q_closed_subst: closed_subst σ Q,
+  show closed_subst σ (P ⋀ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋀ Q),
+    or.elim (free_in_vc.and.inv this) (
+      assume : x ∈ FV P,
+      show x ∈ σ.dom, from P_closed_subst this
+    ) (
+      assume : x ∈ FV Q,
+      show x ∈ σ.dom, from Q_closed_subst this
+    )
+  )
+
+lemma vc.closed_subst.or {P Q: vc} {σ: env}: closed_subst σ P → closed_subst σ Q → closed_subst σ (P ⋁ Q) :=
+  assume P_closed_subst: closed_subst σ P,
+  assume Q_closed_subst: closed_subst σ Q,
+  show closed_subst σ (P ⋁ Q), from (
+    assume x: var,
+    assume : x ∈ FV (P ⋁ Q),
+    or.elim (free_in_vc.or.inv this) (
+      assume : x ∈ FV P,
+      show x ∈ σ.dom, from P_closed_subst this
+    ) (
+      assume : x ∈ FV Q,
+      show x ∈ σ.dom, from Q_closed_subst this
+    )
+  )
+
+lemma vc.closed_subst.not {P: vc} {σ: env}: closed_subst σ P → closed_subst σ P.not :=
+  assume P_closed_subst: closed_subst σ P,
+  show closed_subst σ P.not, from (
+    assume x: var,
+    assume : x ∈ FV P.not,
+    have x ∈ FV P, from free_in_vc.not.inv this,
+    show x ∈ σ.dom, from P_closed_subst this
+  )
+
+lemma vc.closed_subst.implies {P Q: vc} {σ: env}:
+      closed_subst σ P → closed_subst σ Q → closed_subst σ (vc.implies P Q) :=
+  assume P_closed_subst: closed_subst σ P,
+  have P_not_closed_subst: closed_subst σ P.not, from vc.closed_subst.not P_closed_subst,
+  assume Q_closed_subst: closed_subst σ Q,
+  show closed_subst σ (P.not ⋁ Q), from vc.closed_subst.or P_not_closed_subst Q_closed_subst
+
+lemma vc.closed_subst.and.inv {P Q: vc} {σ: env}: closed_subst σ (P ⋀ Q) → (closed_subst σ P ∧ closed_subst σ Q) :=
+  assume P_and_Q_closed_subst: closed_subst σ (P ⋀ Q),
+  have P_closed_subst: closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋀ Q), from free_in_vc.and₁ this,
+    show x ∈ σ.dom, from P_and_Q_closed_subst this
+  ),
+  have Q_closed_subst: closed_subst σ Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋀ Q), from free_in_vc.and₂ this,
+    show x ∈ σ.dom, from P_and_Q_closed_subst this
+  ),
+  ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma vc.closed_subst.or.inv {P Q: vc} {σ: env}: closed_subst σ (P ⋁ Q) → (closed_subst σ P ∧ closed_subst σ Q) :=
+  assume P_or_Q_closed_subst: closed_subst σ (P ⋁ Q),
+  have P_closed_subst: closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV (P ⋁ Q), from free_in_vc.or₁ this,
+    show x ∈ σ.dom, from P_or_Q_closed_subst this
+  ),
+  have Q_closed_subst: closed_subst σ Q, from (
+    assume x: var,
+    assume : x ∈ FV Q,
+    have x ∈ FV (P ⋁ Q), from free_in_vc.or₂ this,
+    show x ∈ σ.dom, from P_or_Q_closed_subst this
+  ),
+  ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma vc.closed_subst.not.inv {P: vc} {σ: env}: closed_subst σ P.not → closed_subst σ P :=
+  assume P_not_closed_subst: closed_subst σ P.not,
+  show closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    have x ∈ FV P.not, from free_in_vc.not this,
+    show x ∈ σ.dom, from P_not_closed_subst this
+  )
+
+lemma vc.closed_subst.implies.inv {P Q: vc} {σ: env}:
+      closed_subst σ (vc.implies P Q) → closed_subst σ P ∧ closed_subst σ Q :=
+  assume P_not_or_Q_closed_subst: closed_subst σ (P.not ⋁ Q),
+  have P_not_closed_subst: closed_subst σ P.not, from (vc.closed_subst.or.inv P_not_or_Q_closed_subst).left,
+  have P_closed_subst: closed_subst σ P, from vc.closed_subst.not.inv P_not_closed_subst,
+  have Q_closed_subst: closed_subst σ Q, from (vc.closed_subst.or.inv P_not_or_Q_closed_subst).right,
+  ⟨P_closed_subst, Q_closed_subst⟩
