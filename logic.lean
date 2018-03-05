@@ -603,8 +603,38 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
         assume v: value,
 
         have h5: ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.implies R.to_prop (prop.pre g gx))).instantiated_n, from (
+
+          have h51: (σ₂[g↦vf][gx↦v]).dom = σ₂.dom ∪ {g, gx}, from env.dom.two_elems,
+          have σ₂.dom = FV Q₂, from free_iff_contains σ₂_verified,
+          have h52: (σ₂[g↦vf][gx↦v]).dom = FV Q₂ ∪ {g, gx}, from this ▸ h51,
+          have FV R.to_prop ⊆ (σ₂[g↦vf][gx↦v]).dom, from h52.symm ▸ R_fv,
+          have closed (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop), from prop.closed_of_closed_subst this,
+          have h53: closed (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop).instantiated_p,
+          from instantiated_p_closed_of_closed this,
+
+          have FV (prop.pre g gx) ⊆ FV Q₂ ∪ {g, gx}, from (
+            assume x: var,
+            assume : x ∈ FV (prop.pre g gx),
+            or.elim (free_in_prop.pre.inv this) (
+              assume : free_in_term x g,
+              have x = g, from free_in_term.var.inv this,
+              have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+              show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+            ) (
+              assume : free_in_term x gx,
+              have x = gx, from free_in_term.var.inv this,
+              have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inr this),
+              show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+            )
+          ),
+          have FV (prop.pre g gx) ⊆ (σ₂[g↦vf][gx↦v]).dom, from h52.symm ▸ this,
+          have closed (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)), from prop.closed_of_closed_subst this,
+          have h54: closed (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).instantiated_n,
+          from instantiated_n_closed_of_closed this,
+
           have h6: ⊨ vc.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop).instantiated_p
-                                (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).instantiated_n, from valid.implies.mp (
+                                (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).instantiated_n,
+          from valid.implies.mp h53 h54 (
             assume h8: ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop).instantiated_p,
             have vc.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop.instantiated_p
                 = (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop).instantiated_p, from instantiated_p_distrib_subst_env,
@@ -656,9 +686,159 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
 
         have h6: ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.implies (prop.post g gx)
                                                      (Q₃ (term.app g gx) ⋀ S.to_prop))).instantiated_n, from (
+
+          have h61: (σ₂[g↦vf][gx↦v]).dom = σ₂.dom ∪ {g, gx}, from env.dom.two_elems,
+          have σ₂.dom = FV Q₂, from free_iff_contains σ₂_verified,
+          have h62: (σ₂[g↦vf][gx↦v]).dom = FV Q₂ ∪ {g, gx}, from this ▸ h61,
+
+          have FV (Q₃ (term.app g gx) ⋀ S.to_prop) ⊆ FV Q₂ ∪ {g, gx}, from (
+            assume x: var,
+            assume : x ∈ FV (Q₃ (term.app g gx) ⋀ S.to_prop),
+            or.elim (free_in_prop.and.inv this) (
+              assume : x ∈ FV (Q₃ (term.app g gx)),
+              have x ∈ FV (term.app g gx) ∨ x ∈ FV (↑H ⋀ Q₂ ⋀ spec.func ↑g gx R S ⋀ R),
+              from exp.post_free func_verified (term.app g gx) this,
+              or.elim this (
+                assume : x ∈ FV (term.app g gx),
+                or.elim (free_in_term.app.inv this) (
+                  assume : free_in_term x g,
+                  have x = g, from free_in_term.var.inv this,
+                  have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+                  show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                ) (
+                  assume : free_in_term x gx,
+                  have x = gx, from free_in_term.var.inv this,
+                  have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inr this),
+                  show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                )
+              ) (
+                assume : x ∈ FV (↑H ⋀ Q₂ ⋀ spec.func ↑g gx R S ⋀ R),
+                or.elim (free_in_prop.and.inv this) (
+                  assume : free_in_prop x H,
+                  show x ∈ FV Q₂ ∪ {g, gx}, from absurd this (call_history_closed H x)
+                ) (
+                  assume : x ∈ FV (Q₂ ⋀ spec.func ↑g gx R S ⋀ R),
+                  or.elim (free_in_prop.and.inv this) (
+                    assume : x ∈ FV Q₂,
+                    show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_left {g, gx} this
+                  ) (
+                    assume : free_in_prop x (spec.func ↑g gx R S ⋀ R),
+                    have free_in_prop x (spec.func ↑g gx R S ⋀ R), from this,
+                    or.elim (free_in_prop.and.inv this) (
+                      assume : free_in_prop x (spec.func ↑g gx R S),
+                      have h63: free_in_prop x (spec.func ↑g gx R S).to_prop, from this,
+                      have spec.to_prop (spec.func ↑g gx R S) = (prop.func ↑g gx R.to_prop S.to_prop),
+                      by unfold spec.to_prop,
+                      have h64: free_in_prop x (prop.func ↑g gx R S), from this ▸ h63,
+                      let forallp := prop.implies R.to_prop (prop.pre g gx)
+                                  ⋀ prop.implies (prop.post g gx) S.to_prop in
+                      have prop.func g gx R.to_prop S.to_prop
+                        = (term.unop unop.isFunc g ⋀ prop.forallc gx g forallp),
+                      by unfold prop.func,
+                      have free_in_prop x (term.unop unop.isFunc g ⋀ prop.forallc gx g forallp),
+                      from this ▸ h64,
+                      or.elim (free_in_prop.and.inv this) (
+                        assume : free_in_prop x (term.unop unop.isFunc g),
+                        have free_in_term x (term.unop unop.isFunc g), from free_in_prop.term.inv this,
+                        have free_in_term x g, from free_in_term.unop.inv this,
+                        have x = g, from free_in_term.var.inv this,
+                        have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+                        show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                      ) (
+                        assume : free_in_prop x (prop.forallc gx g forallp),
+                        have x_neq_gx: x ≠ gx, from (free_in_prop.forallc.inv this).left,
+                        have free_in_term x g ∨ free_in_prop x forallp,
+                        from (free_in_prop.forallc.inv this).right,
+                        or.elim this (
+                          assume : free_in_term x g,
+                          have x = g, from free_in_term.var.inv this,
+                          have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+                          show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                        ) (
+                          assume : free_in_prop x forallp,
+                          or.elim (free_in_prop.and.inv this) (
+                            assume : free_in_prop x (prop.implies R.to_prop (prop.pre g gx)),
+                            or.elim (free_in_prop.implies.inv this) (
+                              assume : free_in_prop x R.to_prop,
+                              show x ∈ FV Q₂ ∪ {g, gx}, from R_fv this
+                            ) (
+                              assume : x ∈ FV (prop.pre g gx),
+                              or.elim (free_in_prop.pre.inv this) (
+                                assume : free_in_term x g,
+                                have x = g, from free_in_term.var.inv this,
+                                have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+                                show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                              ) (
+                                assume : free_in_term x gx,
+                                have x = gx, from free_in_term.var.inv this,
+                                have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inr this),
+                                show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                              )
+                            )
+                          ) (
+                            assume : free_in_prop x (prop.implies (prop.post g gx) S.to_prop),
+                            or.elim (free_in_prop.implies.inv this) (
+                              assume : x ∈ FV (prop.post g gx),
+                              or.elim (free_in_prop.post.inv this) (
+                                assume : free_in_term x g,
+                                have x = g, from free_in_term.var.inv this,
+                                have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+                                show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                              ) (
+                                assume : free_in_term x gx,
+                                have x = gx, from free_in_term.var.inv this,
+                                have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inr this),
+                                show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+                              )
+                            ) (
+                              assume : free_in_prop x S.to_prop,
+                              show x ∈ FV Q₂ ∪ {g, gx}, from S_fv this
+                            )
+                          )
+                        )
+                      )
+                    ) (
+                      assume : free_in_prop x R,
+                      show x ∈ FV Q₂ ∪ {g, gx}, from R_fv this
+                    )
+                  )
+                )
+              )
+            ) (
+              assume : free_in_prop x S.to_prop,
+              show x ∈ FV Q₂ ∪ {g, gx}, from S_fv this
+            )
+          ),
+
+          have FV (Q₃ (term.app g gx) ⋀ S.to_prop) ⊆ (σ₂[g↦vf][gx↦v]).dom, from h62.symm ▸ this,
+          have closed (prop.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop)),
+          from prop.closed_of_closed_subst this,
+          have h63: closed (prop.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop)).instantiated_n,
+          from instantiated_n_closed_of_closed this,
+
+          have FV (prop.post g gx) ⊆ FV Q₂ ∪ {g, gx}, from (
+            assume x: var,
+            assume : x ∈ FV (prop.post g gx),
+            or.elim (free_in_prop.post.inv this) (
+              assume : free_in_term x g,
+              have x = g, from free_in_term.var.inv this,
+              have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inl this),
+              show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+            ) (
+              assume : free_in_term x gx,
+              have x = gx, from free_in_term.var.inv this,
+              have x ∈ {g, gx}, from set.two_elems_mem.inv (or.inr this),
+              show x ∈ FV Q₂ ∪ {g, gx}, from set.mem_union_right (FV Q₂) this
+            )
+          ),
+          have FV (prop.post g gx) ⊆ (σ₂[g↦vf][gx↦v]).dom, from h62.symm ▸ this,
+          have closed (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx)), from prop.closed_of_closed_subst this,
+          have h64: closed (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx)).instantiated_p,
+          from instantiated_p_closed_of_closed this,
+
           have h7: ⊨ vc.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx)).instantiated_p
                                 (prop.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop)).instantiated_n,
-          from valid.implies.mp (
+          from valid.implies.mp h64 h63 (
             assume h8: ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx)).instantiated_p,
             have prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx)
                = prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx),
@@ -858,8 +1038,10 @@ lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: 
   have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p, from env_translation_call_valid env_verified R_valid,
   show σ ⊨ Q.erased_n, from valid_env.mp h4 this
 
-lemma dominates_of_pre {σ: env} {P P': prop}:
+lemma dominates_of {σ: env} {P P': prop}:
     ((σ ⊨ P.instantiated_p) →
+    closed_subst σ P ∧
+    closed_subst σ P' ∧
     (σ ⊨ P'.instantiated_p) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
@@ -870,6 +1052,8 @@ lemma dominates_of_pre {σ: env} {P P': prop}:
   
   assume h: 
     (σ ⊨ P.instantiated_p) →
+    closed_subst σ P ∧
+    closed_subst σ P' ∧
     (σ ⊨ P'.instantiated_p) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
@@ -878,52 +1062,14 @@ lemma dominates_of_pre {σ: env} {P P': prop}:
                           (∀v: value, dominates' Q' Q (σ[x↦v]))),
   have
     dominates' P' P σ = (
-    (σ ⊨ P.instantiated_p) →
-    ((σ ⊨ P'.instantiated_p) ∧
-    (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
+    (σ ⊨ P.instantiated_p) → (
+      closed_subst σ P ∧
+      closed_subst σ P' ∧
+      (σ ⊨ P'.instantiated_p) ∧
+      (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
+      (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))))),
-  by unfold1 dominates',
-  have dominates' P' P σ, from this.symm ▸ h,
-  show dominates σ P P', from this
-
-lemma dominates_of {σ: env} {P P': prop}:
-    (σ ⊨ vc.implies P.instantiated_p P'.instantiated_p) →
-    (calls_p_subst σ P' ⊆ calls_p_subst σ P) →
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))) →
-    dominates σ P P' :=
-  
-  assume : σ ⊨ vc.implies P.instantiated_p P'.instantiated_p,
-  have h_impl: (σ ⊨ P.instantiated_p) → σ ⊨ P'.instantiated_p, from valid_env.mp this,
-  assume h_calls: calls_p_subst σ P' ⊆ calls_p_subst σ P,
-  assume h_quantifiers_p:
-    ∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v])),
-  
-  have h: 
-    (σ ⊨ P.instantiated_p) →
-    (σ ⊨ P'.instantiated_p) ∧
-    (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))),
-  from λh, ⟨h_impl h, ⟨h_calls, h_quantifiers_p⟩⟩,
-  have
-    dominates' P' P σ = (
-    (σ ⊨ P.instantiated_p) →
-    ((σ ⊨ P'.instantiated_p) ∧
-    (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
+      ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
                           (∀v: value, dominates' Q' Q (σ[x↦v]))))),
   by unfold1 dominates',
   have dominates' P' P σ, from this.symm ▸ h,
@@ -932,6 +1078,8 @@ lemma dominates_of {σ: env} {P P': prop}:
 lemma dominates.elim {σ: env} {P P': prop}:
     dominates σ P P' →
     (σ ⊨ P.instantiated_p) →
+    closed_subst σ P ∧
+    closed_subst σ P' ∧
     (σ ⊨ P'.instantiated_p) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
@@ -944,6 +1092,8 @@ lemma dominates.elim {σ: env} {P P': prop}:
   have
     dominates' P' P σ = (
     (σ ⊨ P.instantiated_p) →
+    closed_subst σ P ∧
+    closed_subst σ P' ∧
     ((σ ⊨ P'.instantiated_p) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
@@ -953,6 +1103,8 @@ lemma dominates.elim {σ: env} {P P': prop}:
   by unfold1 dominates',
   show 
     (σ ⊨ P.instantiated_p) →
+    closed_subst σ P ∧
+    closed_subst σ P' ∧
     ((σ ⊨ P'.instantiated_p) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),

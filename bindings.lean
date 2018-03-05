@@ -313,7 +313,10 @@ lemma exp.post_free {P: prop} {e: exp} {Q: propctx} {x: var}:
               ) (
                 assume : x ∈ FV (P ⋀ (spec.func f fx R S) ⋀ R),
                 or.elim (free_in_prop.and.inv this) id (
-                  assume : x ∈ FV (prop.func f fx R S ⋀ R),
+                  assume : free_in_prop x (spec.func f fx R S ⋀ R),
+                  have h: free_in_prop x ((spec.func f fx R S).to_prop ⋀ R.to_prop), from this,
+                  have spec.to_prop (spec.func f fx R S) = prop.func f fx R.to_prop S.to_prop, by unfold spec.to_prop,
+                  have free_in_prop x (prop.func f fx R S ⋀ R.to_prop), from this ▸ h,
                   or.elim (free_in_prop.and.inv this).symm x_not_in_R (
                     assume : x ∈ FV (prop.func f fx R S),
                     show x ∈ FV P, from x_not_in_non_rec_func this
@@ -972,7 +975,12 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
                             from prop.not_free_of_subst_env this,
                             show x ∈ σ₁, from absurd x_free_in_sFunc' this
                           ) (
-                            assume : x ∈ FV (prop.func g gx R S ⋀ R),
+
+                            assume : free_in_prop x (spec.func g gx R S ⋀ R),
+                            have h: free_in_prop x ((spec.func g gx R S).to_prop ⋀ R.to_prop), from this,
+                            have spec.to_prop (spec.func g gx R S) = prop.func g gx R.to_prop S.to_prop,
+                            by unfold spec.to_prop,
+                            have free_in_prop x (prop.func g gx R S ⋀ R.to_prop), from this ▸ h,
                             or.elim (free_in_prop.and.inv this) (
                               assume : x ∈ FV (prop.func g gx R S),
                               show x ∈ σ₁, from absurd this x_not_in_gfunc
@@ -999,7 +1007,7 @@ lemma prop_func_closed {P: prop} {Q: propctx} {σ: env} {f fx: var} {R S: spec} 
   (⊢ (σ[f↦value.func f fx R S e H σ]) : (P
        ⋀ (f ≡ value.func f fx R S e H σ)
        ⋀ prop.subst_env (σ[f↦value.func f fx R S e H σ]) (prop.func f fx R (Q (term.app f fx) ⋀ S)))) →
-  ∀x, x ∉ FV (prop.subst_env (σ[f↦value.func f fx R S e H σ]) (prop.func f fx R (Q (term.app f fx) ⋀ S))) :=
+  closed (prop.subst_env (σ[f↦value.func f fx R S e H σ]) (prop.func f fx R (Q (term.app f fx) ⋀ S))) :=
   assume e_verified: (H ⋀ P ⋀ spec.func f fx R S ⋀ R ⊢ e : Q),
   assume env_verified: ⊢ (σ[f↦value.func f fx R S e H σ]) : (P
        ⋀ (f ≡ value.func f fx R S e H σ)
@@ -1061,3 +1069,10 @@ lemma env.dom.inv {σ: env} {x: var} {v: value}: (σ[x↦v]).dom = (σ.dom ∪ s
       show y ∈ (σ[x↦v]).dom, from this
     )
   )
+
+lemma env.dom.two_elems {σ: env} {x y: var} {v₁ v₂: value}:
+      (σ[x↦v₁][y↦v₂]).dom = σ.dom ∪ {x, y} :=
+  by calc (σ[x↦v₁][y↦v₂]).dom = (σ[x↦v₁]).dom ∪ set.insert y ∅ : env.dom.inv
+                           ... = σ.dom ∪ set.insert x ∅ ∪ set.insert y ∅ : by rw[env.dom.inv]
+                           ... = σ.dom ∪ (set.insert x ∅ ∪ set.insert y ∅) : by rw[set.union_assoc]
+                           ... = σ.dom ∪ {x, y} : by rw[set.two_elems_of_insert]

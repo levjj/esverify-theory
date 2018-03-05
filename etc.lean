@@ -170,6 +170,16 @@ lemma set.two_elems_mem {α: Type} {a b c: α}:
     )
   )
 
+lemma set.two_elems_mem.inv {α: Type} {a b c: α}: (a = b) ∨ (a = c) → a ∈ ({b, c}: set α) :=
+  assume : (a = b) ∨ (a = c),
+  or.elim this (
+    assume : a = b,
+    show a ∈ ({b, c}: set α), { simp, left, from this }
+  ) (
+    assume : a = c,
+    show a ∈ ({b, c}: set α), { simp, right, from this }
+  )
+
 lemma set.three_elems_mem {α: Type} {a b c d: α}:
   a ∈ ({b, c, d}: set α) → (a = b) ∨ (a = c) ∨ (a = d) :=
   assume a_in_bcd: a ∈ {b, c, d},

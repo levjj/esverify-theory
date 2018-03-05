@@ -79,7 +79,6 @@ with prop.has_quantifier_p: callquantifier → prop → Prop
 | and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_p q P₂ → prop.has_quantifier_p q (P₁ ⋀ P₂)
 | or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_p q P₁ → prop.has_quantifier_p q (P₁ ⋁ P₂)
 | or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_p q P₂ → prop.has_quantifier_p q (P₁ ⋁ P₂)
-| exis {y: var} {P: prop} {q: callquantifier} : prop.has_quantifier_p q P  → prop.has_quantifier_p q (prop.exis y P)
 
 with prop.has_quantifier_n: callquantifier → prop → Prop
 | not {P: prop} {q: callquantifier}           : prop.has_quantifier_p q P  → prop.has_quantifier_n q P.not
@@ -87,7 +86,8 @@ with prop.has_quantifier_n: callquantifier → prop → Prop
 | and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋀ P₂)
 | or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋁ P₂)
 | or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋁ P₂)
-| exis {y: var} {P: prop} {q: callquantifier} : prop.has_quantifier_n q P  → prop.has_quantifier_n q (prop.exis y P)
+-- universal quantifiers below existential quantifiers only occur in positive positions,
+-- so can be skolemized instead of instantiated
 
 def quantifiers_p (P: prop): set callquantifier := λc, has_quantifier_p c P
 def quantifiers_n (P: prop): set callquantifier := λc, has_quantifier_n c P
@@ -234,22 +234,18 @@ begin
     split,
 
     intro fxp_in_Q,
-    cases fxp_in_Q with a,
-    have h: prop.size P < prop.size P₁, from P₁_ih.left a,
-    have h2: prop.size P₁ < prop.size P₁.not, from lt_of_add_one,
-    from lt.trans h h2,
+    cases fxp_in_Q,
 
     intro fxp_in_Q,
-    cases fxp_in_Q with a,
-    have h: prop.size P < prop.size P₁, from P₁_ih.right a,
-    have h2: prop.size P₁ < prop.size P₁.not, from lt_of_add_one,
-    from lt.trans h h2
+    cases fxp_in_Q
   }
 end
 
 def dominates': prop → prop → env → Prop
 | P' P σ :=
     (σ ⊨ P.instantiated_p) →
+    closed_subst σ P ∧
+    closed_subst σ P' ∧
     (σ ⊨ P'.instantiated_p) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
@@ -288,17 +284,20 @@ axiom or_dist_of_no_instantiations_p {P Q: prop}:
 axiom free_in_erased_n_of_free_in_instantiated_n {P: prop} {x: var}:
    x ∈ FV P.instantiated_n → x ∈ FV P.erased_n
 
+axiom free_in_erased_p_of_free_in_instantiated_p {P: prop} {x: var}:
+   x ∈ FV P.instantiated_p → x ∈ FV P.erased_p
+
 axiom instantiated_n_distrib_subst {P: prop} {x: var} {v: value}:
   vc.subst x v P.instantiated_n = (prop.subst x v P).instantiated_n
 
 axiom instantiated_p_distrib_subst {P: prop} {x: var} {v: value}:
   vc.subst x v P.instantiated_p = (prop.subst x v P).instantiated_p
 
---  inst(P)   ⇒   inst_n(P)
+--  inst_n(P)   ⇒   inst_p(P)
 --         ⇘    ⇗  
 --     ⇑      P      ⇓
 --         ⇗    ⇘ 
--- erased(P)  ⇒  erased_n(P)
+-- erased_n(P)  ⇒  erased_p(P)
 
 axiom valid_env.instantiated_n_of_erased_n {σ: env} {P: prop}:
   (σ ⊨ P.erased_n) →
@@ -617,14 +616,6 @@ lemma prop.has_quantifier_p.forallc.inv {q: callquantifier} {x: var} {t: term} {
     from rfl
   end
 
-lemma prop.has_quantifier_p.exis.inv {q: callquantifier} {x: var} {P: prop}:
-      q ∈ quantifiers_p (prop.exis x P) → q ∈ quantifiers_p P :=
-  assume exis_has_quantifier_p: q ∈ quantifiers_p (prop.exis x P),
-  begin
-    cases exis_has_quantifier_p,
-    from a
-  end
-
 lemma prop.has_quantifier_n.term.inv {q: callquantifier} {t: term}: q ∉ quantifiers_n t :=
   assume t_has_quantifier_n: prop.has_quantifier_n q t,
   show «false», by cases t_has_quantifier_n
@@ -675,14 +666,6 @@ lemma prop.has_quantifier_n.forallc.inv {q: callquantifier} {x: var} {t: term} {
   assume forall_has_quantifier_n: q ∈ quantifiers_n (prop.forallc x t P),
   begin
     cases forall_has_quantifier_n
-  end
-
-lemma prop.has_quantifier_n.exis.inv {q: callquantifier} {x: var} {P: prop}:
-      q ∈ quantifiers_n (prop.exis x P) → q ∈ quantifiers_n P :=
-  assume exis_has_quantifier_n: q ∈ quantifiers_n (prop.exis x P),
-  begin
-    cases exis_has_quantifier_n,
-    from a
   end
 
 lemma prop.has_call_p_subst.term.inv {c: calltrigger} {t: term} {σ: env}:
@@ -1718,3 +1701,163 @@ lemma prop.has_call_of_subst_env_has_call {P: prop} {σ: env}:
     cases h2 with c' h3,
     from ih.right c' h3,
   end
+
+lemma instantiated_n_closed_of_closed {P: prop}: closed P → closed P.instantiated_n :=
+  assume P_closed: closed P,
+  assume x: var,
+  assume : x ∈ FV P.instantiated_n,
+  have x ∈ FV P.erased_n, from free_in_erased_n_of_free_in_instantiated_n this,
+  have x ∈ FV P, from free_of_erased_n_free (or.inl this),
+  show «false», from P_closed x this
+
+lemma instantiated_p_closed_of_closed {P: prop}: closed P → closed P.instantiated_p :=
+  assume P_closed: closed P,
+  assume x: var,
+  assume : x ∈ FV P.instantiated_p,
+  have x ∈ FV P.erased_p, from free_in_erased_p_of_free_in_instantiated_p this,
+  have x ∈ FV P, from free_of_erased_free (or.inl this),
+  show «false», from P_closed x this
+
+lemma instantiated_n_closed_subst_of_closed {σ: env} {P: prop}:
+      closed_subst σ P → closed_subst σ P.instantiated_n :=
+  assume : closed_subst σ P,
+  have P_closed: closed (prop.subst_env σ P), from prop.closed_of_closed_subst this,
+  have closed (vc.subst_env σ P.instantiated_n), from (
+    assume x: var,
+    assume h: x ∈ FV (vc.subst_env σ P.instantiated_n),
+    have vc.subst_env σ P.instantiated_n = (prop.subst_env σ P).instantiated_n,
+    from instantiated_n_distrib_subst_env,
+    have x ∈ FV (prop.subst_env σ P).instantiated_n, from this ▸ h,
+    have x ∈ FV (prop.subst_env σ P).erased_n, from free_in_erased_n_of_free_in_instantiated_n this,
+    have x ∈ FV (prop.subst_env σ P), from free_of_erased_free (or.inr this),
+    show «false», from P_closed x this
+  ),
+  show closed_subst σ P.instantiated_n, from vc.closed_subst_of_closed this
+
+lemma instantiated_p_closed_subst_of_closed {σ: env} {P: prop}:
+      closed_subst σ P → closed_subst σ P.instantiated_p :=
+  assume : closed_subst σ P,
+  have P_closed: closed (prop.subst_env σ P), from prop.closed_of_closed_subst this,
+  have closed (vc.subst_env σ P.instantiated_p), from (
+    assume x: var,
+    assume h: x ∈ FV (vc.subst_env σ P.instantiated_p),
+    have vc.subst_env σ P.instantiated_p = (prop.subst_env σ P).instantiated_p,
+    from instantiated_p_distrib_subst_env,
+    have x ∈ FV (prop.subst_env σ P).instantiated_p, from this ▸ h,
+    have x ∈ FV (prop.subst_env σ P).erased_p, from free_in_erased_p_of_free_in_instantiated_p this,
+    have x ∈ FV (prop.subst_env σ P), from free_of_erased_free (or.inl this),
+    show «false», from P_closed x this
+  ),
+  show closed_subst σ P.instantiated_p, from vc.closed_subst_of_closed this
+
+lemma quantifiers_closed_from_prop_closed {f: term} {x: var} {P Q: prop} {σ: env}:
+     closed_subst σ Q →
+     (callquantifier.mk f x P ∈ quantifiers_p Q) ∨ (callquantifier.mk f x P ∈ quantifiers_n Q)
+     → ∀v, closed_subst (σ[x↦v]) P :=
+  assume Q_closed: closed_subst σ Q,
+begin
+  induction Q,
+  case prop.term t {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  },
+  case prop.not P₁ P₁_ih {
+    have h2, from prop.closed_subst.not.inv Q_closed,
+
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+
+    cases a,
+    from P₁_ih h2 (or.inr a_1),
+
+    cases b,
+    from P₁_ih h2 (or.inl a)
+  },
+  case prop.and P₁ P₂ P₁_ih P₂_ih {
+    have h2, from prop.closed_subst.and.inv Q_closed,
+
+    intro fxp_in_Q,
+
+    cases fxp_in_Q with a b,
+
+    cases a,
+    from P₁_ih h2.left (or.inl a_1),
+    from P₂_ih h2.right (or.inl a_1),
+
+    cases b,
+    from P₁_ih h2.left (or.inr a),
+    from P₂_ih h2.right (or.inr a)
+  },
+  case prop.or P₁ P₂ P₁_ih P₂_ih {
+    have h2, from prop.closed_subst.or.inv Q_closed,
+
+    intro fxp_in_Q,
+
+    cases fxp_in_Q with a b,
+
+    cases a,
+    from P₁_ih h2.left (or.inl a_1),
+    from P₂_ih h2.right (or.inl a_1),
+
+    cases b,
+    from P₁_ih h2.left (or.inr a),
+    from P₂_ih h2.right (or.inr a)
+  },
+  case prop.pre {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  },
+  case prop.pre₁ {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  },
+  case prop.pre₂ {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  },
+  case prop.post {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  },
+  case prop.call {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  },
+  case prop.forallc y t P₁ P₁_ih {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    intro v,
+    intro y,
+    intro y_in_P,
+    by_cases (x = y) with h,
+    rw[h],
+    change y ∈ (σ[y↦v]),
+    from env.contains.same,
+    apply env.contains.rest,
+    change y ∈ σ.dom,
+    have h2: x ≠ y, from h,
+    have h3: free_in_prop y (prop.forallc x f P), from free_in_prop.forallc₂ h2.symm y_in_P,
+    from Q_closed h3,
+
+    cases b
+  },
+  case prop.exis y P₁ P₁_ih {
+    intro fxp_in_Q,
+    cases fxp_in_Q with a b,
+    cases a,
+    cases b
+  }
+end

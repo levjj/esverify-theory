@@ -1906,6 +1906,15 @@ begin
   )
 end
 
+lemma prop.closed_subst.term {t: term} {σ: env}: closed_subst σ t → closed_subst σ (prop.term t) :=
+  assume t_closed: closed_subst σ t,
+  show closed_subst σ (prop.term t), from (
+    assume x: var,
+    assume : x ∈ FV (prop.term t),
+    have free_in_term x t, from free_in_prop.term.inv this,
+    show x ∈ σ.dom, from t_closed this
+  )
+
 lemma prop.closed_subst.and {P Q: prop} {σ: env}: closed_subst σ P → closed_subst σ Q → closed_subst σ (P ⋀ Q) :=
   assume P_closed: closed_subst σ P,
   assume Q_closed: closed_subst σ Q,
