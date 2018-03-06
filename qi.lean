@@ -280,11 +280,11 @@ axiom and_dist_of_no_instantiations_p {P Q: prop}:
 axiom or_dist_of_no_instantiations_p {P Q: prop}:
   no_instantiations Q → ((P ⋁ Q).instantiated_p = (P.instantiated_p ⋁ Q.erased_n))
 
-axiom free_in_erased_n_of_free_in_instantiated_n {P: prop} {x: var}:
-   x ∈ FV P.instantiated_n → x ∈ FV P.erased_n
+axiom free_in_instantiated_n_of_free_in_erased_n {P: prop} {x: var}:
+   x ∈ FV P.erased_n → x ∈ FV P.instantiated_n
 
-axiom free_in_erased_p_of_free_in_instantiated_p {P: prop} {x: var}:
-   x ∈ FV P.instantiated_p → x ∈ FV P.erased_p
+axiom free_in_instantiated_p_of_free_in_erased_p {P: prop} {x: var}:
+   x ∈ FV P.erased_p → x ∈ FV P.instantiated_p
 
 axiom instantiated_n_distrib_subst {P: prop} {x: var} {v: value}:
   vc.subst x v P.instantiated_n = (prop.subst x v P).instantiated_n
@@ -298,17 +298,19 @@ axiom instantiated_p_distrib_subst {P: prop} {x: var} {v: value}:
 --         ⇗    ⇘ 
 -- erased_n(P)  ⇒  erased_p(P)
 
-axiom valid_env.instantiated_n_of_erased_n {σ: env} {P: prop}:
-  (σ ⊨ P.erased_n) →
-  σ ⊨ P.instantiated_n
+-- axiom valid_env.instantiated_n_of_erased_n {σ: env} {P: prop}:
+--   closed_subst σ P.instantiated_n →
+--   (σ ⊨ P.erased_n) →
+--   σ ⊨ P.instantiated_n
 
 axiom valid_env.instantiated_p_of_instantiated_n {σ: env} {P: prop}:
+  closed_subst σ P.instantiated_p →
   (σ ⊨ P.instantiated_n) →
   σ ⊨ P.instantiated_p
 
-axiom valid_env.erased_p_of_instantiated_p {σ: env} {P: prop}:
-  (σ ⊨ P.instantiated_p) →
-  σ ⊨ P.erased_p
+-- axiom valid_env.erased_p_of_instantiated_p {σ: env} {P: prop}:
+--   (σ ⊨ P.instantiated_p) →
+--   σ ⊨ P.erased_p
 
 -- if a conjunction or disjunciton is valid without cross-instantiations
 -- then it remains valid, as potential new instantiations are in negative positions
@@ -352,31 +354,51 @@ axiom valid_env.and_symm_with_instantiations {σ: env} {P₁ P₂: prop}:
 axiom instantiated_p_eq_erased_p_without_calls {P: prop}:
   (calls_p P = ∅) → (P.instantiated_p = P.erased_p)
 
+axiom instantiated_n_eq_erased_n_without_calls {P: prop}:
+  (calls_n P = ∅) → (P.instantiated_n = P.erased_n)
+
+axiom instantiated_p_eq_erased_p_without_quantifiers {P: prop}:
+  (quantifiers_p P = ∅) → (P.instantiated_p = P.erased_p)
+
+axiom instantiated_n_eq_erased_n_without_quantifiers {P: prop}:
+  (quantifiers_n P = ∅) → (P.instantiated_n = P.erased_n)
+
+axiom free_of_instantiated_p_free {x: var} {P: prop}:
+  x ∈ FV P.instantiated_p → x ∈ FV P
+
+axiom free_of_instantiated_n_free {x: var} {P: prop}:
+  x ∈ FV P.instantiated_n → x ∈ FV P
+
 -- lemmas
 
-lemma valid.instantiated_n_of_erased_n {P: prop}: (⊨ P.erased_n) → ⊨ P.instantiated_n :=
-  assume h: ⊨ P.erased_n,
-  have P.erased_n = vc.subst_env env.empty P.erased_n, by unfold vc.subst_env,
-  have env.empty ⊨ P.erased_n, from this ▸ h,
-  have h2: env.empty ⊨ P.instantiated_n, from valid_env.instantiated_n_of_erased_n this,
-  have  vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
-  show ⊨ P.instantiated_n, from this ▸ h2
+-- lemma valid.instantiated_n_of_erased_n {P: prop}:
+--   closed P.instantiated_n → (⊨ P.erased_n) → ⊨ P.instantiated_n :=
+--   assume h1: closed P.instantiated_n,
+--   assume h2: ⊨ P.erased_n,
+--   have P.erased_n = vc.subst_env env.empty P.erased_n, by unfold vc.subst_env,
+--   have h3: env.empty ⊨ P.erased_n, from this ▸ h2,
+--   have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
+--   have closed (vc.subst_env env.empty P.instantiated_n), from this ▸ h1,
+--   have closed_subst env.empty P.instantiated_n, from vc.closed_subst_of_closed this,
+--   have h4: env.empty ⊨ P.instantiated_n, from valid_env.instantiated_n_of_erased_n this h3,
+--   have vc.subst_env env.empty P.instantiated_n = P.instantiated_n, by unfold vc.subst_env,
+--   show ⊨ P.instantiated_n, from this ▸ h4
 
-lemma valid.instantiated_p_of_instantiated {P: prop}: (⊨ P.instantiated_n) → ⊨ P.instantiated_p :=
-  assume h: ⊨ P.instantiated_n,
-  have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
-  have env.empty ⊨ P.instantiated_n, from this ▸ h,
-  have h2: env.empty ⊨ P.instantiated_p, from valid_env.instantiated_p_of_instantiated_n this,
-  have  vc.subst_env env.empty P.instantiated_p = P.instantiated_p, by unfold vc.subst_env,
-  show ⊨ P.instantiated_p, from this ▸ h2
+-- lemma valid.instantiated_p_of_instantiated {P: prop}: (⊨ P.instantiated_n) → ⊨ P.instantiated_p :=
+--   assume h: ⊨ P.instantiated_n,
+--   have P.instantiated_n = vc.subst_env env.empty P.instantiated_n, by unfold vc.subst_env,
+--   have env.empty ⊨ P.instantiated_n, from this ▸ h,
+--   have h2: env.empty ⊨ P.instantiated_p, from valid_env.instantiated_p_of_instantiated_n this,
+--   have  vc.subst_env env.empty P.instantiated_p = P.instantiated_p, by unfold vc.subst_env,
+--   show ⊨ P.instantiated_p, from this ▸ h2
 
-lemma valid.erased_p_of_instantiated_p {P: prop}: (⊨ P.instantiated_p) → ⊨ P.erased_p :=
-  assume h: ⊨ P.instantiated_p,
-  have P.instantiated_p = vc.subst_env env.empty P.instantiated_p, by unfold vc.subst_env,
-  have env.empty ⊨ P.instantiated_p, from this ▸ h,
-  have h2: env.empty ⊨ P.erased_p, from valid_env.erased_p_of_instantiated_p this,
-  have vc.subst_env env.empty P.erased_p = P.erased_p, by unfold vc.subst_env,
-  show ⊨ P.erased_p, from this ▸ h2
+-- lemma valid.erased_p_of_instantiated_p {P: prop}: (⊨ P.instantiated_p) → ⊨ P.erased_p :=
+--   assume h: ⊨ P.instantiated_p,
+--   have P.instantiated_p = vc.subst_env env.empty P.instantiated_p, by unfold vc.subst_env,
+--   have env.empty ⊨ P.instantiated_p, from this ▸ h,
+--   have h2: env.empty ⊨ P.erased_p, from valid_env.erased_p_of_instantiated_p this,
+--   have vc.subst_env env.empty P.erased_p = P.erased_p, by unfold vc.subst_env,
+--   show ⊨ P.erased_p, from this ▸ h2
 
 lemma valid.instantiated_n_and {P Q: prop}:
       (⊨ P.instantiated_n ⋀ Q.instantiated_n) → ⊨ (P ⋀ Q).instantiated_n :=
@@ -660,6 +682,10 @@ lemma prop.has_quantifier_n.pre.inv {q: callquantifier} {t₁ t₂: term}: q ∉
 lemma prop.has_quantifier_n.post.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers_n (prop.post t₁ t₂) :=
   assume post_has_quantifier_n: q ∈ quantifiers_n (prop.post t₁ t₂),
   show «false», by cases post_has_quantifier_n
+
+lemma prop.has_quantifier_n.call.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers_n (prop.call t₁ t₂) :=
+  assume call_has_quantifier_n: q ∈ quantifiers_n (prop.call t₁ t₂),
+  show «false», by cases call_has_quantifier_n
 
 lemma prop.has_quantifier_n.forallc.inv {q: callquantifier} {x: var} {t: term} {P: prop}:
       q ∉ quantifiers_n (prop.forallc x t P) :=
@@ -1706,16 +1732,14 @@ lemma instantiated_n_closed_of_closed {P: prop}: closed P → closed P.instantia
   assume P_closed: closed P,
   assume x: var,
   assume : x ∈ FV P.instantiated_n,
-  have x ∈ FV P.erased_n, from free_in_erased_n_of_free_in_instantiated_n this,
-  have x ∈ FV P, from free_of_erased_n_free (or.inl this),
+  have x ∈ FV P, from free_of_instantiated_n_free this,
   show «false», from P_closed x this
 
 lemma instantiated_p_closed_of_closed {P: prop}: closed P → closed P.instantiated_p :=
   assume P_closed: closed P,
   assume x: var,
   assume : x ∈ FV P.instantiated_p,
-  have x ∈ FV P.erased_p, from free_in_erased_p_of_free_in_instantiated_p this,
-  have x ∈ FV P, from free_of_erased_free (or.inl this),
+  have x ∈ FV P, from free_of_instantiated_p_free this,
   show «false», from P_closed x this
 
 lemma instantiated_n_closed_subst_of_closed {σ: env} {P: prop}:
@@ -1728,8 +1752,7 @@ lemma instantiated_n_closed_subst_of_closed {σ: env} {P: prop}:
     have vc.subst_env σ P.instantiated_n = (prop.subst_env σ P).instantiated_n,
     from instantiated_n_distrib_subst_env,
     have x ∈ FV (prop.subst_env σ P).instantiated_n, from this ▸ h,
-    have x ∈ FV (prop.subst_env σ P).erased_n, from free_in_erased_n_of_free_in_instantiated_n this,
-    have x ∈ FV (prop.subst_env σ P), from free_of_erased_free (or.inr this),
+    have x ∈ FV (prop.subst_env σ P), from free_of_instantiated_n_free this,
     show «false», from P_closed x this
   ),
   show closed_subst σ P.instantiated_n, from vc.closed_subst_of_closed this
@@ -1744,11 +1767,10 @@ lemma instantiated_p_closed_subst_of_closed {σ: env} {P: prop}:
     have vc.subst_env σ P.instantiated_p = (prop.subst_env σ P).instantiated_p,
     from instantiated_p_distrib_subst_env,
     have x ∈ FV (prop.subst_env σ P).instantiated_p, from this ▸ h,
-    have x ∈ FV (prop.subst_env σ P).erased_p, from free_in_erased_p_of_free_in_instantiated_p this,
-    have x ∈ FV (prop.subst_env σ P), from free_of_erased_free (or.inl this),
+    have x ∈ FV (prop.subst_env σ P), from free_of_instantiated_p_free this,
     show «false», from P_closed x this
   ),
-  show closed_subst σ P.instantiated_p, from vc.closed_subst_of_closed this
+show closed_subst σ P.instantiated_p, from vc.closed_subst_of_closed this
 
 lemma quantifiers_closed_from_prop_closed {f: term} {x: var} {P Q: prop} {σ: env}:
      closed_subst σ Q →

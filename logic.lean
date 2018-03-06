@@ -375,8 +375,16 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
 lemma env.contains_of_valid_env_term_instantiated {σ: env} {x: var} {t: term}:
       x ∈ FV t → (σ ⊨ prop.instantiated_p t) → (x ∈ σ) :=
   assume x_free_in_t: x ∈ FV t,
-  assume : σ ⊨ prop.instantiated_p t,
-  have h1: σ ⊨ prop.erased_p t, from valid_env.erased_p_of_instantiated_p this,
+  assume h0: σ ⊨ prop.instantiated_p t,
+
+  have calls_p (prop.term t) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_p (prop.term t),
+    show «false», from prop.has_call_p.term.inv this
+  ),
+  have (prop.term t).instantiated_p = (prop.term t).erased_p,
+  from instantiated_p_eq_erased_p_without_calls this,
+  have h1: σ ⊨ prop.erased_p t, from this ▸ h0,
   have prop.erased_p (prop.term t) = vc.term t,
   by unfold prop.erased_p,
   have σ ⊨ vc.term t, from this.symm ▸ h1,
@@ -395,7 +403,14 @@ lemma env.contains_of_valid_env_term_instantiated {σ: env} {x: var} {t: term}:
 lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
       (σ ⊨ prop.instantiated_p (x ≡ v)) → (σ x = v) :=
   assume h0: σ ⊨ prop.instantiated_p (x ≡ v),
-  have h1: σ ⊨ prop.erased_p (x ≡ v), from valid_env.erased_p_of_instantiated_p h0,
+  have calls_p (prop.term (x ≡ v)) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_p (prop.term (x ≡ v)),
+    show «false», from prop.has_call_p.term.inv this
+  ),
+  have (prop.term (x ≡ v)).instantiated_p = (prop.term (x ≡ v)).erased_p,
+  from instantiated_p_eq_erased_p_without_calls this,
+  have h1: σ ⊨ prop.erased_p (x ≡ v), from this ▸ h0,
   have prop.erased_p (prop.term (x ≡ v)) = vc.term (x ≡ v),
   by unfold prop.erased_p,
   have σ ⊨ vc.term (x ≡ v), from this.symm ▸ h1,
@@ -426,21 +441,39 @@ lemma history_valid {H: history}: ⟪calls_to_prop H⟫ :=
     show σ ⊨ (calls_to_prop history.empty).instantiated_n, from (
       have h1: σ ⊨ value.true, from valid_env.true,
       have (prop.term value.true).erased_n = vc.term value.true, by unfold prop.erased_n,
-      have σ ⊨ (prop.term value.true).erased_n, from this ▸ h1,
-      have h2: σ ⊨ (prop.term value.true).instantiated_n, from valid_env.instantiated_n_of_erased_n this,
+      have h2: σ ⊨ (prop.term value.true).erased_n, from this ▸ h1,
+      have calls_n (prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
+        assume c: calltrigger,
+        assume : c ∈ calls_n (prop.term value.true),
+        show «false», from prop.has_call_n.term.inv this
+      ),
+      have (prop.term value.true).instantiated_n = (prop.term value.true).erased_n,
+      from instantiated_n_eq_erased_n_without_calls this,
+      have h3: σ ⊨ (prop.term value.true).instantiated_n, from this.symm ▸ h2, 
       have calls_to_prop history.empty = value.true, by unfold calls_to_prop,
-      show σ ⊨ (calls_to_prop history.empty).instantiated_n, from this ▸ h2
+      show σ ⊨ (calls_to_prop history.empty).instantiated_n, from this ▸ h3
     ),
 
     show σ ⊨ prop.instantiated_n (calls_to_prop (H₁ · call f y R S e H₂ σ₂ v)), from (
       have h1: σ ⊨ (calls_to_prop H₁).instantiated_n, from ih₁,
       have h2: σ ⊨ value.true, from valid_env.true,
       have (prop.call (value.func f y R S e H₂ σ₂) v).erased_n = vc.term value.true, by unfold prop.erased_n,
-      have σ ⊨ (prop.call (value.func f y R S e H₂ σ₂) v).erased_n, from this ▸ h2,
-      have h3: σ ⊨ (prop.call (value.func f y R S e H₂ σ₂) v).instantiated_n,
-      from valid_env.instantiated_n_of_erased_n this,
+      have h3: σ ⊨ (prop.call (value.func f y R S e H₂ σ₂) v).erased_n, from this ▸ h2,
+
+      have quantifiers_n (prop.call (value.func f y R S e H₂ σ₂) v) = ∅, from set.eq_empty_of_forall_not_mem (
+        assume q: callquantifier,
+        assume : q ∈ quantifiers_n (prop.call (value.func f y R S e H₂ σ₂) v),
+        show «false», from prop.has_quantifier_n.call.inv this
+      ),
+      have (prop.call (value.func f y R S e H₂ σ₂) v).instantiated_n
+         = (prop.call (value.func f y R S e H₂ σ₂) v).erased_n,
+      from instantiated_n_eq_erased_n_without_quantifiers this,
+
+      have h4: σ ⊨ (prop.call (value.func f y R S e H₂ σ₂) v).instantiated_n,
+      from this.symm ▸ h3,
+
       have σ ⊨ ((calls_to_prop H₁).instantiated_n ⋀ (prop.call (value.func f y R S e H₂ σ₂) v).instantiated_n),
-      from valid_env.and h1 h3,
+      from valid_env.and h1 h4,
       have h4: σ ⊨ (calls_to_prop H₁ ⋀ prop.call (value.func f y R S e H₂ σ₂) v).instantiated_n,
       from valid_env.instantiated_n_and this,
       have calls_to_prop (H₁ · call f y R S e H₂ σ₂ v)
@@ -516,8 +549,7 @@ lemma simple_equality_env_valid {P: prop} {σ: env} {x: var} {v: value}:
   have x_not_in_P: x ∉ FV (vc.subst_env σ P.instantiated_n), from (
     assume : x ∈ FV (vc.subst_env σ P.instantiated_n),
     have x ∈ FV P.instantiated_n, from free_in_vc.subst_env this,
-    have x ∈ FV P.erased_n, from free_in_erased_n_of_free_in_instantiated_n this,
-    have x ∈ FV P, from free_of_erased_n_free (or.inl this),
+    have x ∈ FV P, from free_of_instantiated_n_free this,
     have ∃v, σ x = some v, from val_of_free_in_env σ_verified this,
     have x ∈ σ, from env.contains_apply_equiv.right.mp this,
     show «false», from x_not_free_in_σ this
@@ -530,9 +562,17 @@ lemma simple_equality_env_valid {P: prop} {σ: env} {x: var} {v: value}:
   have vc.subst x v (vc.subst_env σ P.instantiated_n)
       = vc.subst_env (σ[x↦v]) P.instantiated_n, by unfold vc.subst_env, 
   have h3: ⊨ vc.subst_env (σ[x↦v]) P.instantiated_n, from this ▸ h2,
-  have (σ[x↦v]) ⊨ (prop.term (x ≡ v)).erased_n,
+  have h4: (σ[x↦v]) ⊨ (prop.term (x ≡ v)).erased_n,
   from simple_equality_valid x_not_free_in_σ,
-  have (σ[x↦v]) ⊨ (prop.term (x ≡ v)).instantiated_n, from valid_env.instantiated_n_of_erased_n this,
+
+  have calls_n (prop.term (x ≡ v)) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.term (x ≡ v)),
+    show «false», from prop.has_call_n.term.inv this
+  ),
+  have (prop.term (x ≡ v)).instantiated_n = (prop.term (x ≡ v)).erased_n,
+  from instantiated_n_eq_erased_n_without_calls this,
+  have (σ[x↦v]) ⊨ (prop.term (x ≡ v)).instantiated_n, from this.symm ▸ h4,
   ⟨h3, this⟩
 
 lemma simple_equality_env_inst_valid {P: prop} {σ: env} {x: var} {v: value}:
@@ -554,8 +594,17 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
       show env.empty ⊨ prop.instantiated_n (value.true), from (
         have h: prop.erased_n (prop.term ↑value.true) = vc.term ↑value.true, by unfold prop.erased_n,
         have env.empty ⊨ value.true, from valid.tru,
-        have env.empty ⊨ prop.erased_n (value.true), from h ▸ this,
-        show env.empty ⊨ prop.instantiated_n (value.true), from valid_env.instantiated_n_of_erased_n this
+        have h2: env.empty ⊨ prop.erased_n (value.true), from h ▸ this,
+
+        have calls_n (prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
+          assume c: calltrigger,
+          assume : c ∈ calls_n (prop.term value.true),
+          show «false», from prop.has_call_n.term.inv this
+        ),
+        have (prop.term value.true).instantiated_n = (prop.term value.true).erased_n,
+        from instantiated_n_eq_erased_n_without_calls this,
+        
+        show env.empty ⊨ prop.instantiated_n (value.true), from this.symm ▸ h2
       )
     },
     case env.vcgen.tru σ' x' Q x_not_free_in_σ' σ'_verified ih {
@@ -600,9 +649,21 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
         have h5: ⊨ prop.erased_n (prop.term (term.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g))), from this.symm ▸ h4,
         have prop.subst_env (σ₂[g↦vf]) (prop.term (term.unop unop.isFunc g))
            = prop.term (term.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)), from prop.subst_env.term,
-        have ⊨ prop.erased_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)), from this.symm ▸ h5,
+        have h6: ⊨ prop.erased_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)), from this.symm ▸ h5,
+
+        have calls_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)) = ∅, from set.eq_empty_of_forall_not_mem (
+          assume c: calltrigger,
+          assume : c ∈ calls_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)),
+          have ∃c', c' ∈ calls_n (term.unop unop.isFunc g), from prop.has_call_of_subst_env_has_call.right c this,
+          let ⟨c', h7⟩ := this in
+          show «false», from prop.has_call_n.term.inv h7
+        ),
+        have (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)).instantiated_n
+           = (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)).erased_n,
+        from instantiated_n_eq_erased_n_without_calls this,
+
         show ⊨ prop.instantiated_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)),
-        from valid.instantiated_n_of_erased_n this
+        from this.symm ▸ h6
       ),
 
       let forallp := prop.implies R.to_prop (prop.pre g gx)
@@ -679,9 +740,22 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
             have prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)
                = prop.pre (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx),
             from prop.subst_env.pre,
-            have ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).erased_n, from this.symm ▸ h15,
+            have h16: ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).erased_n, from this.symm ▸ h15,
+
+            have calls_n (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)) = ∅,
+            from set.eq_empty_of_forall_not_mem (
+              assume c: calltrigger,
+              assume : c ∈ calls_n (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)),
+              have ∃c', c' ∈ calls_n (prop.pre g gx), from prop.has_call_of_subst_env_has_call.right c this,
+              let ⟨c', h17⟩ := this in
+              show «false», from prop.has_call_n.pre.inv h17
+            ),
+            have (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).instantiated_n
+              = (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).erased_n,
+            from instantiated_n_eq_erased_n_without_calls this,
+
             show ⊨ (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)).instantiated_n,
-            from valid.instantiated_n_of_erased_n this
+            from this.symm ▸ h16
           ),
           have h8: ⊨ (prop.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop)
                                    (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx))).instantiated_n,
@@ -853,11 +927,28 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
             have prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx)
                = prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx),
             from prop.subst_env.post,
-            have ⊨ (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx))
+            have h81: ⊨ (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx))
                           .instantiated_p,
             from this ▸ h8,
-            have h9: ⊨ (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx))
-                          .erased_p, from valid.erased_p_of_instantiated_p this,
+
+            have calls_p (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g)
+                                    (term.subst_env (σ₂[g↦vf][gx↦v]) gx)) = ∅,
+            from set.eq_empty_of_forall_not_mem (
+              assume c: calltrigger,
+              assume : c ∈ calls_p (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g)
+                                   (term.subst_env (σ₂[g↦vf][gx↦v]) gx)),
+              show «false», from prop.has_call_p.post.inv this
+            ),
+            have (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g)
+                            (term.subst_env (σ₂[g↦vf][gx↦v]) gx)).instantiated_p
+              = (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g)
+                           (term.subst_env (σ₂[g↦vf][gx↦v]) gx)).erased_p,
+            from instantiated_p_eq_erased_p_without_calls this,
+
+            have h9: ⊨ (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g)
+                                  (term.subst_env (σ₂[g↦vf][gx↦v]) gx)).erased_p,
+            from this ▸ h81,
+
             have (prop.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx)).erased_n
                 = vc.post (term.subst_env (σ₂[g↦vf][gx↦v]) g) (term.subst_env (σ₂[g↦vf][gx↦v]) gx),
             by unfold prop.erased_n,
@@ -964,9 +1055,7 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
       have h11: (∀x, x ∉ FV pfunc.instantiated_n), from (
         assume x: var,
         assume : x ∈ FV pfunc.instantiated_n,
-        have x ∈ FV pfunc.erased_n, from free_in_erased_n_of_free_in_instantiated_n this,
-        have x ∈ FV pfunc.erased_p ∨ x ∈ FV pfunc.erased_n, from or.inr this,
-        have x ∈ FV pfunc, from free_of_erased_free this,
+        have x ∈ FV pfunc, from free_of_instantiated_n_free this,
         show «false», from (h10 x) this
       ),
 
@@ -983,20 +1072,29 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
   end
 
 lemma env_translation_valid {R: spec} {H: history} {P: prop} {σ: env}:
-  (⊢ σ: P) → (σ ⊨ R.to_prop.instantiated_n) → σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p :=
+  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) → σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p :=
   assume env_verified: (⊢ σ : P),
+  assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
   have h1: σ ⊨ prop.instantiated_n ↑H, from history_valid σ,
   have h2: σ ⊨ P.instantiated_n, from env_translation_instantiated_n_valid env_verified,
   have σ ⊨ (prop.instantiated_n ↑H ⋀ P.instantiated_n), from valid_env.and h1 h2,
   have σ ⊨ (↑H ⋀ P).instantiated_n, from valid_env.instantiated_n_and this,
   have σ ⊨ R.to_prop.instantiated_n ⋀ (↑H ⋀ P).instantiated_n, from valid_env.and R_valid this,
-  have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n, from valid_env.instantiated_n_and this,
-  show σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this
+  have h3: σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n, from valid_env.instantiated_n_and this,
+  have closed (calls_to_prop H), from call_history_closed H,
+  have h4: closed_subst σ (calls_to_prop H), from prop.closed_any_subst_of_closed this,
+  have closed_subst σ P, from env_translation_closed_subst env_verified,
+  have closed_subst σ (↑H ⋀ P), from prop.closed_subst.and h4 this,
+  have closed_subst σ (↑R ⋀ ↑H ⋀ P), from prop.closed_subst.and R_closed this,
+  have closed_subst σ (↑R ⋀ ↑H ⋀ P).instantiated_p, from instantiated_p_closed_subst_of_closed this,
+  show σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this h3
 
 lemma consequent_of_H_P {R: spec} {H: history} {σ: env} {P Q: prop}:
-  (⊢ σ: P) → (σ ⊨ R.to_prop.instantiated_n) → ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫ → no_instantiations Q → σ ⊨ Q.erased_n :=
+      (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) → ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫ →
+      no_instantiations Q → σ ⊨ Q.erased_n :=
   assume env_verified: (⊢ σ : P),
+  assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
   assume impl_vc: ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫,
   assume : no_instantiations Q,
@@ -1006,13 +1104,17 @@ lemma consequent_of_H_P {R: spec} {H: history} {σ: env} {P Q: prop}:
   have σ ⊨ (prop.implies (↑R ⋀ ↑H ⋀ P) Q).instantiated_n, from impl_vc σ,
   have σ ⊨ vc.or (↑R ⋀ ↑H ⋀ P).instantiated_p.not Q.erased_n, from h2 ▸ h1 ▸ this,
   have h4: σ ⊨ vc.implies (↑R ⋀ ↑H ⋀ P).instantiated_p Q.erased_n, from this,
-  have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p, from env_translation_valid env_verified R_valid,
+  have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p, from env_translation_valid env_verified R_closed R_valid,
   show σ ⊨ Q.erased_n, from valid_env.mp h4 this
 
 lemma env_translation_call_valid {R: spec} {H: history} {P: prop} {σ: env} {f x: var}:
-  (⊢ σ: P) → (σ ⊨ R.to_prop.instantiated_n) → σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p :=
+  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) → f ∈ σ → x ∈ σ →
+  σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p :=
   assume env_verified: (⊢ σ : P),
+  assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
+  assume f_in_σ: f ∈ σ,
+  assume x_in_σ: x ∈ σ,
   have h1: σ ⊨ prop.instantiated_n ↑H, from history_valid σ,
   have h2: σ ⊨ P.instantiated_n, from env_translation_instantiated_n_valid env_verified,
   have σ ⊨ (prop.instantiated_n ↑H ⋀ P.instantiated_n), from valid_env.and h1 h2,
@@ -1025,17 +1127,52 @@ lemma env_translation_call_valid {R: spec} {H: history} {P: prop} {σ: env} {f x
   have vc.subst_env σ value.true = vc.term (term.subst_env σ value.true), from vc.subst_env.term,
   have h6: σ ⊨ value.true, from this.symm ▸ h5,
   have (prop.call f x).erased_n = vc.term value.true, by unfold prop.erased_n,
-  have σ ⊨ (prop.call f x).erased_n, from this.symm ▸ h6,
-  have σ ⊨ (prop.call f x).instantiated_n, from valid_env.instantiated_n_of_erased_n this,
+  have h7: σ ⊨ (prop.call f x).erased_n, from this.symm ▸ h6,
+
+  have quantifiers_n (prop.call f x) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (prop.call f x),
+    show «false», from prop.has_quantifier_n.call.inv this
+  ),
+  have (prop.call f x).instantiated_n = (prop.call f x).erased_n,
+  from instantiated_n_eq_erased_n_without_quantifiers this,
+  have σ ⊨ (prop.call f x).instantiated_n, from this.symm ▸ h7,
+
   have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n ⋀ (prop.call f x).instantiated_n, from valid_env.and h3 this,
-  have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n, from valid_env.instantiated_n_and this,
-  show σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this
+  have h8: σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n, from valid_env.instantiated_n_and this,
+
+  have closed (calls_to_prop H), from call_history_closed H,
+  have h9: closed_subst σ (calls_to_prop H), from prop.closed_any_subst_of_closed this,
+  have closed_subst σ P, from env_translation_closed_subst env_verified,
+  have closed_subst σ (↑H ⋀ P), from prop.closed_subst.and h9 this,
+  have h10: closed_subst σ (↑R ⋀ ↑H ⋀ P), from prop.closed_subst.and R_closed this,
+  have closed_subst σ (prop.call f x), from (
+    assume z: var,
+    assume : z ∈ FV (prop.call f x),
+    or.elim (free_in_prop.call.inv this) (
+      assume : free_in_term z f,
+      have z = f, from free_in_term.var.inv this,
+      show z ∈ σ, from this.symm ▸ f_in_σ
+    ) (
+      assume : free_in_term z x,
+      have z = x, from free_in_term.var.inv this,
+      show z ∈ σ, from this.symm ▸ x_in_σ
+    )
+  ),
+  have closed_subst σ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x), from prop.closed_subst.and h10 this,
+  have closed_subst σ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p,
+  from instantiated_p_closed_subst_of_closed this,
+  show σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this h8
 
 lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: var}:
-  (⊢ σ: P) → (σ ⊨ R.to_prop.instantiated_n) → ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫ → no_instantiations Q → σ ⊨ Q.erased_n :=
+  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) →
+  ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫ → f ∈ σ → x ∈ σ → no_instantiations Q → σ ⊨ Q.erased_n :=
   assume env_verified: (⊢ σ : P),
+  assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
   assume impl_vc: ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫,
+  assume f_in_σ: f ∈ σ,
+  assume x_in_σ: x ∈ σ,
   assume : no_instantiations Q,
   have h1: (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_n
          = vc.or ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated_n Q.erased_n,
@@ -1045,7 +1182,8 @@ lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: 
   have σ ⊨ (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_n, from impl_vc σ,
   have σ ⊨ vc.or ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p.not Q.erased_n, from h2 ▸ h1 ▸ this,
   have h4: σ ⊨ vc.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p Q.erased_n, from this,
-  have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p, from env_translation_call_valid env_verified R_valid,
+  have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p,
+  from env_translation_call_valid env_verified R_closed R_valid f_in_σ x_in_σ,
   show σ ⊨ Q.erased_n, from valid_env.mp h4 this
 
 lemma dominates_of {σ: env} {P P': prop}:

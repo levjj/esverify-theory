@@ -1520,6 +1520,14 @@ lemma vc.closed_subst_of_closed {σ: env} {P: vc}: closed (vc.subst_env σ P) �
     show x ∈ σ.dom, from this
   )
 
+lemma prop.closed_any_subst_of_closed {σ: env} {P: prop}: closed P → closed_subst σ P :=
+  assume P_closed: closed P,
+  show closed_subst σ P, from (
+    assume x: var,
+    assume : x ∈ FV P,
+    show x ∈ σ.dom, from absurd this (P_closed x)
+  )
+
 lemma term.subst_env.unop {σ: env} {op: unop} {t: term}:
       term.subst_env σ (term.unop op t) = term.unop op (term.subst_env σ t) :=
 begin
@@ -1941,6 +1949,11 @@ begin
   )
 end
 
+lemma term.closed_subst.value {v: value} {σ: env}: closed_subst σ (term.value v) :=
+  assume x: var,
+  assume : x ∈ FV (term.value v),
+  show x ∈ σ.dom, from absurd this free_in_term.value.inv
+
 lemma prop.closed_subst.term {t: term} {σ: env}: closed_subst σ t → closed_subst σ (prop.term t) :=
   assume t_closed: closed_subst σ t,
   show closed_subst σ (prop.term t), from (
@@ -2044,6 +2057,15 @@ lemma prop.closed_subst.implies.inv {P Q: prop} {σ: env}:
   have P_closed_subst: closed_subst σ P, from prop.closed_subst.not.inv P_not_closed_subst,
   have Q_closed_subst: closed_subst σ Q, from (prop.closed_subst.or.inv P_not_or_Q_closed_subst).right,
   ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma vc.closed_subst.term {t: term} {σ: env}: closed_subst σ t → closed_subst σ (vc.term t) :=
+  assume t_closed: closed_subst σ t,
+  show closed_subst σ (vc.term t), from (
+    assume x: var,
+    assume : x ∈ FV (vc.term t),
+    have free_in_term x t, from free_in_vc.term.inv this,
+    show x ∈ σ.dom, from t_closed this
+  )
 
 lemma vc.closed_subst.and {P Q: vc} {σ: env}: closed_subst σ P → closed_subst σ Q → closed_subst σ (P ⋀ Q) :=
   assume P_closed_subst: closed_subst σ P,

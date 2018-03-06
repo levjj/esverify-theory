@@ -401,8 +401,9 @@ lemma free_in_vc.univ.same.inv {P: vc} {x: var}: ¬ free_in_vc x (vc.univ x P) :
     }
   end
 
-lemma call_history_closed (H: history) (x: var): ¬ free_in_prop x (calls_to_prop H) :=
+lemma call_history_closed (H: history): closed (calls_to_prop H) :=
   begin
+    intro x,
     induction H with H₁ f y R S e H₂ σ v ih₁ ih₂,
 
     show ¬free_in_prop x (calls_to_prop history.empty), from (

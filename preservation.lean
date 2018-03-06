@@ -509,9 +509,15 @@ lemma dominates_true (σ: env) (P: prop):
     assume : σ ⊨ P.instantiated_p,
     have h1: σ ⊨ value.true, from valid_env.true,
     have (prop.term value.true).erased_n = vc.term value.true, by unfold prop.erased_n,
-    have σ ⊨ (prop.term value.true).erased_n, from this ▸ h1,
-    have σ ⊨ (prop.term value.true).instantiated_n, from valid_env.instantiated_n_of_erased_n this,
-    have h_impl: σ ⊨ (prop.term value.true).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this,
+    have h2: σ ⊨ (prop.term value.true).erased_n, from this ▸ h1,
+    have calls_p (prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
+      assume c: calltrigger,
+      assume : c ∈ calls_p (prop.term value.true),
+      show «false», from prop.has_call_p.term.inv this
+    ),
+    have (prop.term value.true).instantiated_p = (prop.term value.true).erased_p,
+    from instantiated_p_eq_erased_p_without_calls this,
+    have h_impl: σ ⊨ (prop.term value.true).instantiated_p, from this.symm ▸ h2,
     have h_calls: calls_p_subst σ value.true ⊆ calls_p_subst σ P, from (
       assume c: calltrigger,
       assume : c ∈ calls_p_subst σ value.true,
@@ -965,13 +971,13 @@ lemma env_dominates_rest {P: prop} {σ: env} {x: var} {v: value}:
 
 lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates σ P' P → (σ ⊨ (prop.implies P Q).instantiated_n) → (σ ⊨ (prop.implies P' Q).instantiated_n) :=
+  assume P'_dominates_P: dominates σ P' P,
   -- assume P'_closed: closed_subst σ P',
   -- assume Q_closed: closed_subst σ Q,
   -- have closed_subst σ P'.not, from prop.closed_subst.not P'_closed,
   -- have closed_subst σ (P'.not ⋁ Q), from prop.closed_subst.or this Q_closed,
   -- have closed_subst σ (P'.not ⋁ Q).not, from prop.closed_subst.not this,
   -- have h0: closed_subst σ (P'.not ⋁ Q).not.instantiated_p, from instantiated_p_closed_subst_of_closed this,
-  assume P'_dominates_P: dominates σ P' P,
   assume : σ ⊨ (P.not ⋁ Q).instantiated_n,
   have h1: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr this,
   have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
@@ -1000,6 +1006,31 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
   have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
   show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.neg_neg.mp this
+  -- show σ ⊨ vc.implies (prop.implies P Q).instantiated_n (prop.implies P' Q).instantiated_n, from valid_env.mpr (
+    -- assume : σ ⊨ (P.not ⋁ Q).instantiated_n,
+    -- have h1: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr this,
+    -- have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
+    -- have h2: σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h1,
+    -- have h3: σ ⊨ vc.implies (P'.not ⋁ Q).not.instantiated_p (P.not ⋁ Q).not.instantiated_p, from valid_env.mpr (
+    --   assume : σ ⊨ (P'.not ⋁ Q).not.instantiated_p,
+    --   have h4: σ ⊨ (P'.not.not ⋀ Q.not).instantiated_p, from valid_env.or_not_dist_with_instantiations.mp this,
+    --   have dominates σ P'.not.not P', from dominates_not_not,
+    --   have h5: σ ⊨ (P' ⋀ Q.not).instantiated_p,
+    --   from valid_env.strengthen_and_with_dominating_instantiations this h4,
+    --   have σ ⊨ vc.implies (P' ⋀ Q.not).instantiated_p (P ⋀ Q.not).instantiated_p,
+    --   from valid_env.strengthen_and_with_dominating_instantiations P'_dominates_P,
+    --   have h6: σ ⊨ (P ⋀ Q.not).instantiated_p, from valid_env.mp this h5,
+    --   have dominates σ P P.not.not, from dominates_of_not_not,
+    --   have σ ⊨ vc.implies (P ⋀ Q.not).instantiated_p (P.not.not ⋀ Q.not).instantiated_p,
+    --   from valid_env.strengthen_and_with_dominating_instantiations this,
+    --   have σ ⊨ (P.not.not ⋀ Q.not).instantiated_p, from valid_env.mp this h6,
+    --   show σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.or_not_dist_with_instantiations.mpr this
+    -- ),
+    -- have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.mt h3 h2,
+    -- have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
+    -- have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
+    -- show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.neg_neg.mp this
+  -- )
 
 lemma dominates_shuffle {P Q R S: prop} {σ: env}:
   closed_subst σ P → closed_subst σ Q → closed_subst σ R → closed_subst σ S → 
