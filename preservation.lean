@@ -1,21 +1,5 @@
 import .syntax .notations .logic .evaluation .vcgen .bindings
 
-lemma no_calls_in_spec {f: term} {x: var} {R S: spec}: calls_p (spec.func f x R S) = ∅ :=
-  set.eq_empty_of_forall_not_mem (
-    assume c: calltrigger,
-    assume h1: c ∈ calls_p (spec.func f x R S),
-    have spec.to_prop (spec.func f x R S) = (prop.func f x R.to_prop S.to_prop),
-    by unfold spec.to_prop,
-    have c ∈ calls_p (prop.func f x R S), from this ▸ h1,
-    or.elim (prop.has_call_p.and.inv this) (
-      assume : c ∈ calls_p (term.unop unop.isFunc f),
-      show «false», from prop.has_call_p.term.inv this
-    ) (
-      assume h2,
-      show «false», from prop.has_call_p.forallc.inv h2
-    )
-  )
-
 lemma no_calls_in_env_translation {P: prop} {σ: env}: (⊢ σ : P) → (calls_p P = ∅) :=
   assume env_verified: ⊢ σ : P,
   show calls_p P = ∅, by begin
@@ -134,14 +118,15 @@ lemma dominates_self: ∀ {P: prop} {σ: env}, closed_subst σ P → dominates �
   )
 
 lemma dominates_and_left {P P' Q: prop} {σ: env}:
-      dominates σ P' P → closed_subst σ Q → dominates σ (P' ⋀ Q) (P ⋀ Q) :=
+      dominates σ P' P → ((σ ⊨ (P' ⋀ Q).instantiated_p) → closed_subst σ Q) → dominates σ (P' ⋀ Q) (P ⋀ Q) :=
   assume h1: dominates σ P' P,
-  assume Q_closed: closed_subst σ Q,
+  assume h1b: ((σ ⊨ (P' ⋀ Q).instantiated_p) → closed_subst σ Q),
   show dominates σ (P' ⋀ Q) (P ⋀ Q), from dominates_of (
     assume h2: σ ⊨ (P' ⋀ Q).instantiated_p,
+    have Q_closed: closed_subst σ Q, from h1b h2,
 
     have σ ⊨ vc.implies (P' ⋀ Q).instantiated_p (P ⋀ Q).instantiated_p,
-    from valid_env.strengthen_and_with_dominating_instantiations h1,
+    from valid_env.strengthen_and_with_dominating_instantiations h1 Q_closed,
     have h_impl: σ ⊨ (P ⋀ Q).instantiated_p, from valid_env.mp this h2,
 
     have σ ⊨ P'.instantiated_p, from (valid_env.and.elim (valid_env.instantiated_p_and_elim h2)).left,
@@ -1137,50 +1122,72 @@ lemma env_dominates_rest {P: prop} {σ: env} {x: var} {v: value}:
   end
 
 lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
-  dominates σ P' P → σ ⊨ vc.implies (prop.implies P Q).instantiated_n (prop.implies P' Q).instantiated_n :=
+  dominates σ P' P → closed_subst σ P' → closed_subst σ Q →
+  (σ ⊨ (prop.implies P Q).instantiated_n) → (σ ⊨ (prop.implies P' Q).instantiated_n) :=
   assume P'_dominates_P: dominates σ P' P,
-  show σ ⊨ vc.implies (prop.implies P Q).instantiated_n (prop.implies P' Q).instantiated_n, from valid_env.mpr (
-    assume : σ ⊨ (P.not ⋁ Q).instantiated_n,
-    have h1: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr this,
-    have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
-    have h2: σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h1,
-    have h3: σ ⊨ vc.implies (P'.not ⋁ Q).not.instantiated_p (P.not ⋁ Q).not.instantiated_p, from valid_env.mpr (
-      assume : σ ⊨ (P'.not ⋁ Q).not.instantiated_p,
-      have h4: σ ⊨ (P'.not.not ⋀ Q.not).instantiated_p, from valid_env.or_not_dist_with_instantiations.mp this,
-      have dominates σ P'.not.not P', from dominates_not_not,
-      have σ ⊨ vc.implies (P'.not.not ⋀ Q.not).instantiated_p (P' ⋀ Q.not).instantiated_p,
-      from valid_env.strengthen_and_with_dominating_instantiations this,
-      have h5: σ ⊨ (P' ⋀ Q.not).instantiated_p, from valid_env.mp this h4,
-      have σ ⊨ vc.implies (P' ⋀ Q.not).instantiated_p (P ⋀ Q.not).instantiated_p,
-      from valid_env.strengthen_and_with_dominating_instantiations P'_dominates_P,
-      have h6: σ ⊨ (P ⋀ Q.not).instantiated_p, from valid_env.mp this h5,
-      have dominates σ P P.not.not, from dominates_of_not_not,
-      have σ ⊨ vc.implies (P ⋀ Q.not).instantiated_p (P.not.not ⋀ Q.not).instantiated_p,
-      from valid_env.strengthen_and_with_dominating_instantiations this,
-      have σ ⊨ (P.not.not ⋀ Q.not).instantiated_p, from valid_env.mp this h6,
-      show σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.or_not_dist_with_instantiations.mpr this
-    ),
-    have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.mt h3 h2,
-    have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
-    have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
-    show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.neg_neg.mp this
-  )
+  assume P'_closed: closed_subst σ P',
+  assume Q_closed: closed_subst σ Q,
+  have closed_subst σ P'.not, from prop.closed_subst.not P'_closed,
+  have closed_subst σ (P'.not ⋁ Q), from prop.closed_subst.or this Q_closed,
+  have closed_subst σ (P'.not ⋁ Q).not, from prop.closed_subst.not this,
+  have h0: closed_subst σ (P'.not ⋁ Q).not.instantiated_p, from instantiated_p_closed_subst_of_closed this,
+  assume : σ ⊨ (P.not ⋁ Q).instantiated_n,
+  have h1: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr this,
+  have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
+  have σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h1,
+  have h2: ¬ σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.not.mpr this,
+  have h3: (σ ⊨ (P'.not ⋁ Q).not.instantiated_p) → (σ ⊨ (P.not ⋁ Q).not.instantiated_p), from (
+    assume : σ ⊨ (P'.not ⋁ Q).not.instantiated_p,
+    have h4: σ ⊨ (P'.not.not ⋀ Q.not).instantiated_p, from valid_env.or_not_dist_with_instantiations.mp this,
+    have h41: σ ⊨ P'.not.not.instantiated_p, from (valid_env.and.elim (valid_env.instantiated_p_and_elim h4)).left,
+    have h42: P'.not.not.instantiated_p = P'.not.instantiated_n.not, from not_dist_instantiated_p,
+    have h43: P'.not.instantiated_n = P'.instantiated_p.not, from not_dist_instantiated_n,
+    have σ ⊨ P'.instantiated_p.not.not, from h43 ▸ h42 ▸ h41,
+    have σ ⊨ P'.instantiated_p, from valid_env.neg_neg.mp this,
+    have P_closed: closed_subst σ P, from (dominates.elim P'_dominates_P this).right.left,
+    have dominates σ P'.not.not P', from dominates_not_not P'_closed,
+    have σ ⊨ vc.implies (P'.not.not ⋀ Q.not).instantiated_p (P' ⋀ Q.not).instantiated_p,
+    from valid_env.strengthen_and_with_dominating_instantiations this (prop.closed_subst.not Q_closed),
+    have h5: σ ⊨ (P' ⋀ Q.not).instantiated_p, from valid_env.mp this h4,
+    have σ ⊨ vc.implies (P' ⋀ Q.not).instantiated_p (P ⋀ Q.not).instantiated_p,
+    from valid_env.strengthen_and_with_dominating_instantiations P'_dominates_P (prop.closed_subst.not Q_closed),
+    have h6: σ ⊨ (P ⋀ Q.not).instantiated_p, from valid_env.mp this h5,
+    have dominates σ P P.not.not, from dominates_of_not_not P_closed,
+    have σ ⊨ vc.implies (P ⋀ Q.not).instantiated_p (P.not.not ⋀ Q.not).instantiated_p,
+    from valid_env.strengthen_and_with_dominating_instantiations this (prop.closed_subst.not Q_closed),
+    have σ ⊨ (P.not.not ⋀ Q.not).instantiated_p, from valid_env.mp this h6,
+    show σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.or_not_dist_with_instantiations.mpr this
+  ),
+  have ¬ σ ⊨ (P'.not ⋁ Q).not.instantiated_p, from mt h3 h2,
+  have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.not.mp h0 this,
+  have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
+  have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
+  show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.neg_neg.mp this
 
 lemma dominates_shuffle {P Q R S: prop} {σ: env}:
+  closed_subst σ P → closed_subst σ Q → closed_subst σ R → closed_subst σ S → 
       (σ ⊨ (P ⋀ Q ⋀ R ⋀ S).instantiated_p) → (σ ⊨ ((P ⋀ Q ⋀ R) ⋀ S).instantiated_p) :=
+  assume P_closed: closed_subst σ P,
+  assume Q_closed: closed_subst σ Q,
+  assume R_closed: closed_subst σ R,
+  assume S_closed: closed_subst σ S,
   assume : σ ⊨ (P ⋀ Q ⋀ R ⋀ S).instantiated_p,
   have h1: σ ⊨ ((Q ⋀ R ⋀ S) ⋀ P).instantiated_p, from valid_env.and_symm_with_instantiations this,
-  have dominates σ (Q ⋀ R ⋀ S) ((Q ⋀ R) ⋀ S), from dominates_and_comm,
+  have dominates σ (Q ⋀ R ⋀ S) ((Q ⋀ R) ⋀ S), from dominates_and_comm Q_closed R_closed S_closed,
   have σ ⊨ (((Q ⋀ R) ⋀ S) ⋀ P).instantiated_p,
-  from valid_env.mp (valid_env.strengthen_and_with_dominating_instantiations this) h1,
+  from valid_env.mp (valid_env.strengthen_and_with_dominating_instantiations this P_closed) h1,
   have σ ⊨ (P ⋀ ((Q ⋀ R) ⋀ S)).instantiated_p, from valid_env.and_symm_with_instantiations this,
   show σ ⊨ ((P ⋀ Q ⋀ R) ⋀ S).instantiated_p, from valid_env.and_comm_with_instantiations.mp this
 
 lemma strengthen_vc {P P' Q S: prop} {σ: env}:
-  dominates σ P' P → (σ ⊨ (prop.implies (P ⋀ Q) S).instantiated_n) → σ ⊨ (prop.implies (P' ⋀ Q) S).instantiated_n :=
+  dominates σ P' P → closed_subst σ P' → closed_subst σ Q → closed_subst σ S →
+  (σ ⊨ (prop.implies (P ⋀ Q) S).instantiated_n) → σ ⊨ (prop.implies (P' ⋀ Q) S).instantiated_n :=
   assume : dominates σ P' P,
-  have dominates σ (P' ⋀ Q) (P ⋀ Q), from dominates_and_left this,
-  valid_env.mp (strengthen_impl_with_dominating_instantiations this)
+  assume P'_closed: closed_subst σ P',
+  assume Q_closed: closed_subst σ Q,
+  assume S_closed: closed_subst σ S,
+  have dominates σ (P' ⋀ Q) (P ⋀ Q), from dominates_and_left this (λ_, Q_closed),
+  strengthen_impl_with_dominating_instantiations this (prop.closed_subst.and P'_closed Q_closed) S_closed
 
 lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       (P ⊢ e : Q) → ∀P': prop, (FV P' = FV P) → (∀σ, dominates σ P' P) → (P' ⊢ e: Q) :=
@@ -1194,8 +1201,29 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have h1: FV (P' ⋀ (x ≡ value.true)) = FV (P ⋀ (x ≡ value.true)),
       from same_free_and_left free_P'_P,
-      have h2: (∀σ, dominates σ (P' ⋀ (x ≡ value.true)) (P ⋀ (x ≡ value.true))),
-      from (λσ, dominates_and_left (P'_dominates_P σ)),
+      have h2: (∀σ, dominates σ (P' ⋀ (x ≡ value.true)) (P ⋀ (x ≡ value.true))), from (
+        assume σ: env,
+        show dominates σ (P' ⋀ (x ≡ value.true)) (P ⋀ (x ≡ value.true)),
+        from dominates_and_left (P'_dominates_P σ) (
+          assume h3: σ ⊨ prop.instantiated_p (P' ⋀ x ≡ value.true),
+          assume y: var,
+          assume : free_in_prop y (x ≡ value.true),
+          have free_in_term y (x ≡ value.true), from free_in_prop.term.inv this,
+          or.elim (free_in_term.binop.inv this) (
+            assume : free_in_term y x,
+            have y_eq_x: y = x, from free_in_term.var.inv this,
+            have σ ⊨ prop.instantiated_p (x ≡ value.true),
+            from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).right,
+            have x ∈ σ,
+            from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) this,
+            have y ∈ σ, from y_eq_x.symm ▸ this,
+            show y ∈ σ.dom, from this
+          ) (
+            assume : free_in_term y value.true,
+            show y ∈ σ.dom, from absurd this free_in_term.value.inv
+          )
+        )
+      ),
       have e'_verified': P' ⋀ (x ≡ value.true) ⊢ e': Q, from ih (P' ⋀ (x ≡ value.true)) h1 h2,
       have x_not_free_in_P': x ∉ FV P', from free_P'_P.symm ▸ x_not_free_in_P,
       show P' ⊢ lett x = true in e' : propctx.exis x ((x ≡ value.true) ⋀ Q),
@@ -1208,8 +1236,29 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have h1: FV (P' ⋀ (x ≡ value.false)) = FV (P ⋀ (x ≡ value.false)),
       from same_free_and_left free_P'_P,
-      have h2: (∀σ, dominates σ (P' ⋀ (x ≡ value.false)) (P ⋀ (x ≡ value.false))),
-      from (λσ, dominates_and_left (P'_dominates_P σ)),
+      have h2: (∀σ, dominates σ (P' ⋀ (x ≡ value.false)) (P ⋀ (x ≡ value.false))), from (
+        assume σ: env,
+        show dominates σ (P' ⋀ (x ≡ value.false)) (P ⋀ (x ≡ value.false)),
+        from dominates_and_left (P'_dominates_P σ) (
+          assume h3: σ ⊨ prop.instantiated_p (P' ⋀ x ≡ value.false),
+          assume y: var,
+          assume : free_in_prop y (x ≡ value.false),
+          have free_in_term y (x ≡ value.false), from free_in_prop.term.inv this,
+          or.elim (free_in_term.binop.inv this) (
+            assume : free_in_term y x,
+            have y_eq_x: y = x, from free_in_term.var.inv this,
+            have σ ⊨ prop.instantiated_p (x ≡ value.false),
+            from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).right,
+            have x ∈ σ,
+            from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) this,
+            have y ∈ σ, from y_eq_x.symm ▸ this,
+            show y ∈ σ.dom, from this
+          ) (
+            assume : free_in_term y value.false,
+            show y ∈ σ.dom, from absurd this free_in_term.value.inv
+          )
+        )
+      ),
       have e'_verified': P' ⋀ (x ≡ value.false) ⊢ e': Q, from ih (P' ⋀ (x ≡ value.false)) h1 h2,
       have x_not_free_in_P': x ∉ FV P', from free_P'_P.symm ▸ x_not_free_in_P,
       show P' ⊢ letf x = false in e' : propctx.exis x ((x ≡ value.false) ⋀ Q),
@@ -1222,8 +1271,29 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have h1: FV (P' ⋀ (x ≡ value.num n)) = FV (P ⋀ (x ≡ value.num n)),
       from same_free_and_left free_P'_P,
-      have h2: (∀σ, dominates σ (P' ⋀ (x ≡ value.num n)) (P ⋀ (x ≡ value.num n))),
-      from (λσ, dominates_and_left (P'_dominates_P σ)),
+      have h2: (∀σ, dominates σ (P' ⋀ (x ≡ value.num n)) (P ⋀ (x ≡ value.num n))), from (
+        assume σ: env,
+        show dominates σ (P' ⋀ (x ≡ value.num n)) (P ⋀ (x ≡ value.num n)),
+        from dominates_and_left (P'_dominates_P σ) (
+          assume h3: σ ⊨ prop.instantiated_p (P' ⋀ x ≡ value.num n),
+          assume y: var,
+          assume : free_in_prop y (x ≡ value.num n),
+          have free_in_term y (x ≡ value.num n), from free_in_prop.term.inv this,
+          or.elim (free_in_term.binop.inv this) (
+            assume : free_in_term y x,
+            have y_eq_x: y = x, from free_in_term.var.inv this,
+            have σ ⊨ prop.instantiated_p (x ≡ value.num n),
+            from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).right,
+            have x ∈ σ,
+            from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) this,
+            have y ∈ σ, from y_eq_x.symm ▸ this,
+            show y ∈ σ.dom, from this
+          ) (
+            assume : free_in_term y (value.num n),
+            show y ∈ σ.dom, from absurd this free_in_term.value.inv
+          )
+        )
+      ),
       have e'_verified': P' ⋀ (x ≡ value.num n) ⊢ e': Q, from ih (P' ⋀ (x ≡ value.num n)) h1 h2,
       have x_not_free_in_P': x ∉ FV P', from free_P'_P.symm ▸ x_not_free_in_P,
       show P' ⊢ letn x = n in e' : propctx.exis x ((x ≡ value.num n) ⋀ Q),
@@ -1242,19 +1312,391 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have h1: FV (P' ⋀ ((spec.func f x R S) ⋀ R)) = FV (P ⋀ ((spec.func f x R S) ⋀ R)),
       from same_free_and_left free_P'_P,
-      have h2: (∀σ, dominates σ (P' ⋀ (spec.func f x R S) ⋀ R) (P ⋀ (spec.func f x R S) ⋀ R)),
-      from (λσ, dominates_and_left (P'_dominates_P σ)),
+      have h2: (∀σ, dominates σ (P' ⋀ (spec.func f x R S) ⋀ R) (P ⋀ (spec.func f x R S) ⋀ R)), from (
+        assume σ: env,
+        show dominates σ (P' ⋀ (spec.func f x R S) ⋀ R) (P ⋀ (spec.func f x R S) ⋀ R),
+        from dominates_and_left (P'_dominates_P σ) (
+          assume h3: σ ⊨ prop.instantiated_p (P' ⋀ (spec.func f x R S) ⋀ R),
+          have h4: σ ⊨ prop.instantiated_p P',
+          from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).left,
+          have σ ⊨ prop.instantiated_p (spec.func f x R S ⋀ R),
+          from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).right,
+          have h5: σ ⊨ prop.instantiated_p (spec.func f x R S),
+          from (valid_env.and.elim (valid_env.instantiated_p_and_elim this)).left,
+          have h6: σ ⊨ prop.instantiated_p R,
+          from (valid_env.and.elim (valid_env.instantiated_p_and_elim this)).right,
+
+          assume y: var,
+
+          have P_in_σ: FV P ⊆ σ.dom, from (
+            show closed_subst σ P,
+            from (dominates.elim (P'_dominates_P σ) h4).right.left
+          ),
+
+          have P'_in_σ: FV P' ⊆ σ.dom, from (
+            show closed_subst σ P',
+            from (dominates.elim (P'_dominates_P σ) h4).left
+          ),
+
+          have f_in_σ: f ∈ σ.dom, from (
+            have spec.to_prop (spec.func f x R S) = (prop.func f x R.to_prop S.to_prop),
+            by unfold spec.to_prop,
+            have σ ⊨ prop.instantiated_p (prop.func f x R.to_prop S.to_prop),
+            from this ▸ h5,
+            have σ ⊨ prop.instantiated_p (term.unop unop.isFunc f),
+            from (valid_env.and.elim (valid_env.instantiated_p_and_elim this)).left,
+            show f ∈ σ,
+            from env.contains_of_valid_env_term_instantiated (free_in_term.unop (free_in_term.var f)) this
+          ),
+
+          have x ∈ σ, from by_contradiction (
+            assume : x ∉ σ,
+            have h7: x ∈ FV (vc.subst_env σ R.to_prop.instantiated_p), from vc.free_of_subst_env x_free_in_R this,
+            have closed_subst σ R.to_prop.instantiated_p, from valid_env.closed h6,
+            have x ∉ FV (vc.subst_env σ R.to_prop.instantiated_p), from vc.closed_of_closed_subst this x,
+            show «false», from this h7
+          ),
+          have x_in_σ: x ∈ σ.dom, from this,
+
+          have R_in_σ: FV R.to_prop ⊆ σ.dom, from (
+            assume y: var,
+            assume : free_in_prop y R.to_prop,
+            have y ∈ FV P ∪ {f, x}, from set.mem_of_subset_of_mem fv_R this,
+            or.elim (set.mem_or_mem_of_mem_union this) (
+              assume : y ∈ FV P,
+              show y ∈ σ.dom, from set.mem_of_subset_of_mem P_in_σ this
+            ) (
+              assume : y ∈ {f, x},
+              or.elim (set.two_elems_mem this) (
+                assume : y = f,
+                show y ∈ σ.dom, from this.symm ▸ f_in_σ
+              ) (
+                assume : y = x,
+                show y ∈ σ.dom, from this.symm ▸ x_in_σ
+              )
+            )
+          ),
+
+          have S_in_σ: FV S.to_prop ⊆ σ.dom, from (
+            assume y: var,
+            assume : free_in_prop y S.to_prop,
+            have y ∈ FV P ∪ {f, x}, from set.mem_of_subset_of_mem fv_S this,
+            or.elim (set.mem_or_mem_of_mem_union this) (
+              assume : y ∈ FV P,
+              show y ∈ σ.dom, from set.mem_of_subset_of_mem P_in_σ this
+            ) (
+              assume : y ∈ {f, x},
+              or.elim (set.two_elems_mem this) (
+                assume : y = f,
+                show y ∈ σ.dom, from this.symm ▸ f_in_σ
+              ) (
+                assume : y = x,
+                show y ∈ σ.dom, from this.symm ▸ x_in_σ
+              )
+            )
+          ),
+
+          assume : free_in_prop y (spec.func f x R S ⋀ R),
+          or.elim (free_in_prop.and.inv this) (
+            assume h7: free_in_prop y (spec.func f x R S),
+            have spec.to_prop (spec.func f x R S) = (prop.func f x R.to_prop S.to_prop),
+            by unfold spec.to_prop,
+            have free_in_prop y (prop.func f x R.to_prop S.to_prop), from this ▸ h7,
+            let forallp := (prop.implies R.to_prop (prop.pre f x) ⋀ prop.implies (prop.post f x) S.to_prop) in
+            or.elim (free_in_prop.and.inv this) (
+              assume : free_in_prop y (term.unop unop.isFunc f),
+              have free_in_term y (term.unop unop.isFunc f), from free_in_prop.term.inv this,
+              have free_in_term y f, from free_in_term.unop.inv this,
+              have y = f, from free_in_term.var.inv this,
+              show y ∈ σ.dom, from this.symm ▸ f_in_σ
+            ) (
+              assume : free_in_prop y (prop.forallc x f forallp),
+              have free_in_term y f ∨ free_in_prop y forallp,
+              from (free_in_prop.forallc.inv this).right,
+              or.elim this (
+                assume : free_in_term y f,
+                have y = f, from free_in_term.var.inv this,
+                show y ∈ σ.dom, from this.symm ▸ f_in_σ
+              ) (
+                assume : free_in_prop y forallp,
+                or.elim (free_in_prop.and.inv this) (
+                  assume : free_in_prop y (prop.implies R.to_prop (prop.pre f x)),
+                  or.elim (free_in_prop.implies.inv this) (
+                    assume : y ∈ FV R.to_prop,
+                    show y ∈ σ.dom, from set.mem_of_subset_of_mem R_in_σ this
+                  ) (
+                    assume : free_in_prop y (prop.pre f x),
+                    have free_in_term y f ∨ free_in_term y x, from free_in_prop.pre.inv this,
+                    or.elim this (
+                      assume : free_in_term y f,
+                      have y = f, from free_in_term.var.inv this,
+                      show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                    ) (
+                      assume : free_in_term y x,
+                      have y = x, from free_in_term.var.inv this,
+                      show y ∈ σ.dom, from this.symm ▸ x_in_σ
+                    )
+                  )
+                ) (
+                  assume : free_in_prop y (prop.implies (prop.post f x) S.to_prop),
+                  or.elim (free_in_prop.implies.inv this) (
+                    assume : free_in_prop y (prop.post f x),
+                    have free_in_term y f ∨ free_in_term y x, from free_in_prop.post.inv this,
+                    or.elim this (
+                      assume : free_in_term y f,
+                      have y = f, from free_in_term.var.inv this,
+                      show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                    ) (
+                      assume : free_in_term y x,
+                      have y = x, from free_in_term.var.inv this,
+                      show y ∈ σ.dom, from this.symm ▸ x_in_σ
+                    )
+                  ) (
+                    assume : free_in_prop y S.to_prop,
+                    show y ∈ σ.dom, from set.mem_of_subset_of_mem S_in_σ this
+                  )
+                )
+              )
+            )
+          ) (
+            assume : free_in_prop y R,
+            show y ∈ σ.dom, from set.mem_of_subset_of_mem R_in_σ this
+          )
+        )
+      ),
+
       have e₁_verified': P' ⋀ (spec.func f x R S) ⋀ R ⊢ e₁ : Q₁,
       from ih₁ (P' ⋀ (spec.func f x R S) ⋀ R) h1 h2,
 
       have h3: FV (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))
              = FV (P ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S))),
       from same_free_and_left free_P'_P,
-      have h4: (∀σ, dominates σ (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))
-                                (P ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))),
-      from (λσ, dominates_and_left (P'_dominates_P σ)),
+
+      have h4: (∀σ, (σ ⊨ prop.instantiated_p (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))) →
+        closed_subst σ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S))), from (
+        assume σ: env,
+        assume h3: σ ⊨ prop.instantiated_p (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S))),
+        have h4: σ ⊨ prop.instantiated_p P',
+        from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).left,
+        have h5: σ ⊨ prop.instantiated_p (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)),
+        from (valid_env.and.elim (valid_env.instantiated_p_and_elim h3)).right,
+
+        assume y: var,
+
+        have P_in_σ: FV P ⊆ σ.dom, from (
+          show closed_subst σ P,
+          from (dominates.elim (P'_dominates_P σ) h4).right.left
+        ),
+
+        have P'_in_σ: FV P' ⊆ σ.dom, from (
+          show closed_subst σ P',
+          from (dominates.elim (P'_dominates_P σ) h4).left
+        ),
+
+        have f_in_σ: f ∈ σ.dom, from (
+          have σ ⊨ prop.instantiated_p (term.unop unop.isFunc f),
+          from (valid_env.and.elim (valid_env.instantiated_p_and_elim h5)).left,
+          show f ∈ σ,
+          from env.contains_of_valid_env_term_instantiated (free_in_term.unop (free_in_term.var f)) this
+        ),
+
+        assume : free_in_prop y (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)),
+        let forallp := (prop.implies R.to_prop (prop.pre f x)
+                      ⋀ prop.implies (prop.post f x) (Q₁ (term.app ↑f ↑x) ⋀ ↑S)) in
+        or.elim (free_in_prop.and.inv this) (
+          assume : free_in_prop y (term.unop unop.isFunc f),
+          have free_in_term y (term.unop unop.isFunc f), from free_in_prop.term.inv this,
+          have free_in_term y f, from free_in_term.unop.inv this,
+          have y = f, from free_in_term.var.inv this,
+          show y ∈ σ.dom, from this.symm ▸ f_in_σ
+        ) (
+          assume x_free_in_forallp: free_in_prop y (prop.forallc x f forallp),
+          have y_neq_x: y ≠ x, from (free_in_prop.forallc.inv x_free_in_forallp).left,
+
+          have R_in_σ: y ∈ FV R.to_prop → y ∈ σ.dom, from (
+            assume : free_in_prop y R.to_prop,
+            have y ∈ FV P ∪ {f, x}, from set.mem_of_subset_of_mem fv_R this,
+            or.elim (set.mem_or_mem_of_mem_union this) (
+              assume : y ∈ FV P,
+              show y ∈ σ.dom, from set.mem_of_subset_of_mem P_in_σ this
+            ) (
+              assume : y ∈ {f, x},
+              or.elim (set.two_elems_mem this) (
+                assume : y = f,
+                show y ∈ σ.dom, from this.symm ▸ f_in_σ
+              ) (
+                assume : y = x,
+                show y ∈ σ.dom, from absurd this y_neq_x
+              )
+            )
+          ),
+
+          have S_in_σ: y ∈ FV S.to_prop → y ∈ σ.dom, from (
+            assume : free_in_prop y S.to_prop,
+            have y ∈ FV P ∪ {f, x}, from set.mem_of_subset_of_mem fv_S this,
+            or.elim (set.mem_or_mem_of_mem_union this) (
+              assume : y ∈ FV P,
+              show y ∈ σ.dom, from set.mem_of_subset_of_mem P_in_σ this
+            ) (
+              assume : y ∈ {f, x},
+              or.elim (set.two_elems_mem this) (
+                assume : y = f,
+                show y ∈ σ.dom, from this.symm ▸ f_in_σ
+              ) (
+                assume : y = x,
+                show y ∈ σ.dom, from absurd this y_neq_x
+              )
+            )
+          ),
+
+          have free_in_term y f ∨ free_in_prop y forallp,
+          from (free_in_prop.forallc.inv x_free_in_forallp).right,
+          or.elim this (
+            assume : free_in_term y f,
+            have y = f, from free_in_term.var.inv this,
+            show y ∈ σ.dom, from this.symm ▸ f_in_σ
+          ) (
+            assume : free_in_prop y forallp,
+            or.elim (free_in_prop.and.inv this) (
+              assume : free_in_prop y (prop.implies R.to_prop (prop.pre f x)),
+              or.elim (free_in_prop.implies.inv this) (
+                assume : y ∈ FV R.to_prop,
+                show y ∈ σ.dom, from R_in_σ this
+              ) (
+                assume : free_in_prop y (prop.pre f x),
+                have free_in_term y f ∨ free_in_term y x, from free_in_prop.pre.inv this,
+                or.elim this (
+                  assume : free_in_term y f,
+                  have y = f, from free_in_term.var.inv this,
+                  show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                ) (
+                  assume : free_in_term y x,
+                  have y = x, from free_in_term.var.inv this,
+                  show y ∈ σ.dom, from absurd this y_neq_x
+                )
+              )
+            ) (
+              assume : free_in_prop y (prop.implies (prop.post f x) (Q₁ (term.app ↑f ↑x) ⋀ ↑S)),
+              or.elim (free_in_prop.implies.inv this) (
+                assume : free_in_prop y (prop.post f x),
+                have free_in_term y f ∨ free_in_term y x, from free_in_prop.post.inv this,
+                or.elim this (
+                  assume : free_in_term y f,
+                  have y = f, from free_in_term.var.inv this,
+                  show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                ) (
+                  assume : free_in_term y x,
+                  have y = x, from free_in_term.var.inv this,
+                  show y ∈ σ.dom, from absurd this y_neq_x
+                )
+              ) (
+                assume : free_in_prop y (Q₁ (term.app ↑f ↑x) ⋀ ↑S),
+                or.elim (free_in_prop.and.inv this) (
+                  assume : y ∈ FV (Q₁ (term.app f x)),
+                  have y ∈ FV (term.app f x) ∨ y ∈ FV (P ⋀ spec.func f x R S ⋀ R),
+                  from exp.post_free e₁_verified (term.app f x) this,
+                  or.elim this (
+                    assume : y ∈ FV (term.app f x),
+                    or.elim (free_in_term.app.inv this) (
+                      assume : free_in_term y f,
+                      have y = f, from free_in_term.var.inv this,
+                      show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                    ) (
+                      assume : free_in_term y x,
+                      have y = x, from free_in_term.var.inv this,
+                      show y ∈ σ.dom, from absurd this y_neq_x
+                    )
+                  ) (
+                    assume : y ∈ FV (P ⋀ spec.func f x R S ⋀ R),
+                    or.elim (free_in_prop.and.inv this) (
+                      assume : y ∈ FV P,
+
+                      show y ∈ σ.dom, from sorry
+                    ) (
+                      assume : free_in_prop y (spec.func f x R S ⋀ R),
+                      or.elim (free_in_prop.and.inv this) (
+                        assume h7: free_in_prop y (spec.func f x R S),
+                        have spec.to_prop (spec.func f x R S) = (prop.func f x R.to_prop S.to_prop),
+                        by unfold spec.to_prop,
+                        have free_in_prop y (prop.func f x R.to_prop S.to_prop), from this ▸ h7,
+                        let forallp := (prop.implies R.to_prop (prop.pre f x) ⋀ prop.implies (prop.post f x) S.to_prop) in
+                        or.elim (free_in_prop.and.inv this) (
+                          assume : free_in_prop y (term.unop unop.isFunc f),
+                          have free_in_term y (term.unop unop.isFunc f), from free_in_prop.term.inv this,
+                          have free_in_term y f, from free_in_term.unop.inv this,
+                          have y = f, from free_in_term.var.inv this,
+                          show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                        ) (
+                          assume : free_in_prop y (prop.forallc x f forallp),
+                          have free_in_term y f ∨ free_in_prop y forallp,
+                          from (free_in_prop.forallc.inv this).right,
+                          or.elim this (
+                            assume : free_in_term y f,
+                            have y = f, from free_in_term.var.inv this,
+                            show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                          ) (
+                            assume : free_in_prop y forallp,
+                            or.elim (free_in_prop.and.inv this) (
+                              assume : free_in_prop y (prop.implies R.to_prop (prop.pre f x)),
+                              or.elim (free_in_prop.implies.inv this) (
+                                assume : y ∈ FV R.to_prop,
+                                show y ∈ σ.dom, from R_in_σ this
+                              ) (
+                                assume : free_in_prop y (prop.pre f x),
+                                have free_in_term y f ∨ free_in_term y x, from free_in_prop.pre.inv this,
+                                or.elim this (
+                                  assume : free_in_term y f,
+                                  have y = f, from free_in_term.var.inv this,
+                                  show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                                ) (
+                                  assume : free_in_term y x,
+                                  have y = x, from free_in_term.var.inv this,
+                                  show y ∈ σ.dom, from absurd this y_neq_x
+                                )
+                              )
+                            ) (
+                              assume : free_in_prop y (prop.implies (prop.post f x) S.to_prop),
+                              or.elim (free_in_prop.implies.inv this) (
+                                assume : free_in_prop y (prop.post f x),
+                                have free_in_term y f ∨ free_in_term y x, from free_in_prop.post.inv this,
+                                or.elim this (
+                                  assume : free_in_term y f,
+                                  have y = f, from free_in_term.var.inv this,
+                                  show y ∈ σ.dom, from this.symm ▸ f_in_σ
+                                ) (
+                                  assume : free_in_term y x,
+                                  have y = x, from free_in_term.var.inv this,
+                                  show y ∈ σ.dom, from absurd this y_neq_x
+                                )
+                              ) (
+                                assume : free_in_prop y S.to_prop,
+                                show y ∈ σ.dom, from S_in_σ this
+                              )
+                            )
+                          )
+                        )
+                      ) (
+                        assume : free_in_prop y R.to_prop,
+                        show y ∈ σ.dom, from R_in_σ this
+                      )
+                    )
+                  )
+                ) (
+                  assume : free_in_prop y S.to_prop,
+                  show y ∈ σ.dom, from S_in_σ this
+                )
+              )
+            )
+          )
+        )
+      ),
+
+      have h5: (∀σ, dominates σ (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))
+                      (P ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))),
+      from (λσ, dominates_and_left (P'_dominates_P σ) (h4 σ)),
+
       have e₂_verified': P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)) ⊢ e₂ : Q₂,
-      from ih₂ (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S))) h3 h4,
+      from ih₂ (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S))) h3 h5,
 
       have func_vc': ∀ (σ : env),
              σ ⊨ prop.instantiated_n (prop.implies (P' ⋀ ↑(spec.func ↑f x R S) ⋀ R ⋀ Q₁ (term.app ↑f ↑x)) ↑S),

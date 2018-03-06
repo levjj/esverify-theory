@@ -338,7 +338,9 @@ axiom valid_env.instantiated_p_or_elim {σ: env} {P Q: prop}:
 -- then (P' ∧ Q) implies (P ∧ Q) without cross-instantiations
 axiom valid_env.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates σ P P' →
-  σ ⊨ vc.implies (P ⋀ Q).instantiated_p (P' ⋀ Q).instantiated_p
+  closed_subst σ Q →
+  (σ ⊨ (P ⋀ Q).instantiated_p) →
+  σ ⊨ (P' ⋀ Q).instantiated_p
 
 axiom valid_env.or_not_dist_with_instantiations {σ: env} {P Q: prop}:
   (σ ⊨ (P ⋁ Q).not.instantiated_p) ↔ (σ ⊨ (P.not ⋀ Q.not).instantiated_p)
@@ -1861,3 +1863,90 @@ begin
     cases b
   }
 end
+
+lemma no_calls_in_spec {R: spec}: (calls_p R = ∅) ∧ (calls_n R = ∅) :=
+begin
+  induction R ;
+  split ;
+  apply set.eq_empty_of_forall_not_mem ;
+  assume c: calltrigger ,
+
+
+  change c ∉ calls_p (spec.term a).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases h,
+
+  change c ∉ calls_n (spec.term a).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases h,
+
+  change c ∉ calls_p (spec.not a).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  have h2, from prop.has_call_p.not.inv h,
+  have h3, from (set.forall_not_mem_of_eq_empty x.right) c,
+  contradiction,
+
+  change c ∉ calls_n (spec.not a).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  have h2, from prop.has_call_n.not.inv h,
+  have h3, from (set.forall_not_mem_of_eq_empty x.left) c,
+  contradiction,
+
+  change c ∉ calls_p (spec.and a a_1).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases prop.has_call_p.and.inv h,
+  have h3, from (set.forall_not_mem_of_eq_empty x.left) c,
+  contradiction,
+  have h3, from (set.forall_not_mem_of_eq_empty x_1.left) c,
+  contradiction,
+  
+  change c ∉ calls_n (spec.and a a_1).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases prop.has_call_n.and.inv h,
+  have h3, from (set.forall_not_mem_of_eq_empty x.right) c,
+  contradiction,
+  have h3, from (set.forall_not_mem_of_eq_empty x_1.right) c,
+  contradiction,
+  
+  change c ∉ calls_p (spec.or a a_1).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases prop.has_call_p.or.inv h,
+  have h3, from (set.forall_not_mem_of_eq_empty x.left) c,
+  contradiction,
+  have h3, from (set.forall_not_mem_of_eq_empty x_1.left) c,
+  contradiction,
+  
+  change c ∉ calls_n (spec.or a a_1).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases prop.has_call_n.or.inv h,
+  have h3, from (set.forall_not_mem_of_eq_empty x.right) c,
+  contradiction,
+  have h3, from (set.forall_not_mem_of_eq_empty x_1.right) c,
+  contradiction,
+
+  change c ∉ calls_p (spec.func a a_1 a_2 a_3).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases prop.has_call_p.and.inv h,
+  cases a_4,
+  cases a_4,
+
+  change c ∉ calls_n (spec.func a a_1 a_2 a_3).to_prop,
+  unfold spec.to_prop,
+  intro h,
+  cases prop.has_call_n.and.inv h,
+  cases a_4,
+  cases a_4
+end
+
+lemma spec_instantiated_eq_spec_erased {R: spec}: R.to_prop.instantiated_p = R.to_prop.erased_p :=
+  have calls_p R.to_prop = ∅, from no_calls_in_spec.left,
+  show R.to_prop.instantiated_p = R.to_prop.erased_p, from instantiated_p_eq_erased_p_without_calls this

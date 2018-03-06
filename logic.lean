@@ -372,10 +372,30 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
     show σ ⊨ P₃, from valid_env.mp h2 this
   )
 
+lemma env.contains_of_valid_env_term_instantiated {σ: env} {x: var} {t: term}:
+      x ∈ FV t → (σ ⊨ prop.instantiated_p t) → (x ∈ σ) :=
+  assume x_free_in_t: x ∈ FV t,
+  assume : σ ⊨ prop.instantiated_p t,
+  have h1: σ ⊨ prop.erased_p t, from valid_env.erased_p_of_instantiated_p this,
+  have prop.erased_p (prop.term t) = vc.term t,
+  by unfold prop.erased_p,
+  have σ ⊨ vc.term t, from this.symm ▸ h1,
+  have h2: ⊨ vc.subst_env σ (vc.term t), from this,
+  have vc.subst_env σ (vc.term t) = vc.term (term.subst_env σ t),
+  from vc.subst_env.term,
+  have ⊨ vc.term (term.subst_env σ t), from this ▸ h2,
+  have closed (vc.term (term.subst_env σ t)), from valid.closed this,
+  have h3: closed (term.subst_env σ t), from vc.closed.term.inv this,
+  show x ∈ σ, from by_contradiction (
+    assume : x ∉ σ,
+    have x ∈ FV (term.subst_env σ t), from term.free_of_subst_env x_free_in_t this,
+    show «false», from h3 x this
+  )
+
 lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
       (σ ⊨ prop.instantiated_p (x ≡ v)) → (σ x = v) :=
-  assume : σ ⊨ prop.instantiated_p (x ≡ v),
-  have h1: σ ⊨ prop.erased_p (x ≡ v), from valid_env.erased_p_of_instantiated_p this,
+  assume h0: σ ⊨ prop.instantiated_p (x ≡ v),
+  have h1: σ ⊨ prop.erased_p (x ≡ v), from valid_env.erased_p_of_instantiated_p h0,
   have prop.erased_p (prop.term (x ≡ v)) = vc.term (x ≡ v),
   by unfold prop.erased_p,
   have σ ⊨ vc.term (x ≡ v), from this.symm ▸ h1,
@@ -388,17 +408,7 @@ lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
   have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
   have term.subst_env σ v = v, from term.subst_env.value,
   have h5: ⊨ (term.subst_env σ x ≡ v), from this ▸ h4,
-  have x ∈ σ, from by_contradiction (
-    assume : x ∉ σ,
-    have σ x = none, from env.contains_apply_equiv.left.mpr this,
-    have term.subst_env σ x = x, from term.subst_env.var.left.mp this,
-    have ⊨ (x ≡ v), from this ▸ h5,
-    have closed (vc.term (x ≡ v)), from valid.closed this,
-    have h6: closed (x ≡ v), from vc.closed.term.inv this,
-    have x ∈ FV (term.var x), from free_in_term.var x,
-    have x ∈ FV (x ≡ v), from free_in_term.binop₁ this,
-    show «false», from h6 x this
-  ),
+  have x ∈ σ, from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) h0,
   have ∃v', σ x = some v', from env.contains_apply_equiv.right.mpr this,
   let ⟨v', h6⟩ := this in
   have term.subst_env σ x = v', from (term.subst_env.var.right v').mp h6,

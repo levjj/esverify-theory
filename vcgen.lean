@@ -24,7 +24,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     f ∉ FV P →
     x ∉ FV P →
     f ≠ x →
-    x ∈ FV R.to_prop →
+    x ∈ FV R.to_prop.instantiated_p →
     FV R.to_prop ⊆ FV P ∪ { f, x } →
     FV S.to_prop ⊆ FV P ∪ { f, x } →
     (P ⋀ spec.func f x R S ⋀ R ⊢ e₁ : Q₁) →

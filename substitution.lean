@@ -1440,6 +1440,41 @@ lemma vc.free_of_diff_subst {x y: var} {v: value} {P: vc}: x ∈ FV P → x ≠ 
     }
   end
 
+lemma term.free_of_subst_env {x: var} {σ: env} {t: term}: x ∈ FV t → x ∉ σ → x ∈ FV (term.subst_env σ t) :=
+  assume x_free: x ∈ FV t,
+  assume x_not_in_σ: x ∉ σ,
+  show x ∈ FV (term.subst_env σ t), begin
+    induction σ with σ' y v ih,
+
+    -- env.empty
+    show x ∈ FV (term.subst_env env.empty t), begin
+      unfold term.subst_env,
+      from x_free
+    end,
+
+    -- σ'[x↦v]
+    show x ∈ FV (term.subst_env (σ'[y↦v]) t), begin
+      unfold term.subst_env,
+      by_cases (x = y),
+      begin -- x = y
+        rw[h] at x_not_in_σ,
+        have : y ∈ (σ'[y↦v]), from env.contains.same,
+        contradiction
+      end,
+      begin -- x ≠ y
+        by_cases (x ∈ σ') with h2,
+        begin -- x ∈ σ'
+          have : x ∈ (σ'[y↦v]), from env.contains.rest h2,
+          contradiction
+        end,
+        begin -- x ∉ σ'
+          have : x ∈ FV (term.subst_env σ' t), from ih h2,
+          from term.free_of_diff_subst this h
+        end,
+      end
+    end
+  end
+
 lemma vc.free_of_subst_env {x: var} {σ: env} {P: vc}: x ∈ FV P → x ∉ σ → x ∈ FV (vc.subst_env σ P) :=
   assume x_free: x ∈ FV P,
   assume x_not_in_σ: x ∉ σ,
