@@ -243,10 +243,9 @@ end
 
 def dominates': prop → prop → env → Prop
 | P' P σ :=
-    (σ ⊨ P.instantiated_p) →
     closed_subst σ P ∧
     closed_subst σ P' ∧
-    (σ ⊨ P'.instantiated_p) ∧
+    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,

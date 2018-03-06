@@ -1040,6 +1040,12 @@ lemma free_iff_contains {P: prop} {σ: env}: (⊢ σ : P) → (σ.dom = FV P) :=
     show x ∈ σ.dom, from this
   )
 
+lemma env_translation_closed_subst {P: prop} {σ: env}: (⊢ σ : P) → closed_subst σ P :=
+  assume σ_verified: ⊢ σ : P,
+  assume z: var,
+  assume : z ∈ FV P,
+  show z ∈ σ.dom, from (free_iff_contains σ_verified).symm ▸ this
+
 lemma env.dom.inv {σ: env} {x: var} {v: value}: (σ[x↦v]).dom = (σ.dom ∪ set.insert x ∅) :=
   set.eq_of_subset_of_subset (
     assume y: var,
