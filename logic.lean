@@ -1049,20 +1049,20 @@ lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: 
   show σ ⊨ Q.erased_n, from valid_env.mp h4 this
 
 lemma dominates_of {σ: env} {P P': prop}:
-    closed_subst σ P ∧
-    closed_subst σ P' ∧
-    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
+    ((σ ⊨ P.instantiated_p) →
+    (σ ⊨ P'.instantiated_p) ∧
+    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))) →
+                          (∀v: value, dominates' Q' Q (σ[x↦v])))) →
     dominates σ P P' :=
   
   assume h: 
-    closed_subst σ P ∧
-    closed_subst σ P' ∧
-    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
+    (σ ⊨ P.instantiated_p) →
+    (σ ⊨ P'.instantiated_p) ∧
+    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1070,23 +1070,23 @@ lemma dominates_of {σ: env} {P P': prop}:
                           (∀v: value, dominates' Q' Q (σ[x↦v]))),
   have
     dominates' P' P σ = (
-      closed_subst σ P ∧
-      closed_subst σ P' ∧
-      ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
+    (σ ⊨ P.instantiated_p) → (
+      (σ ⊨ P'.instantiated_p) ∧
+      (FV P' ⊆ FV P) ∧
       (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
       (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
       ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v])))),
+                          (∀v: value, dominates' Q' Q (σ[x↦v]))))),
   by unfold1 dominates',
   have dominates' P' P σ, from this.symm ▸ h,
   show dominates σ P P', from this
 
 lemma dominates.elim {σ: env} {P P': prop}:
     dominates σ P P' →
-    closed_subst σ P ∧
-    closed_subst σ P' ∧
-    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
+    (σ ⊨ P.instantiated_p) →
+    (σ ⊨ P'.instantiated_p) ∧
+    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1097,22 +1097,22 @@ lemma dominates.elim {σ: env} {P P': prop}:
   have h: dominates' P' P σ, from this,
   have
     dominates' P' P σ = (
-    closed_subst σ P ∧
-    closed_subst σ P' ∧
-    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
+    (σ ⊨ P.instantiated_p) →
+    ((σ ⊨ P'.instantiated_p) ∧
+    (FV P' ⊆ FV P) ∧
+    (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
+    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
+                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
+    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
+                          (∀v: value, dominates' Q' Q (σ[x↦v]))))),
+  by unfold1 dominates',
+  show 
+    (σ ⊨ P.instantiated_p) →
+    ((σ ⊨ P'.instantiated_p) ∧
+    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
                           (∀v: value, dominates' Q' Q (σ[x↦v])))),
-  by unfold1 dominates',
-  show 
-    closed_subst σ P ∧
-    closed_subst σ P' ∧
-    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
-    (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))),
   from this ▸ h

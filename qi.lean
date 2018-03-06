@@ -243,9 +243,9 @@ end
 
 def dominates': prop → prop → env → Prop
 | P' P σ :=
-    closed_subst σ P ∧
-    closed_subst σ P' ∧
-    ((σ ⊨ P.instantiated_p) → (σ ⊨ P'.instantiated_p)) ∧
+    (σ ⊨ P.instantiated_p) →
+    (σ ⊨ P'.instantiated_p) ∧
+    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -337,7 +337,6 @@ axiom valid_env.instantiated_p_or_elim {σ: env} {P Q: prop}:
 -- then (P' ∧ Q) implies (P ∧ Q) without cross-instantiations
 axiom valid_env.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates σ P P' →
-  closed_subst σ Q →
   (σ ⊨ (P ⋀ Q).instantiated_p) →
   σ ⊨ (P' ⋀ Q).instantiated_p
 
