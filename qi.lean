@@ -245,7 +245,6 @@ def dominates': prop → prop → env → Prop
 | P' P σ :=
     (σ ⊨ P.instantiated_p) →
     (σ ⊨ P'.instantiated_p) ∧
-    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -369,10 +368,10 @@ axiom free_of_instantiated_p_free {x: var} {P: prop}:
 axiom free_of_instantiated_n_free {x: var} {P: prop}:
   x ∈ FV P.instantiated_n → x ∈ FV P
 
-axiom free_in_prop.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
-  dominates σ P P' →
-  FV (P' ⋀ Q).instantiated_p ⊆
-  FV (P ⋀ Q).instantiated_p
+axiom free_in_prop.strengthen_or_with_dominating_instantiations {P P' Q: prop}:
+  FV P ⊆ FV P' →
+  FV (P ⋁ Q).instantiated_n ⊆
+  FV (P' ⋁ Q).instantiated_n
 
 axiom free_in_prop.or_not_dist_with_instantiations {P Q: prop}:
   FV (P ⋁ Q).not.instantiated_p = FV (P.not ⋀ Q.not).instantiated_p

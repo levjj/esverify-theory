@@ -1189,7 +1189,6 @@ lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: 
 lemma dominates_of {σ: env} {P P': prop}:
     ((σ ⊨ P.instantiated_p) →
     (σ ⊨ P'.instantiated_p) ∧
-    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1200,7 +1199,6 @@ lemma dominates_of {σ: env} {P P': prop}:
   assume h: 
     (σ ⊨ P.instantiated_p) →
     (σ ⊨ P'.instantiated_p) ∧
-    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1210,7 +1208,6 @@ lemma dominates_of {σ: env} {P P': prop}:
     dominates' P' P σ = (
     (σ ⊨ P.instantiated_p) → (
       (σ ⊨ P'.instantiated_p) ∧
-      (FV P' ⊆ FV P) ∧
       (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
       (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1224,7 +1221,6 @@ lemma dominates.elim {σ: env} {P P': prop}:
     dominates σ P P' →
     (σ ⊨ P.instantiated_p) →
     (σ ⊨ P'.instantiated_p) ∧
-    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1237,7 +1233,6 @@ lemma dominates.elim {σ: env} {P P': prop}:
     dominates' P' P σ = (
     (σ ⊨ P.instantiated_p) →
     ((σ ⊨ P'.instantiated_p) ∧
-    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
@@ -1247,7 +1242,6 @@ lemma dominates.elim {σ: env} {P P': prop}:
   show 
     (σ ⊨ P.instantiated_p) →
     ((σ ⊨ P'.instantiated_p) ∧
-    (FV P' ⊆ FV P) ∧
     (calls_p_subst σ P' ⊆ calls_p_subst σ P) ∧
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
