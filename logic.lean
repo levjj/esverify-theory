@@ -158,20 +158,21 @@ lemma valid.not.mpr {P: vc}: (⊨ P.not) → ¬ ⊨ P :=
   have ⊨ (P ⋀ P.not), from valid.and.mp ⟨h3, h2⟩,
   show «false», from valid.contradiction this
 
-lemma valid.neg_neg {P: vc}: (⊨ P.not.not) ↔ ⊨ P :=
+lemma valid.not_not {P: vc}: (⊨ P.not.not) ↔ ⊨ P :=
   iff.intro (
-    assume : ⊨ P.not.not,
-    have P_not_closed: closed P.not, from vc.closed.not.inv (valid.closed this),
-    have P_closed: closed P, from vc.closed.not.inv P_not_closed,
-    have h1: ¬ ⊨ P.not, from valid.not.mpr this,
-    have h2: ¬ ¬ ⊨ P, from (
+    assume h1: ⊨ P.not.not,
+    have closed P.not, from vc.closed.not.inv (valid.closed h1),
+    have h2: closed P, from vc.closed.not.inv this,
+    have h3: ¬ ⊨ P.not, from valid.not.mpr h1,
+    have h4: ¬ ¬ ⊨ P, from (
       assume : ¬ ⊨ P,
-      have ⊨ P.not, from valid.not.mp P_closed this,
-      show «false», from h1 this
+      have ⊨ P.not, from valid.not.mp h2 this,
+      show «false», from h3 this
     ),
-    show ⊨ P, from classical.by_contradiction (
-      assume : ¬ ⊨ P,
-      show «false», from h2 this
+    or.elim (valid.or.elim (valid.em h2)) id (
+      assume : ⊨ P.not,
+      have ¬ ⊨ P, from valid.not.mpr this,
+      show ⊨ P, from absurd this h4
     )
   ) (
     assume h1: ⊨ P,
@@ -268,17 +269,17 @@ lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (t ≡ value.tr
     show ⊨ vc.subst_env σ t, from this.symm ▸ h3
   )
 
-lemma valid_env.neg_neg {σ: env} {P: vc}: (σ ⊨ P.not.not) ↔ σ ⊨ P :=
+lemma valid_env.not_not {σ: env} {P: vc}: (σ ⊨ P.not.not) ↔ σ ⊨ P :=
   iff.intro (
     assume h1: σ ⊨ P.not.not,
     have vc.subst_env σ P.not.not = (vc.subst_env σ P.not).not, from vc.subst_env.not,
     have h2: ⊨ (vc.subst_env σ P.not).not, from this ▸ h1,
     have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
     have  ⊨ (vc.subst_env σ P).not.not, from this ▸ h2,
-    show σ ⊨ P, from valid.neg_neg.mp this
+    show σ ⊨ P, from valid.not_not.mp this
   ) (
     assume : σ ⊨ P,
-    have h1: ⊨ (vc.subst_env σ P).not.not, from valid.neg_neg.mpr this,
+    have h1: ⊨ (vc.subst_env σ P).not.not, from valid.not_not.mpr this,
     have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
     have h2: ⊨ (vc.subst_env σ P.not).not, from this.symm ▸ h1,
     have vc.subst_env σ P.not.not = (vc.subst_env σ P.not).not, from vc.subst_env.not,

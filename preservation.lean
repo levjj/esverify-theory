@@ -429,7 +429,7 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
     show x ∈ σ.dom,
     from set.mem_of_subset_of_mem (valid_env.closed h0) this
   ),
-  have h12: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr h0,
+  have h12: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.not_not.mpr h0,
   have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
   have σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h12,
   have h2: ¬ σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.not.mpr this,
@@ -440,7 +440,7 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
     have h42: P'.not.not.instantiated_p = P'.not.instantiated_n.not, from not_dist_instantiated_p,
     have h43: P'.not.instantiated_n = P'.instantiated_p.not, from not_dist_instantiated_n,
     have σ ⊨ P'.instantiated_p.not.not, from h43 ▸ h42 ▸ h41,
-    have σ ⊨ P'.instantiated_p, from valid_env.neg_neg.mp this,
+    have σ ⊨ P'.instantiated_p, from valid_env.not_not.mp this,
     have dominates σ P'.not.not P', from dominates.not_not,
     have h5: σ ⊨ (P' ⋀ Q.not).instantiated_p,
     from strengthen_and_with_dominating_instantiations this h4,
@@ -455,7 +455,7 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.not.mp h11 this,
   have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
   have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
-  show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.neg_neg.mp this
+  show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.not_not.mp this
 
 lemma strengthen_vc {P P' Q S: prop} {σ: env}:
   dominates σ P' P → FV P' ⊆ FV P →
