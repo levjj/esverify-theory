@@ -1082,3 +1082,25 @@ lemma env.dom.two_elems {σ: env} {x y: var} {v₁ v₂: value}:
                            ... = σ.dom ∪ set.insert x ∅ ∪ set.insert y ∅ : by rw[env.dom.inv]
                            ... = σ.dom ∪ (set.insert x ∅ ∪ set.insert y ∅) : by rw[set.union_assoc]
                            ... = σ.dom ∪ {x, y} : by rw[set.two_elems_of_insert]
+
+lemma env.apply_of_contains {σ: env} {x: var} {v: value}:
+      x ∉ σ → ((σ[x↦v]) x = v) :=
+  begin
+    intro h,
+    change (env.apply (σ[x↦v]) x = some v),
+    unfold env.apply,
+    by_cases (x = x ∧ (option.is_none (env.apply σ x))) with h2,
+    simp[h2],
+    refl,
+    simp at h2,
+    have h3, from env.contains_apply_equiv.left.mpr h,
+    have h4: (env.apply σ x = none), from h3,
+    rw[h4] at h2,
+    unfold option.is_none at h2,
+    have h5: (↑tt = «false»), from eq_false_intro h2,
+    have h6: (↑tt = «true»), by simp,
+    have h7: («false» = «true»), from eq.trans h5.symm h6,
+    have h8: «true», from trivial,
+    have r9: «false», from h7.symm ▸ h8,
+    contradiction
+  end
