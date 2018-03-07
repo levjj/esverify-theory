@@ -369,6 +369,14 @@ axiom free_of_instantiated_p_free {x: var} {P: prop}:
 axiom free_of_instantiated_n_free {x: var} {P: prop}:
   x ∈ FV P.instantiated_n → x ∈ FV P
 
+axiom free_in_prop.strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
+  dominates σ P P' →
+  FV (P' ⋀ Q).instantiated_p ⊆
+  FV (P ⋀ Q).instantiated_p
+
+axiom free_in_prop.or_not_dist_with_instantiations {P Q: prop}:
+  FV (P ⋁ Q).not.instantiated_p = FV (P.not ⋀ Q.not).instantiated_p
+
 -- lemmas
 
 -- lemma valid.instantiated_n_of_erased_n {P: prop}:

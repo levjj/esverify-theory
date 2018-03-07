@@ -978,10 +978,22 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   -- have closed_subst σ (P'.not ⋁ Q), from prop.closed_subst.or this Q_closed,
   -- have closed_subst σ (P'.not ⋁ Q).not, from prop.closed_subst.not this,
   -- have h0: closed_subst σ (P'.not ⋁ Q).not.instantiated_p, from instantiated_p_closed_subst_of_closed this,
-  assume : σ ⊨ (P.not ⋁ Q).instantiated_n,
-  have h1: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr this,
+  assume h0: σ ⊨ (P.not ⋁ Q).instantiated_n,
+  have h11: closed_subst σ (P'.not ⋁ Q).not.instantiated_p, from (
+    assume x: var,
+    assume : x ∈ FV (P'.not ⋁ Q).not.instantiated_p,
+    -- have x ∈ FV (P.not ⋁ Q).instantiated_n,
+    -- from set.mem_of_subset_of_mem (free_in_prop.strengthen_or_with_dominating_instantiations P'_dominates_P) this,
+
+    -- have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
+
+    have x ∈ FV (P.not ⋁ Q).instantiated_n, from sorry,
+    show x ∈ σ.dom,
+    from set.mem_of_subset_of_mem (valid_env.closed h0) this
+  ),
+  have h12: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.neg_neg.mpr h0,
   have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
-  have σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h1,
+  have σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h12,
   have h2: ¬ σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.not.mpr this,
   have h3: (σ ⊨ (P'.not ⋁ Q).not.instantiated_p) → (σ ⊨ (P.not ⋁ Q).not.instantiated_p), from (
     assume : σ ⊨ (P'.not ⋁ Q).not.instantiated_p,
@@ -1002,7 +1014,7 @@ lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
     show σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.or_not_dist_with_instantiations.mpr this
   ),
   have ¬ σ ⊨ (P'.not ⋁ Q).not.instantiated_p, from mt h3 h2,
-  have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.not.mp h0 this,
+  have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.not.mp h11 this,
   have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
   have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
   show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.neg_neg.mp this
