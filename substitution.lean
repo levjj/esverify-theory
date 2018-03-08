@@ -30,7 +30,7 @@ def prop.subst (x: var) (v: value): prop → prop
 | (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.subst x v t₁) (term.subst x v t₂)
 | (prop.call t₁ t₂)    := prop.call (term.subst x v t₁) (term.subst x v t₂)
 | (prop.post t₁ t₂)    := prop.post (term.subst x v t₁) (term.subst x v t₂)
-| (prop.forallc y t P) := prop.forallc y (term.subst x v t) (if x = y then P else P.subst)
+| (prop.forallc y t P) := prop.forallc y (if x = y then t else term.subst x v t) (if x = y then P else P.subst)
 | (prop.exis y P)      := prop.exis y (if x = y then P else P.subst)
 
 def prop.subst_env: env → prop → prop
@@ -160,6 +160,233 @@ lemma term.subst.var.diff {x y: var} {v: value}: (x ≠ y) → (term.subst x v y
   have h: term.subst x v (term.var y) = (if x = y then v else y), by unfold term.subst,
   have (if x = y then (term.value v) else (term.var y)) = (term.var y), by simp[x_neq_y],
   show term.subst x v y = y, from eq.trans h this
+
+lemma unchanged_of_subst_nonfree_prop {P: prop} {x: var} {v: value}:
+    x ∉ FV P → (prop.subst x v P = P) :=
+  assume x_not_free: ¬ free_in_prop x P,
+  begin
+    induction P,
+    case prop.term t { from (
+      have h: prop.subst x v (prop.term t) = term.subst x v t, by unfold prop.subst,
+      have ¬ free_in_term x t, from (
+        assume : free_in_term x t,
+        have free_in_prop x (prop.term t), from free_in_prop.term this,
+        show «false», from x_not_free this
+      ),
+      have term.subst x v t = t, from unchanged_of_subst_nonfree_term this,
+      show prop.subst x v t = prop.term t,
+      from @eq.subst term (λa, prop.subst x v (prop.term t) = prop.term a) (term.subst x v t) t this h
+    )},
+    case prop.not P₁ ih { from (
+      have h: prop.subst x v P₁.not = (prop.subst x v P₁).not, by unfold prop.subst,
+      have ¬ free_in_prop x P₁, from (
+        assume : free_in_prop x P₁,
+        have free_in_prop x P₁.not, from free_in_prop.not this,
+        show «false», from x_not_free this
+      ),
+      have prop.subst x v P₁ = P₁, from ih this,
+      show prop.subst x v P₁.not = P₁.not,
+      from @eq.subst prop (λa, prop.subst x v P₁.not = prop.not a) (prop.subst x v P₁) P₁ this h
+    )},
+    case prop.and P₁ P₂ P₁_ih P₂_ih { from (
+      have h: prop.subst x v (prop.and P₁ P₂) = (prop.subst x v P₁ ⋀ prop.subst x v P₂), by unfold prop.subst,
+      have ¬ free_in_prop x P₁, from (
+        assume : free_in_prop x P₁,
+        have free_in_prop x (P₁ ⋀ P₂), from free_in_prop.and₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: prop.subst x v P₁ = P₁, from P₁_ih this,
+      have ¬ free_in_prop x P₂, from (
+        assume : free_in_prop x P₂,
+        have free_in_prop x (P₁ ⋀ P₂), from free_in_prop.and₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: prop.subst x v P₂ = P₂, from P₂_ih this,
+      have prop.subst x v (P₁ ⋀ P₂) = (P₁ ⋀ prop.subst x v P₂),
+      from @eq.subst prop (λa, prop.subst x v (prop.and P₁ P₂) = (a ⋀ prop.subst x v P₂)) (prop.subst x v P₁) P₁ h1 h,
+      show prop.subst x v (P₁ ⋀ P₂) = (P₁ ⋀ P₂),
+      from @eq.subst prop (λa, prop.subst x v (prop.and P₁ P₂) = (P₁ ⋀ a)) (prop.subst x v P₂) P₂ h2 this
+    )},
+    case prop.or P₁ P₂ P₁_ih P₂_ih { from (
+      have h: prop.subst x v (prop.or P₁ P₂) = (prop.subst x v P₁ ⋁ prop.subst x v P₂), by unfold prop.subst,
+      have ¬ free_in_prop x P₁, from (
+        assume : free_in_prop x P₁,
+        have free_in_prop x (P₁ ⋁ P₂), from free_in_prop.or₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: prop.subst x v P₁ = P₁, from P₁_ih this,
+      have ¬ free_in_prop x P₂, from (
+        assume : free_in_prop x P₂,
+        have free_in_prop x (P₁ ⋁ P₂), from free_in_prop.or₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: prop.subst x v P₂ = P₂, from P₂_ih this,
+      have prop.subst x v (P₁ ⋁ P₂) = (P₁ ⋁ prop.subst x v P₂),
+      from @eq.subst prop (λa, prop.subst x v (prop.or P₁ P₂) = (a ⋁ prop.subst x v P₂)) (prop.subst x v P₁) P₁ h1 h,
+      show prop.subst x v (P₁ ⋁ P₂) = (P₁ ⋁ P₂),
+      from @eq.subst prop (λa, prop.subst x v (prop.or P₁ P₂) = (P₁ ⋁ a)) (prop.subst x v P₂) P₂ h2 this
+    )},
+    case prop.pre t₁ t₂ { from (
+      have h: prop.subst x v (prop.pre t₁ t₂) = prop.pre (term.subst x v t₁) (term.subst x v t₂), by unfold prop.subst,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_prop x (prop.pre t₁ t₂), from free_in_prop.pre₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.subst x v t₁ = t₁, from unchanged_of_subst_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_prop x (prop.pre t₁ t₂), from free_in_prop.pre₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.subst x v t₂ = t₂, from unchanged_of_subst_nonfree_term this,
+      have prop.subst x v (prop.pre t₁ t₂) = prop.pre t₁ (term.subst x v t₂),
+      from @eq.subst term (λa, prop.subst x v (prop.pre t₁ t₂) = prop.pre a (term.subst x v t₂)) (term.subst x v t₁) t₁ h1 h,
+      show prop.subst x v (prop.pre t₁ t₂) = prop.pre t₁ t₂,
+      from @eq.subst term (λa, prop.subst x v (prop.pre t₁ t₂) = prop.pre t₁ a) (term.subst x v t₂) t₂ h2 this
+    )},
+    case prop.pre₁ op t { from (
+      have h: prop.subst x v (prop.pre₁ op t) = prop.pre₁ op (term.subst x v t), by unfold prop.subst,
+      have ¬ free_in_term x t, from (
+        assume : free_in_term x t,
+        have free_in_prop x (prop.pre₁ op t), from free_in_prop.preop this,
+        show «false», from x_not_free this
+      ),
+      have term.subst x v t = t, from unchanged_of_subst_nonfree_term this,
+      show prop.subst x v (prop.pre₁ op t) = prop.pre₁ op t,
+      from @eq.subst term (λa, prop.subst x v (prop.pre₁ op t) = prop.pre₁ op a) (term.subst x v t) t this h
+    )},
+    case prop.pre₂ op t₁ t₂ { from (
+      have h: prop.subst x v (prop.pre₂ op t₁ t₂) = prop.pre₂ op (term.subst x v t₁) (term.subst x v t₂),
+      by unfold prop.subst,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_prop x (prop.pre₂ op t₁ t₂), from free_in_prop.preop₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.subst x v t₁ = t₁, from unchanged_of_subst_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_prop x (prop.pre₂ op t₁ t₂), from free_in_prop.preop₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.subst x v t₂ = t₂, from unchanged_of_subst_nonfree_term this,
+      have prop.subst x v (prop.pre₂ op t₁ t₂) = prop.pre₂ op t₁ (term.subst x v t₂),
+      from @eq.subst term (λa, prop.subst x v (prop.pre₂ op t₁ t₂) = prop.pre₂ op a (term.subst x v t₂)) (term.subst x v t₁) t₁ h1 h,
+      show prop.subst x v (prop.pre₂ op t₁ t₂) = prop.pre₂ op t₁ t₂,
+      from @eq.subst term (λa, prop.subst x v (prop.pre₂ op t₁ t₂) = prop.pre₂ op t₁ a) (term.subst x v t₂) t₂ h2 this
+    )},
+    case prop.call t₁ t₂ { from (
+      have h: prop.subst x v (prop.call t₁ t₂) = prop.call (term.subst x v t₁) (term.subst x v t₂), by unfold prop.subst,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_prop x (prop.call t₁ t₂), from free_in_prop.call₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.subst x v t₁ = t₁, from unchanged_of_subst_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_prop x (prop.call t₁ t₂), from free_in_prop.call₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.subst x v t₂ = t₂, from unchanged_of_subst_nonfree_term this,
+      have prop.subst x v (prop.call t₁ t₂) = prop.call t₁ (term.subst x v t₂),
+      from @eq.subst term (λa, prop.subst x v (prop.call t₁ t₂) = prop.call a (term.subst x v t₂)) (term.subst x v t₁) t₁ h1 h,
+      show prop.subst x v (prop.call t₁ t₂) = prop.call t₁ t₂,
+      from @eq.subst term (λa, prop.subst x v (prop.call t₁ t₂) = prop.call t₁ a) (term.subst x v t₂) t₂ h2 this
+    )},
+    case prop.post t₁ t₂ { from (
+      have h: prop.subst x v (prop.post t₁ t₂) = prop.post (term.subst x v t₁) (term.subst x v t₂), by unfold prop.subst,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_prop x (prop.post t₁ t₂), from free_in_prop.post₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.subst x v t₁ = t₁, from unchanged_of_subst_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_prop x (prop.post t₁ t₂), from free_in_prop.post₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.subst x v t₂ = t₂, from unchanged_of_subst_nonfree_term this,
+      have prop.subst x v (prop.post t₁ t₂) = prop.post t₁ (term.subst x v t₂),
+      from @eq.subst term (λa, prop.subst x v (prop.post t₁ t₂) = prop.post a (term.subst x v t₂)) (term.subst x v t₁) t₁ h1 h,
+      show prop.subst x v (prop.post t₁ t₂) = prop.post t₁ t₂,
+      from @eq.subst term (λa, prop.subst x v (prop.post t₁ t₂) = prop.post t₁ a) (term.subst x v t₂) t₂ h2 this
+    )},
+    case prop.forallc y t P' P'_ih { from (
+      have h: prop.subst x v (prop.forallc y t P')
+            = prop.forallc y (if x = y then t else term.subst x v t) (if x = y then P' else prop.subst x v P'),
+      by unfold prop.subst,
+
+      if x_eq_y: x = y then (
+        have (if x = y then t else term.subst x v t) = t, by simp[x_eq_y],
+
+        have h2: prop.subst x v (prop.forallc y t P') = prop.forallc y t (if x = y then P' else prop.subst x v P'),
+        from @eq.subst term (λa, prop.subst x v (prop.forallc y t P')
+                               = prop.forallc y a (if x = y then P' else prop.subst x v P'))
+                          (if x = y then t else term.subst x v t) t this h,
+
+        have (if x = y then P' else prop.subst x v P') = P', by simp[x_eq_y],
+        show prop.subst x v (prop.forallc y t P') = prop.forallc y t P',
+        from @eq.subst prop (λa, prop.subst x v (prop.forallc y t P') = prop.forallc y t a)
+                          (if x = y then P' else prop.subst x v P') P' this h2
+      ) else (
+
+        have (if x = y then t else term.subst x v t) = term.subst x v t, by simp[x_eq_y],
+        have h2: prop.subst x v (prop.forallc y t P')
+               = prop.forallc y (term.subst x v t) (if x = y then P' else prop.subst x v P'),
+        from @eq.subst term (λa, prop.subst x v (prop.forallc y t P')
+                               = prop.forallc y a (if x = y then P' else prop.subst x v P'))
+                          (if x = y then t else term.subst x v t) (term.subst x v t) this h,
+        have ¬ free_in_term x t, from (
+          assume : free_in_term x t,
+          have free_in_prop x (prop.forallc y t P'), from free_in_prop.forallc₁ x_eq_y this,
+          show «false», from x_not_free this
+        ),
+        have term.subst x v t = t, from unchanged_of_subst_nonfree_term this,
+        have h3: prop.subst x v (prop.forallc y t P') = prop.forallc y t (if x = y then P' else prop.subst x v P'),
+        from @eq.subst term (λa, prop.subst x v (prop.forallc y t P')
+                         = prop.forallc y a (if x = y then P' else prop.subst x v P')) (term.subst x v t) t this h2,
+
+        have (if x = y then P' else prop.subst x v P') = prop.subst x v P', by simp[x_eq_y],
+        have h4: prop.subst x v (prop.forallc y t P') = prop.forallc y t (prop.subst x v P'),
+        from @eq.subst prop (λa, prop.subst x v (prop.forallc y t P') = prop.forallc y t a)
+                          (if x = y then P' else prop.subst x v P') (prop.subst x v P') this h3,
+        have ¬ free_in_prop x P', from (
+          assume : free_in_prop x P',
+          have free_in_prop x (prop.forallc y t P'), from free_in_prop.forallc₂ x_eq_y this,
+          show «false», from x_not_free this
+        ),
+        have prop.subst x v P' = P', from P'_ih this,
+        show prop.subst x v (prop.forallc y t P') = prop.forallc y t P',
+        from @eq.subst prop (λa, prop.subst x v (prop.forallc y t P')
+                               = prop.forallc y t a) (prop.subst x v P') P' this h4
+      )
+    )},
+    case prop.exis y P' P'_ih { from (
+      have h: prop.subst x v (prop.exis y P') = prop.exis y (if x = y then P' else prop.subst x v P'), by unfold prop.subst,
+      if x_eq_y: x = y then (
+        have (if x = y then P' else prop.subst x v P') = P', by simp[x_eq_y],
+        show prop.subst x v (prop.exis y P') = prop.exis y P',
+        from @eq.subst prop (λa, prop.subst x v (prop.exis y P') = prop.exis y a)
+                          (if x = y then P' else prop.subst x v P') P' this h
+      ) else (
+        have (if x = y then P' else prop.subst x v P') = prop.subst x v P', by simp[x_eq_y],
+        have h2: prop.subst x v (prop.exis y P') = prop.exis y (prop.subst x v P'),
+        from @eq.subst prop (λa, prop.subst x v (prop.exis y P') = prop.exis y a)
+                          (if x = y then P' else prop.subst x v P') (prop.subst x v P') this h,
+        have ¬ free_in_prop x P', from (
+          assume : free_in_prop x P',
+          have free_in_prop x (prop.exis y P'), from free_in_prop.exis x_eq_y this,
+          show «false», from x_not_free this
+        ),
+        have prop.subst x v P' = P', from P'_ih this,
+        show prop.subst x v (prop.exis y P') = prop.exis y P',
+        from @eq.subst prop (λa, prop.subst x v (prop.exis y P') = prop.exis y a) (prop.subst x v P') P' this h2
+      )
+    )}
+  end
 
 lemma unchanged_of_subst_nonfree_vc {P: vc} {x: var} {v: value}:
     x ∉ FV P → (vc.subst x v P = P) :=
@@ -516,15 +743,23 @@ lemma free_of_subst_prop {P: prop} {x y: var} {v: value}:
       )
     )},
     case prop.forallc z t P ih { from (
-      have prop.subst y v (prop.forallc z t P) = prop.forallc z (term.subst y v t) (if y = z then P else P.subst y v),
+      have prop.subst y v (prop.forallc z t P)
+         = prop.forallc z (if y = z then t else term.subst y v t) (if y = z then P else P.subst y v),
       by unfold prop.subst,
-      have free_in_prop x (prop.forallc z (term.subst y v t) (if y = z then P else P.subst y v)),
+      have free_in_prop x (prop.forallc z (if y = z then t else term.subst y v t) (if y = z then P else P.subst y v)),
       from this ▸ x_free_in_subst,
       have x_neq_z: x ≠ z, from (free_in_prop.forallc.inv this).left,
       or.elim (free_in_prop.forallc.inv this).right (
-        assume : free_in_term x (term.subst y v t),
-        have x ≠ y ∧ free_in_term x t, from free_of_subst_term this,
-        show x ≠ y ∧ free_in_prop x (prop.forallc z t P), from ⟨this.left, free_in_prop.forallc₁ x_neq_z this.right⟩
+        assume fre_ite: free_in_term x (if y = z then t else term.subst y v t),
+        if y_eq_z: y = z then (
+          have x_neq_y: x ≠ y, from y_eq_z.symm ▸ x_neq_z,
+          have free_in_term x t, by { simp[y_eq_z] at fre_ite, from fre_ite },
+          show x ≠ y ∧ free_in_prop x (prop.forallc z t P), from ⟨x_neq_y, free_in_prop.forallc₁ x_neq_z this⟩
+        ) else (
+          have free_in_term x (term.subst y v t), by { simp[y_eq_z] at fre_ite, from fre_ite },
+          have x ≠ y ∧ free_in_term x t, from free_of_subst_term this,
+          show x ≠ y ∧ free_in_prop x (prop.forallc z t P), from ⟨this.left, free_in_prop.forallc₁ x_neq_z this.right⟩
+        )
       ) (
         assume fre_ite: free_in_prop x (if y = z then P else P.subst y v),
         if y_eq_z: y = z then (
@@ -1118,8 +1353,10 @@ lemma prop.not_free_of_subst {x: var} {v: value} {P: prop}: x ∉ FV (prop.subst
     )},
     case prop.forallc y t P₁ P₁_ih { from (
       have prop.subst x v (prop.forallc y t P₁)
-         = prop.forallc y (term.subst x v t) (if x = y then P₁ else P₁.subst x v), by unfold prop.subst,
-      have x ∈ FV (prop.forallc y (t.subst x v) (if x = y then P₁ else P₁.subst x v)), from this ▸ x_free,
+         = prop.forallc y (if x = y then t else term.subst x v t) (if x = y then P₁ else P₁.subst x v),
+      by unfold prop.subst,
+      have x ∈ FV (prop.forallc y (if x = y then t else term.subst x v t) (if x = y then P₁ else P₁.subst x v)),
+      from this ▸ x_free,
       have y_neq_x: x ≠ y, from (free_in_prop.forallc.inv this).left,
       have x ∈ FV (prop.forallc y (t.subst x v) (P₁.subst x v)), by { simp[y_neq_x] at this, from this },
       have x ∈ FV (t.subst x v) ∨ x ∈ FV (P₁.subst x v), from (free_in_prop.forallc.inv this).right,
@@ -1745,7 +1982,8 @@ begin
         prop.subst_env (σ'[y↦v]) (prop.forallc x t P)
       = prop.subst y v (prop.subst_env σ' (prop.forallc x t P)) : by unfold prop.subst_env
   ... = prop.subst y v (prop.forallc x (term.subst_env σ' t) (prop.subst_env σ' P)) : by rw[h]
-  ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) (if y = x then prop.subst_env σ' P else (prop.subst_env σ' P).subst y v)
+  ... = prop.forallc x (if y = x then term.subst_env σ' t else term.subst y v (term.subst_env σ' t))
+                       (if y = x then prop.subst_env σ' P else (prop.subst_env σ' P).subst y v)
      : by unfold prop.subst
   ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) ((prop.subst_env σ' P).subst y v) : by simp[x_neq_y.symm]
   ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) (prop.subst_env (σ'[y↦v]) P) : by unfold prop.subst_env

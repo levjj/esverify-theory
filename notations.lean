@@ -745,6 +745,27 @@ lemma sizeof_history_v {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ:
     from zero_lt_one
   end
 
+lemma sizeof_substack {s: stack} {R: spec} {H: history} {σ: env} {f x y: var} {e: exp}:
+      s.sizeof < (stack.cons s R H σ f x y e).sizeof :=
+  begin
+    unfold stack.sizeof,
+    change sizeof s < 1 + sizeof s + sizeof R + sizeof H + sizeof σ + sizeof f + sizeof x + sizeof y + sizeof e,
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_comm],
+    rw[add_assoc],
+    apply lt_add_of_pos_right,
+    rw[add_comm],
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
 -- env lookup as function application
 
 def env.apply: env → var → option value

@@ -87,7 +87,7 @@ notation s₁ `⟶` s₂:100 := step s₁ s₂
 inductive trans_step : stack → stack → Prop
 notation s `⟶*` s':100 := trans_step s s'
 | rfl {s: stack}          : s ⟶* s
-| trans {s s' s'': stack} : (s ⟶ s') → (s' ⟶* s'') → (s ⟶* s'')
+| trans {s s' s'': stack} : (s ⟶* s') → (s' ⟶ s'') → (s ⟶* s'')
 
 notation s `⟶*` s':100 := trans_step s s'
 

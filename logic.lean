@@ -1186,3 +1186,50 @@ lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: 
   have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p,
   from env_translation_call_valid env_verified R_closed R_valid f_in_σ x_in_σ,
   show σ ⊨ Q.erased_n, from valid_env.mp h4 this
+
+lemma dominates_equiv_subst {σ₁ σ₂: env} {P: prop}:
+  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates σ₂ (prop.subst_env σ₁ P) P :=
+  begin
+    assume env_equiv,
+    
+    induction σ₁ with σ' x v ih,
+
+    show dominates σ₂ (prop.subst_env env.empty P) P, by begin
+      unfold prop.subst_env,
+      from dominates.self
+    end,
+
+    show dominates σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
+      unfold prop.subst_env,
+      have h2: dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), by begin
+        by_cases (x ∈ σ') with h,
+
+        have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
+        have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
+        from unchanged_of_subst_nonfree_prop h3,
+        have h5: dominates σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from dominates.self,
+        show dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
+
+        have h2, from env_equiv x env.contains.same,
+        have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
+        have h4: (σ₂ x = v), from eq.trans h2.symm h3,
+        show dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
+        from dominates.subst h4
+      end,
+      have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
+        assume y,
+        assume h3,
+        have h4: y ∈ (σ'[x↦v]), from env.contains.rest h3,
+        have h5, from env_equiv y h4,
+        have h6: (∃ (v : value), env.apply σ' y = some v), from env.contains_apply_equiv.right.mpr h3,
+        have h7, from option.is_some_iff_exists.mpr h6,
+        have h8, from option.some_iff_not_none.mp h7,
+        have h9: (x ≠ y ∨ ¬ (option.is_none (env.apply σ' y))), from or.inr h8,
+        have h10: ¬ (x = y ∧ (option.is_none (env.apply σ' y))), from not_and_distrib.mpr h9,
+        have h11: (env.apply (σ'[x↦v]) y = (σ' y)), by { unfold env.apply, simp[h10], refl },
+        from eq.trans h11.symm h5
+      end,
+      have h4, from ih h3,
+      from dominates.trans h2 h4
+    end,
+  end

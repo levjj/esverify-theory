@@ -105,25 +105,30 @@ def calls_p_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ)
 def calls_n_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_n P
 
 inductive dominates : env → prop → prop → Prop 
-| no_quantifiers {σ: env} {P Q: prop}     : ((σ ⊨ P.instantiated_p) → (σ ⊨ Q.instantiated_p)) →
-                                            (calls_p_subst σ Q ⊆ calls_p_subst σ P) →
-                                            (quantifiers_p Q = ∅) →
-                                            dominates σ P Q
+| no_quantifiers {σ: env} {P Q: prop}         : ((σ ⊨ P.instantiated_p) → (σ ⊨ Q.instantiated_p)) →
+                                                (calls_p_subst σ Q ⊆ calls_p_subst σ P) →
+                                                (quantifiers_p Q = ∅) →
+                                                dominates σ P Q
 | quantifier {σ: env} {x: var} {t₁ t₂: term} {P₁ P₂: prop} : 
-                                            ((σ ⊨ t₁ ≡ t₂) → (∀v: value, dominates (σ[x↦v]) P₁ P₂)) →
-                                            dominates σ (prop.forallc x t₁ P₁) (prop.forallc x t₂ P₂)
-| not_not {σ: env} {P: prop}              : dominates σ P.not.not P
-| of_not_not {σ: env} {P: prop}           : dominates σ P P.not.not
-| same_right {σ: env} {P P' Q: prop}      : ((σ ⊨ Q.instantiated_p) → dominates σ P P') →
-                                            dominates σ (P ⋀ Q) (P' ⋀ Q)
-| and_symm {σ: env} {P₁ P₂: prop}         : dominates σ (P₁ ⋀ P₂) (P₂ ⋀ P₁)
-| and_elim_left {σ: env} {P₁ P₂ P₃: prop} : dominates σ P₁ (P₂ ⋀ P₃) →
-                                            dominates σ P₁ P₂
-| and_assoc {σ: env} {P₁ P₂ P₃: prop}     : dominates σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃)
-| trans {σ: env} {P₁ P₂ P₃: prop}         : dominates σ P₁ P₂ →
-                                            dominates σ P₂ P₃ →
-                                            dominates σ P₁ P₃
-
+                                                ((σ ⊨ t₁ ≡ t₂) → (∀v: value, dominates (σ[x↦v]) P₁ P₂)) →
+                                                dominates σ (prop.forallc x t₁ P₁) (prop.forallc x t₂ P₂)
+| not_not {σ: env} {P: prop}                  : dominates σ P.not.not P
+| of_not_not {σ: env} {P: prop}               : dominates σ P P.not.not
+| and_intro {σ: env} {P P' Q Q': prop}        : (dominates σ P P') →
+                                                ((σ ⊨ P.instantiated_p) → dominates σ Q Q') →
+                                                dominates σ (P ⋀ Q) (P' ⋀ Q')
+| and_symm {σ: env} {P₁ P₂: prop}             : dominates σ (P₁ ⋀ P₂) (P₂ ⋀ P₁)
+| and_elim_left {σ: env} {P₁ P₂ P₃: prop}     : dominates σ P₁ (P₂ ⋀ P₃) →
+                                                dominates σ P₁ P₂
+| and_assoc {σ: env} {P₁ P₂ P₃: prop}         : dominates σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃)
+| or_intro {σ: env} {P P' Q Q': prop}         : (dominates σ P P') →
+                                                (dominates σ Q Q') →
+                                                dominates σ (P ⋁ Q) (P' ⋁ Q')
+| trans {σ: env} {P₁ P₂ P₃: prop}             : dominates σ P₁ P₂ →
+                                                dominates σ P₂ P₃ →
+                                                dominates σ P₁ P₃
+| subst {σ: env} {x: var} {v: value} {P:prop} : (σ x = v) →
+                                                dominates σ (prop.subst x v P) P
 
 -- axioms about instantiation
 
@@ -252,8 +257,7 @@ lemma dominates.of_and_left {P₁ P₂: prop} {σ: env}: dominates σ (P₁ ⋀ 
   have dominates σ (P₁ ⋀ P₂) (P₁ ⋀ P₂), from dominates.self,
   show dominates σ (P₁ ⋀ P₂) P₁, from dominates.and_elim_left this
 
-lemma dominates.of_and_right {P₁ P₂: prop} {σ: env}:
-      dominates σ (P₁ ⋀ P₂) P₂ :=
+lemma dominates.of_and_right {P₁ P₂: prop} {σ: env}: dominates σ (P₁ ⋀ P₂) P₂ :=
   have h1: dominates σ (P₁ ⋀ P₂) (P₂ ⋀ P₁), from dominates.and_symm,
   have h2: dominates σ (P₂ ⋀ P₁) P₂, from dominates.of_and_left,
   show dominates σ (P₁ ⋀ P₂) P₂, from dominates.trans h1 h2
@@ -267,6 +271,16 @@ lemma dominates.and_assoc.symm {P₁ P₂ P₃: prop} {σ: env}:
   have h5: dominates σ ((P₂ ⋀ P₃) ⋀ P₁) (P₁ ⋀ P₂ ⋀ P₃) , from dominates.and_symm,
   show dominates σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃),
   from dominates.trans h1 (dominates.trans h2 (dominates.trans h3 (dominates.trans h4 h5)))
+
+lemma dominates.same_right {σ: env} {P P' Q: prop}:
+      ((σ ⊨ Q.instantiated_p) → dominates σ P P') → dominates σ (P ⋀ Q) (P' ⋀ Q) :=
+  have h1: dominates σ (P ⋀ Q) (Q ⋀ P), from dominates.and_symm,
+  have h2: dominates σ Q Q, from dominates.self,
+  assume h3: ((σ ⊨ Q.instantiated_p) → dominates σ P P'),
+  have h4: dominates σ (Q ⋀ P) (Q ⋀ P'), from dominates.and_intro h2 h3,
+  have h5: dominates σ (Q ⋀ P') (P' ⋀ Q), from dominates.and_symm,
+  show dominates σ (P ⋀ Q) (P' ⋀ Q),
+  from dominates.trans h1 (dominates.trans h4 h5)
 
 lemma dominates.shuffle {P Q R S: prop} {σ: env}:
       dominates σ (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S):=
@@ -1672,119 +1686,7 @@ lemma instantiated_p_closed_subst_of_closed {σ: env} {P: prop}:
     have x ∈ FV (prop.subst_env σ P), from free_of_instantiated_p_free this,
     show «false», from P_closed x this
   ),
-show closed_subst σ P.instantiated_p, from vc.closed_subst_of_closed this
-
--- lemma quantifiers_closed_from_prop_closed {f: term} {x: var} {P Q: prop} {σ: env}:
---      closed_subst σ Q →
---      (callquantifier.mk f x P ∈ quantifiers_p Q) ∨ (callquantifier.mk f x P ∈ quantifiers_n Q)
---      → ∀v, closed_subst (σ[x↦v]) P :=
---   assume Q_closed: closed_subst σ Q,
--- begin
---   induction Q,
---   case prop.term t {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   },
---   case prop.not P₁ P₁_ih {
---     have h2, from prop.closed_subst.not.inv Q_closed,
-
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
-
---     cases a,
---     from P₁_ih h2 (or.inr a_1),
-
---     cases b,
---     from P₁_ih h2 (or.inl a)
---   },
---   case prop.and P₁ P₂ P₁_ih P₂_ih {
---     have h2, from prop.closed_subst.and.inv Q_closed,
-
---     intro fxp_in_Q,
-
---     cases fxp_in_Q with a b,
-
---     cases a,
---     from P₁_ih h2.left (or.inl a_1),
---     from P₂_ih h2.right (or.inl a_1),
-
---     cases b,
---     from P₁_ih h2.left (or.inr a),
---     from P₂_ih h2.right (or.inr a)
---   },
---   case prop.or P₁ P₂ P₁_ih P₂_ih {
---     have h2, from prop.closed_subst.or.inv Q_closed,
-
---     intro fxp_in_Q,
-
---     cases fxp_in_Q with a b,
-
---     cases a,
---     from P₁_ih h2.left (or.inl a_1),
---     from P₂_ih h2.right (or.inl a_1),
-
---     cases b,
---     from P₁_ih h2.left (or.inr a),
---     from P₂_ih h2.right (or.inr a)
---   },
---   case prop.pre {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   },
---   case prop.pre₁ {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   },
---   case prop.pre₂ {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   },
---   case prop.post {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   },
---   case prop.call {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   },
---   case prop.forallc y t P₁ P₁_ih {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     intro v,
---     intro y,
---     intro y_in_P,
---     by_cases (x = y) with h,
---     rw[h],
---     change y ∈ (σ[y↦v]),
---     from env.contains.same,
---     apply env.contains.rest,
---     change y ∈ σ.dom,
---     have h2: x ≠ y, from h,
---     have h3: free_in_prop y (prop.forallc x f P), from free_in_prop.forallc₂ h2.symm y_in_P,
---     from Q_closed h3,
-
---     cases b
---   },
---   case prop.exis y P₁ P₁_ih {
---     intro fxp_in_Q,
---     cases fxp_in_Q with a b,
---     cases a,
---     cases b
---   }
--- end
+  show closed_subst σ P.instantiated_p, from vc.closed_subst_of_closed this
 
 lemma no_calls_in_spec {R: spec}: (calls_p R = ∅) ∧ (calls_n R = ∅) :=
 begin
@@ -1872,3 +1774,42 @@ end
 lemma spec_instantiated_eq_spec_erased {R: spec}: R.to_prop.instantiated_p = R.to_prop.erased_p :=
   have calls_p R.to_prop = ∅, from no_calls_in_spec.left,
   show R.to_prop.instantiated_p = R.to_prop.erased_p, from instantiated_p_eq_erased_p_without_calls this
+
+lemma dominates_equiv_subst {σ₁ σ₂: env} {P: prop}:
+  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates σ₂ (prop.subst_env σ₁ P) P :=
+  begin
+    assume env_equiv,
+    
+    induction σ₁ with σ' x v ih,
+
+    show dominates σ₂ (prop.subst_env env.empty P) P, by begin
+      unfold prop.subst_env,
+      from dominates.self
+    end,
+
+    show dominates σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
+      unfold prop.subst_env,
+      have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
+        assume y,
+        assume h3,
+        have h4: y ∈ (σ'[x↦v]), from env.contains.rest h3,
+        have h5, from env_equiv y h4,
+        have h6: (∃ (v : value), env.apply σ' y = some v), from env.contains_apply_equiv.right.mpr h3,
+        have h7, from option.is_some_iff_exists.mpr h6,
+        have h8, from option.some_iff_not_none.mp h7,
+        have h9: (x ≠ y ∨ ¬ (option.is_none (env.apply σ' y))), from or.inr h8,
+        have h10: ¬ (x = y ∧ (option.is_none (env.apply σ' y))), from not_and_distrib.mpr h9,
+        have h11: (env.apply (σ'[x↦v]) y = (σ' y)), by { unfold env.apply, simp[h10], refl },
+        from eq.trans h11.symm h5
+      end,
+      have h4, from ih h3,
+      have h1: (σ₂ x = v), by begin
+        have h2, from env_equiv x env.contains.same,
+        by_cases (x ∈ σ'),
+
+      end,
+      have h2: dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
+      from dominates.subst h1,
+      from dominates.trans h2 h4
+    end,
+  end

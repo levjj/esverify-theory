@@ -1104,3 +1104,46 @@ lemma env.apply_of_contains {σ: env} {x: var} {v: value}:
     have r9: «false», from h7.symm ▸ h8,
     contradiction
   end
+
+lemma env.equiv_of_rest_and_same {σ σ': env} {x: var} {v: value}:
+      (∀y, y ∈ σ → (σ y = σ' y)) → x ∉ σ → (σ' x = v) → (∀y, y ∈ (σ[x↦v]) → ((σ[x↦v]) y = σ' y)) :=
+  assume h1: (∀y, y ∈ σ → (σ y = σ' y)),
+  assume h2: x ∉ σ,
+  assume h3: σ' x = v,
+  assume y: var,
+  assume h4: y ∈ (σ[x↦v]),
+  if h: x = y then (
+    have h5: (σ[x↦v]) y = v, from h ▸ env.apply_of_contains h2,
+    show ((σ[x↦v]) y = σ' y), from eq.trans h5 (h ▸ h3.symm)
+  ) else (
+    have y ∈ σ, from (
+      have y = x ∨ y ∈ σ, from env.contains.inv h4,
+      or.elim this.symm id (
+        assume : y = x,
+        show y ∈ σ, from absurd this.symm h
+      )
+    ),
+    have h6: σ y = σ' y, from h1 y this,
+    have env.apply (σ[x↦v]) y = σ.apply y, by { unfold env.apply, simp[h] },
+    have (σ[x↦v]) y = σ y, from this,
+    show ((σ[x↦v]) y = σ' y), from this.symm ▸ h6
+  )
+
+lemma env.equiv_of_not_contains {σ σ': env} {x: var} {v: value}:
+      (∀y, y ∈ σ → (σ y = σ' y)) → x ∉ σ → (∀y, y ∈ σ → (σ y = (σ'[x↦v]) y)) :=
+  assume h1: (∀y, y ∈ σ → (σ y = σ' y)),
+  assume h2: x ∉ σ,
+  assume y: var,
+  assume h4: y ∈ σ,
+  if h: x = y then (
+    have x ∈ σ, from h.symm ▸ h4,
+    show σ y = (σ'[x↦v]) y, from absurd this h2
+  ) else (
+    have h2: σ y = σ' y, from h1 y h4,
+    have (∃v, σ y = some v), from env.contains_apply_equiv.right.mpr h4,
+    have option.is_some (σ y), from option.is_some_iff_exists.mpr this,
+    have ¬ option.is_none (σ y), from option.some_iff_not_none.mp this,
+    have h5: ¬ (x = y ∧ option.is_none (env.apply σ' y)), from not_and_distrib.mpr (or.inl h),
+    have env.apply (σ'[x↦v]) y = σ' y, by { unfold env.apply, simp[h5], refl },
+    show σ y = (σ'[x↦v]) y, from eq.trans h2 this.symm
+  )
