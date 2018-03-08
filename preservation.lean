@@ -809,13 +809,13 @@ lemma inlined_dominates_spec {σ σ₁: env} {P: prop} {Q: propctx} {f x: var} {
                    (spec.to_prop (spec.func f x R S)),
   from h3.symm ▸ h4.symm ▸ h7
 
-theorem preservation: ∀ {s s': stack}, (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s')
-| s s' :=
+theorem preservation {s: stack} : (⊢ₛ s) → (∀s', (s ⟶ s') → (⊢ₛ s')) :=
   assume s_verified:  ⊢ₛ s,
-  assume s_steps: s ⟶ s',
   begin
-    cases s_verified,
+    induction s_verified,
     case stack.vcgen.top σ e P Q H R σ_verified fv_R R_valid e_verified {
+      assume s',
+      assume s_steps: ((R, H, σ, e) ⟶ s'),
 
       have R_closed: closed_subst σ R.to_prop, from (
         assume z: var,
@@ -1340,13 +1340,15 @@ theorem preservation: ∀ {s s': stack}, (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s
       }
     },
     case stack.vcgen.cons H P H' s' σ σ' f g x y fx R' R S e e' vₓ Q₃ s'_verified σ_verified fv_R R'_valid g_is_func x_is_v y_not_in_σ cont pre_vc steps ih {
+      assume s''',
+      assume s_steps: ((s' · [R', H, σ, letapp y = g[x] in e]) ⟶ s'''),
       cases s_steps,
       case step.ctx s'' s'_steps {
         have : (sizeof s' < sizeof (s'·[R', H, σ, letapp y = g[x] in e])),
         from sizeof_substack,
         have : (sizeof s'' < sizeof (s''·[R', H, σ, letapp y = g[x] in e])),
         from sizeof_substack,
-        have s''_verified: ⊢ₛ s'', from preservation s'_verified s'_steps,
+        have s''_verified: ⊢ₛ s'', from ih s'' s'_steps,
         have new_steps: ((S, H', σ'[f↦value.func f fx S R e' H' σ'][fx↦vₓ], e') ⟶* s''),
         from trans_step.trans steps s'_steps,
         show ⊢ₛ (s'' · [R', H, σ, letapp y = g[x] in e]),
@@ -1355,8 +1357,3 @@ theorem preservation: ∀ {s s': stack}, (⊢ₛ s) → (s ⟶ s') → (⊢ₛ s
       admit
     }
   end
-using_well_founded
-{
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
-  dec_tac := tactic.assumption
-}
