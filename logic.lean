@@ -1233,3 +1233,17 @@ lemma dominates_equiv_subst {σ₁ σ₂: env} {P: prop}:
       from dominates.trans h2 h4
     end,
   end
+
+lemma valid_env.subst_non_free_of_valid_env {σ: env} {x: var} {v: value} {P: vc}:
+      (σ ⊨ P) → x ∉ FV P → (σ[x↦v] ⊨ P) :=
+  assume : σ ⊨ P,
+  have h1: ⊨ vc.subst_env σ P, from this,
+  assume : x ∉ FV P,
+  have x ∉ FV (vc.subst_env σ P), from mt free_in_vc.subst_env this,
+  have vc.subst x v (vc.subst_env σ P) = (vc.subst_env σ P),
+  from unchanged_of_subst_nonfree_vc this,
+  have h2: ⊨ vc.subst x v (vc.subst_env σ P), from this.symm ▸ h1,
+  have vc.subst_env (σ[x↦v]) P =  vc.subst x v (vc.subst_env σ P),
+  by unfold vc.subst_env,
+  have ⊨ vc.subst_env (σ[x↦v]) P, from this.symm ▸ h2,
+  show σ[x↦v] ⊨ P, from this

@@ -430,6 +430,11 @@ lemma prop.has_call_p.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_p
   assume post_has_call: c ∈ calls_p (prop.post t₁ t₂),
   show «false», by cases post_has_call
 
+lemma prop.has_call_p.call.inv {c: calltrigger} {t₁ t₂: term}:
+      c ∈ calls_p (prop.call t₁ t₂) → (c = calltrigger.mk t₁ t₂) :=
+  assume call_has_call: c ∈ calls_p (prop.call t₁ t₂),
+  show c = calltrigger.mk t₁ t₂, by { cases call_has_call, refl }
+
 lemma prop.has_call_p.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
       c ∉ calls_p (prop.forallc x t P) :=
   assume forall_has_call: c ∈ calls_p (prop.forallc x t P),
@@ -545,6 +550,10 @@ lemma prop.has_quantifier_p.pre.inv {q: callquantifier} {t₁ t₂: term}: q ∉
 lemma prop.has_quantifier_p.post.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers_p (prop.post t₁ t₂) :=
   assume post_has_quantifier_p: q ∈ quantifiers_p (prop.post t₁ t₂),
   show «false», by cases post_has_quantifier_p
+
+lemma prop.has_quantifier_p.call.inv {q: callquantifier} {t₁ t₂: term}: q ∉ quantifiers_p (prop.call t₁ t₂) :=
+  assume call_has_quantifier_p: q ∈ quantifiers_p (prop.call t₁ t₂),
+  show «false», by cases call_has_quantifier_p
 
 lemma prop.has_quantifier_p.forallc.inv {q: callquantifier} {x: var} {t: term} {P: prop}:
       q ∈ quantifiers_p (prop.forallc x t P) → (q = ⟨t, x, P⟩) :=
@@ -1774,42 +1783,3 @@ end
 lemma spec_instantiated_eq_spec_erased {R: spec}: R.to_prop.instantiated_p = R.to_prop.erased_p :=
   have calls_p R.to_prop = ∅, from no_calls_in_spec.left,
   show R.to_prop.instantiated_p = R.to_prop.erased_p, from instantiated_p_eq_erased_p_without_calls this
-
-lemma dominates_equiv_subst {σ₁ σ₂: env} {P: prop}:
-  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates σ₂ (prop.subst_env σ₁ P) P :=
-  begin
-    assume env_equiv,
-    
-    induction σ₁ with σ' x v ih,
-
-    show dominates σ₂ (prop.subst_env env.empty P) P, by begin
-      unfold prop.subst_env,
-      from dominates.self
-    end,
-
-    show dominates σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
-      unfold prop.subst_env,
-      have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
-        assume y,
-        assume h3,
-        have h4: y ∈ (σ'[x↦v]), from env.contains.rest h3,
-        have h5, from env_equiv y h4,
-        have h6: (∃ (v : value), env.apply σ' y = some v), from env.contains_apply_equiv.right.mpr h3,
-        have h7, from option.is_some_iff_exists.mpr h6,
-        have h8, from option.some_iff_not_none.mp h7,
-        have h9: (x ≠ y ∨ ¬ (option.is_none (env.apply σ' y))), from or.inr h8,
-        have h10: ¬ (x = y ∧ (option.is_none (env.apply σ' y))), from not_and_distrib.mpr h9,
-        have h11: (env.apply (σ'[x↦v]) y = (σ' y)), by { unfold env.apply, simp[h10], refl },
-        from eq.trans h11.symm h5
-      end,
-      have h4, from ih h3,
-      have h1: (σ₂ x = v), by begin
-        have h2, from env_equiv x env.contains.same,
-        by_cases (x ∈ σ'),
-
-      end,
-      have h2: dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
-      from dominates.subst h1,
-      from dominates.trans h2 h4
-    end,
-  end

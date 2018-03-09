@@ -303,26 +303,26 @@ lemma env.vcgen.func.inv {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {H
   end
 
 lemma env.vcgen.copy {σ₁ σ₂: env} {P₁ P₂} {x y: var} {v: value}:
-      (⊢ σ₁ : P₁) → (y ∉ σ₁) → (⊢ (σ₂[x↦v]) : P₂) → ∃P₃, (⊢ (σ₁[y↦v]) : P₃) :=
+      (⊢ σ₁ : P₁) → (y ∉ σ₁) → (⊢ (σ₂[x↦v]) : P₂) → ∃P₃, (⊢ (σ₁[y↦v]) : P₁ ⋀ P₃) :=
   assume σ₁_verified: ⊢ σ₁ : P₁,
   assume y_not_in_σ₁: y ∉ σ₁,
   assume σ₂_xv_verified: ⊢ (σ₂[x↦v]) : P₂,
-  show ∃P₃, (⊢ (σ₁[y↦v]) : P₃), by begin
+  show ∃P₃, (⊢ (σ₁[y↦v]) : P₁ ⋀ P₃), by begin
     cases σ₂_xv_verified,
     case env.vcgen.tru { from
       have ⊢ (σ₁[y↦value.true]) : P₁ ⋀ y ≡ value.true,
       from env.vcgen.tru y_not_in_σ₁ σ₁_verified,
-      show ∃P₃, ⊢ (σ₁[y↦value.true]) : P₃, from exists.intro (P₁ ⋀ y ≡ value.true) this
+      show ∃P₃, ⊢ (σ₁[y↦value.true]) : P₁ ⋀ P₃, from exists.intro (y ≡ value.true) this
     },
     case env.vcgen.fls { from
       have ⊢ (σ₁[y↦value.false]) : P₁ ⋀ y ≡ value.false,
       from env.vcgen.fls y_not_in_σ₁ σ₁_verified,
-      show ∃P₃, ⊢ (σ₁[y↦value.false]) : P₃, from exists.intro (P₁ ⋀ y ≡ value.false) this
+      show ∃P₃, ⊢ (σ₁[y↦value.false]) : P₁ ⋀ P₃, from exists.intro (y ≡ value.false) this
     },
     case env.vcgen.num n { from
       have ⊢ (σ₁[y↦value.num n]) : P₁ ⋀ y ≡ value.num n,
       from env.vcgen.num y_not_in_σ₁ σ₁_verified,
-      show ∃P₃, ⊢ (σ₁[y↦value.num n]) : P₃, from exists.intro (P₁ ⋀ y ≡ value.num n) this
+      show ∃P₃, ⊢ (σ₁[y↦value.num n]) : P₁ ⋀ P₃, from exists.intro (y ≡ value.num n) this
     },
     case env.vcgen.func σ₃ f fx R S e H Q₃ Q₄ Q₂ x_not_in_σ₂ f_not_in_σ₃ fx_not_in_σ₃
                         f_neq_fx σ₂_verified σ₃_verified x_free_in_R fv_R fv_S e_verified func_vc { from
@@ -331,9 +331,9 @@ lemma env.vcgen.copy {σ₁ σ₂: env} {P₁ P₂} {x y: var} {v: value}:
         ⋀ prop.subst_env (σ₃[f↦value.func f fx R S e H σ₃]) (prop.func f fx R (Q₃ (term.app f fx) ⋀ S))),
       from env.vcgen.func y_not_in_σ₁ f_not_in_σ₃ fx_not_in_σ₃
                         f_neq_fx σ₁_verified σ₃_verified x_free_in_R fv_R fv_S e_verified func_vc,
-      show ∃P₃, ⊢ (σ₁[y↦value.func f fx R S e H σ₃]) : P₃,
-      from exists.intro (P₁
-       ⋀ y ≡ value.func f fx R S e H σ₃
+      show ∃P₃, ⊢ (σ₁[y↦value.func f fx R S e H σ₃]) : P₁ ⋀ P₃,
+      from exists.intro (
+        y ≡ value.func f fx R S e H σ₃
        ⋀ prop.subst_env (σ₃[f↦value.func f fx R S e H σ₃]) (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)))
       this
     }
