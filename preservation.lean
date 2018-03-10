@@ -92,100 +92,6 @@ lemma dominates_true (σ: env) (P: prop):
   ),
   show dominates σ P value.true, from dominates.no_quantifiers h_impl h_calls h_quantifiers
 
-lemma exp.vcgen.inj {P: prop} {Q: propctx} {e: exp}: (P ⊢ e : Q) → ∀Q', (P ⊢ e : Q') → (Q = Q') :=
-  assume h1: P ⊢ e : Q,
-  begin
-    induction h1,
-
-    intros Q' h2,
-    cases h2,
-    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
-    rw[this],
-
-    intros Q' h2,
-    cases h2,
-    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
-    rw[this],
-
-    intros Q' h2,
-    cases h2,
-    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
-    rw[this],
-
-    intros Q' h2,
-    cases h2,
-    have h3: (Q₁ = Q₁_1), from ih_1 Q₁_1 a_15,
-    rw[←h3] at a_16,
-    have : (Q₂ = Q₂_1), from ih_2 Q₂_1 a_16,
-    rw[this],
-    rw[h3],
-
-    intros Q' h2,
-    cases h2,
-    have : (Q_1 = Q_2), from ih_1 Q_2 a_6,
-    rw[this],
-
-    intros Q' h2,
-    cases h2,
-    have : (Q_1 = Q_2), from ih_1 Q_2 a_8,
-    rw[this],
-
-    intros Q' h2,
-    cases h2,
-    have : (Q_1 = Q_2), from ih_1 Q_2 a_8,
-    rw[this],
-
-    intros Q' h2,
-    cases h2,
-    have : (Q₁ = Q₁_1), from ih_1 Q₁_1 a_5,
-    rw[this],
-    have : (Q₂ = Q₂_1), from ih_2 Q₂_1 a_6,
-    rw[this],
-    refl,
-
-    intros Q' h2,
-    cases h2,
-    refl
-  end
-
-lemma env.vcgen.inj {P: prop} {σ: env}: (⊢ σ : P) → ∀Q, (⊢ σ : Q) → (P = Q) :=
-  assume h1: ⊢ σ : P,
-  begin
-    induction h1,
-
-    intros Q h2,
-    cases h2,
-    refl,
-
-    intros Q h2,
-    cases h2,
-    have : (Q = Q_1), from ih_1 Q_1 a_3,
-    rw[this],
-    refl,
-
-    intros Q h2,
-    cases h2,
-    have : (Q = Q_1), from ih_1 Q_1 a_3,
-    rw[this],
-    refl,
-
-    intros Q h2,
-    cases h2,
-    have : (Q = Q_1), from ih_1 Q_1 a_3,
-    rw[this],
-    refl,
-
-    intros Q h2,
-    cases h2,
-    have h3: (Q₁ = Q₁_1), from ih_1 Q₁_1 a_15,
-    rw[h3],
-    have h4: (Q₂ = Q₂_1), from ih_2 Q₂_1 a_16,
-    rw[←h4] at a_20,
-    have : (Q₃ = Q₃_1), from exp.vcgen.inj a_9 Q₃_1 a_20,
-    rw[this],
-    refl
-  end
-
 lemma env_equiv_of_translation_valid {σ: env} {P: prop}:
       (⊢ σ: P) → ∀σ', (σ' ⊨ P.instantiated_p) → (∀x, x ∈ σ → (σ x = σ' x)) :=
   assume σ_verified: ⊢ σ: P,
@@ -375,7 +281,7 @@ lemma env_dominates_rest {P: prop} {σ: env} {x: var} {v: value}:
 lemma exp.preservation {R: spec} {H: history} {σ σ': env} {P: prop} {e e': exp} {Q: propctx}:
       (⊢ σ : P) → FV (spec.to_prop R) ⊆ FV P → (σ ⊨ R.to_prop.instantiated_n) → (R ⋀ H ⋀ P ⊢ e : Q) →
       ((R, H, σ, e) ⟶ (R, H, σ', e')) →
-      ∃Q', (⊢ₛ (R, H, σ', e') : Q') ∧ (∀σ' t, dominates σ' (H ⋀ P ⋀ (Q t)) (Q' t)) :=
+      ∃Q', (⊢ₛ (R, H, σ', e') : Q') ∧ (∀σ' t, dominates σ' (((↑H ⋀ ↑P ⋀ Q) t)) (Q' t)) :=
   sorry
 
 lemma inlined_dominates_spec {σ σ₁: env} {P: prop} {Q: propctx} {f x: var} {R S: spec} {e: exp} {H: history}:
@@ -519,7 +425,7 @@ theorem preservation {s: stack} {Q: propctx}:
   assume s_verified:  ⊢ₛ s : Q,
   begin
     induction s_verified,
-    case stack.vcgen.top σ e P Q H R σ_verified fv_R R_valid e_verified {
+    case stack.vcgen.top σ e P R H Q σ_verified fv_R R_valid e_verified {
       assume s',
       assume s_steps: ((R, H, σ, e) ⟶ s'),
 
@@ -531,24 +437,23 @@ theorem preservation {s: stack} {Q: propctx}:
       ),
 
       cases s_steps,
-      case step.tru x e { from
-        show ⊢ₛ (R, H, σ[x↦value.true], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
-      },
-      case step.fals x e { from
-        show ⊢ₛ (R, H, σ[x↦value.false], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
-      },
-      case step.num n e x { from
-        show ⊢ₛ (R, H, σ[x↦value.num n], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
-      },
-      case step.closure R' S' f x e₁ e₂ { from
-        show ⊢ₛ (R, H, σ[f↦value.func f x R' S' e₁ H σ], e₂),
+      case step.tru x e {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.unop op x y e { from
-        show ⊢ₛ (R, H, σ[y↦v], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      case step.fals x e {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.binop op x y z e { from
-        show ⊢ₛ (R, H, σ[z↦v], e), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      case step.num n e x {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      },
+      case step.closure R' S' f x e₁ e₂ {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      },
+      case step.unop op x y e {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      },
+      case step.binop op x y z e {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
       case step.app f x y S₂ H₂ g σ₂ R₂ gx e₁ e₂ vₓ f_is_func x_is_vₓ {
         cases e_verified,
@@ -1039,11 +944,11 @@ theorem preservation {s: stack} {Q: propctx}:
           from stack.vcgen.cons h5 σ_verified fv_R R_valid f_is_func x_is_vₓ h6 h7 h8 h9
         }
       },
-      case step.ite_true x e₁ e₂ { from
-        show ⊢ₛ (R, H, σ, e₂), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      case step.ite_true x e₁ e₂ {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.ite_false x e₁ e₂ { from
-        show ⊢ₛ (R, H, σ, e₁), from exp.preservation σ_verified fv_R R_valid e_verified s_steps
+      case step.ite_false x e₁ e₂ {
+        from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       }
     },
     case stack.vcgen.cons H P H' s' σ σ' f g x y fx R' R S e e' vₓ Q₃ s'_verified σ_verified fv_R R'_valid g_is_func x_is_v y_not_in_σ cont pre_vc steps ih {

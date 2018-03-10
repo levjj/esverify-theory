@@ -175,35 +175,36 @@ lemma exp.progress {R: spec} {H: history} {P: prop} {Q: propctx} {e: exp} {σ: e
     }
   end
 
-theorem progress (s: stack): (⊢ₛ s) → is_value s ∨ ∃s', s ⟶ s'
+theorem progress {s: stack} {Q: propctx}: (⊢ₛ s : Q) → is_value s ∨ ∃s', s ⟶ s'
 :=
-  assume s_verified: ⊢ₛ s,
+  assume s_verified: ⊢ₛ s : Q,
   begin
     induction s_verified,
     case stack.vcgen.top σ e Q R H P env_verified fv_R R_valid e_verified { from
       show is_value (R, H, σ, e) ∨ ∃s', (R, H, σ, e) ⟶ s', from exp.progress env_verified fv_R R_valid e_verified
     },
-    case stack.vcgen.cons R H P s' σ σ' f g x y fx R' S' e₁ e₂ H' vₓ Q
-                          s'_verified _ fv_R' R_valid g_is_func x_is_v _ cont _ _ ih { from
-      let s := (s' · [R', H', σ, letapp y = g[x] in e₁]) in
-      have s_cons: s = (s' · [R', H', σ, letapp y = g[x] in e₁]), from rfl,
+    case stack.vcgen.cons H' H P P' s' σ σ' f g x y fx R R' S' e₁ e₂ vₓ Q Q' Q''
+                          s'_verified y_not_in_σ σ_verified σ'_verified fv_R R_valid g_is_func
+                          x_is_v e₁_verified cont Q''_dom pre_vc steps ih { from
+      let s := (s' · [R, H', σ, letapp y = g[x] in e₁]) in
+      have s_cons: s = (s' · [R, H', σ, letapp y = g[x] in e₁]), from rfl,
       or.elim ih
       ( -- step return
         assume s'_is_value: is_value s',
         let ⟨R₂, H₂, σ₂, z, v, ⟨s'_return, env2_has_z⟩⟩ := s'_is_value in
-        have s_return_cons: s = ((R₂, H₂, σ₂, exp.return z) · [R', H', σ, letapp y = g[x] in e₁]),
+        have s_return_cons: s = ((R₂, H₂, σ₂, exp.return z) · [R, H', σ, letapp y = g[x] in e₁]),
         from s'_return ▸ s_cons,
-        have s ⟶ (R', H' · call f fx R S' e₂ H σ' vₓ, σ[y↦v], e₁),
+        have s ⟶ (R, H' · call f fx R' S' e₂ H σ' vₓ, σ[y↦v], e₁),
         from s_return_cons.symm ▸ (step.return env2_has_z g_is_func x_is_v),
         have ∃s', s ⟶ s',
-        from exists.intro (R', H' · call f fx R S' e₂ H σ' vₓ, σ[y↦v], e₁) this,
+        from exists.intro (R, H' · call f fx R' S' e₂ H σ' vₓ, σ[y↦v], e₁) this,
         show is_value s ∨ ∃s', s ⟶ s', from or.inr this
       )
       ( -- step ctx
         assume s'_can_step: ∃s'', s' ⟶ s'',
         let ⟨s'', s'_steps⟩ := s'_can_step in
-        have s ⟶ (s'' · [R', H', σ, letapp y = g[x] in e₁]), from step.ctx s'_steps,
-        have ∃s', s ⟶ s', from exists.intro (s'' · [R', H', σ, letapp y = g[x] in e₁]) this,
+        have s ⟶ (s'' · [R, H', σ, letapp y = g[x] in e₁]), from step.ctx s'_steps,
+        have ∃s', s ⟶ s', from exists.intro (s'' · [R, H', σ, letapp y = g[x] in e₁]) this,
         show is_value s ∨ ∃s', s ⟶ s', from or.inr this
       )
     }

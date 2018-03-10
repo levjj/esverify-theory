@@ -134,7 +134,7 @@ notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
     ⟪ prop.implies (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
     ((R₂, H₂, σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
     (⊢ₛ (s · [R₁, H₁, σ₁, letapp y = g[x] in e₁]) : H₁ ⋀ P₁ ⋀
-          propctx.exis y (prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₂))
+          propctx.exis y (prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₁))
 
 notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
 
@@ -149,9 +149,10 @@ lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x 
     }
   end
 
-lemma stack.vcgen.top.inv {R: spec} {H: history} {σ: env} {e: exp}:
-  (⊢ₛ (R, H, σ, e)) → ∃P Q, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated_n) ∧ (R ⋀ H ⋀ P ⊢ e: Q) :=
-  assume top_verified: ⊢ₛ (R, H, σ, e),
+lemma stack.vcgen.top.inv {R: spec} {H: history} {σ: env} {e: exp} {Q: propctx}:
+  (⊢ₛ (R, H, σ, e) : Q) →
+  ∃P Q₂, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated_n) ∧ (R ⋀ H ⋀ P ⊢ e: Q₂) :=
+  assume top_verified: ⊢ₛ (R, H, σ, e) : Q,
   begin
     cases top_verified,
     case stack.vcgen.top P Q env_verified fv_R R_valid e_verified {
@@ -342,3 +343,140 @@ lemma env.vcgen.copy {σ₁ σ₂: env} {P₁ P₂} {x y: var} {v: value}:
       this
     }
   end
+
+lemma exp.vcgen.inj {P: prop} {Q: propctx} {e: exp}: (P ⊢ e : Q) → ∀Q', (P ⊢ e : Q') → (Q = Q') :=
+  assume h1: P ⊢ e : Q,
+  begin
+    induction h1,
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_3,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have h3: (Q₁ = Q₁_1), from ih_1 Q₁_1 a_15,
+    rw[←h3] at a_16,
+    have : (Q₂ = Q₂_1), from ih_2 Q₂_1 a_16,
+    rw[this],
+    rw[h3],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_6,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_8,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q_1 = Q_2), from ih_1 Q_2 a_8,
+    rw[this],
+
+    intros Q' h2,
+    cases h2,
+    have : (Q₁ = Q₁_1), from ih_1 Q₁_1 a_5,
+    rw[this],
+    have : (Q₂ = Q₂_1), from ih_2 Q₂_1 a_6,
+    rw[this],
+    refl,
+
+    intros Q' h2,
+    cases h2,
+    refl
+  end
+
+lemma env.vcgen.inj {P: prop} {σ: env}: (⊢ σ : P) → ∀Q, (⊢ σ : Q) → (P = Q) :=
+  assume h1: ⊢ σ : P,
+  begin
+    induction h1,
+
+    intros Q h2,
+    cases h2,
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have : (Q = Q_1), from ih_1 Q_1 a_3,
+    rw[this],
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have : (Q = Q_1), from ih_1 Q_1 a_3,
+    rw[this],
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have : (Q = Q_1), from ih_1 Q_1 a_3,
+    rw[this],
+    refl,
+
+    intros Q h2,
+    cases h2,
+    have h3: (Q₁ = Q₁_1), from ih_1 Q₁_1 a_15,
+    rw[h3],
+    have h4: (Q₂ = Q₂_1), from ih_2 Q₂_1 a_16,
+    rw[←h4] at a_20,
+    have : (Q₃ = Q₃_1), from exp.vcgen.inj a_9 Q₃_1 a_20,
+    rw[this],
+    refl
+  end
+
+lemma stack.vcgen.inj {s: stack} {Q₁: propctx}: (⊢ₛ s : Q₁) → ∀Q₂, (⊢ₛ s : Q₂) → (Q₁ = Q₂) :=
+  assume h1: ⊢ₛ s : Q₁,
+  have ∀s' Q₂, (s = s') → (⊢ₛ s' : Q₂) → (Q₁ = Q₂), by begin
+    cases h1,
+
+    intros s' Q₂ h2 h3,
+    cases h3,
+
+    injection h2,
+    have h4: (R = R_1), from h_1,
+    have h5: (H = H_1), from h_2,
+    have h6: (σ = σ_1), from h_3,
+    have h7: (e = e_1), from h_4,
+    have h8: (P = P_1), from env.vcgen.inj a P_1 (h6.symm ▸ a_4),
+    have : ↑R ⋀ ↑H ⋀ P ⊢ e : Q_1, from h4.symm ▸ h5.symm ▸ h7.symm ▸ h8.symm ▸ a_7,
+    have h9: (Q = Q_1), from exp.vcgen.inj a_3 Q_1 this,
+    rw[←h5],
+    rw[←h8],
+    rw[←h9],
+
+    contradiction,
+
+    intros s' Q₂ h2 h3,
+    cases h3,
+
+    contradiction,
+
+    injection h2,
+
+    have h4: (P₁ = P₁_1), from env.vcgen.inj a_2 P₁_1 (h_4.symm ▸ a_15),
+    have : R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁,
+    from h_2.symm ▸ h_3.symm ▸ h_6.symm ▸ h_7.symm ▸ h_5.symm ▸ h_8.symm ▸ h4.symm ▸ a_21,
+    have h5: (Q₁_1 = Q₁), from exp.vcgen.inj a_8 Q₁ this,
+    rw[←h_3.symm],
+    rw[←h4],
+    rw[←h_5],
+    rw[←h_6],
+    rw[←h_7],
+    rw[h5]
+  end,
+  show ∀Q₂, (⊢ₛ s : Q₂) → (Q₁ = Q₂),
+  from λQ₂ h1, (this s Q₂) rfl h1
