@@ -374,7 +374,8 @@ lemma env_dominates_rest {P: prop} {σ: env} {x: var} {v: value}:
 
 lemma exp.preservation {R: spec} {H: history} {σ σ': env} {P: prop} {e e': exp} {Q: propctx}:
       (⊢ σ : P) → FV (spec.to_prop R) ⊆ FV P → (σ ⊨ R.to_prop.instantiated_n) → (R ⋀ H ⋀ P ⊢ e : Q) →
-      ((R, H, σ, e) ⟶ (R, H, σ', e')) → ⊢ₛ (R, H, σ', e') :=
+      ((R, H, σ, e) ⟶ (R, H, σ', e')) →
+      ∃Q', (⊢ₛ (R, H, σ', e') : Q') ∧ (∀σ' t, dominates σ' (H ⋀ P ⋀ (Q t)) (Q' t)) :=
   sorry
 
 lemma inlined_dominates_spec {σ σ₁: env} {P: prop} {Q: propctx} {f x: var} {R S: spec} {e: exp} {H: history}:
@@ -513,8 +514,9 @@ lemma inlined_dominates_spec {σ σ₁: env} {P: prop} {Q: propctx} {f x: var} {
                    (spec.to_prop (spec.func f x R S)),
   from h3.symm ▸ h4.symm ▸ h7
 
-theorem preservation {s: stack} : (⊢ₛ s) → (∀s', (s ⟶ s') → (⊢ₛ s')) :=
-  assume s_verified:  ⊢ₛ s,
+theorem preservation {s: stack} {Q: propctx}:
+   (⊢ₛ s : Q) → (∀s', (s ⟶ s') → ∃Q', (⊢ₛ s' : Q') ∧ (∀σ' t, dominates σ' (Q t) (Q' t))) :=
+  assume s_verified:  ⊢ₛ s : Q,
   begin
     induction s_verified,
     case stack.vcgen.top σ e P Q H R σ_verified fv_R R_valid e_verified {

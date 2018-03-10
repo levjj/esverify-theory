@@ -1,4 +1,4 @@
-import .syntax .notations .evaluation .freevars .substitution
+import .syntax .notations .evaluation .freevars .substitution .qi
 
 reserve infix `⊢`:10
 
@@ -108,31 +108,35 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
-inductive stack.vcgen : stack → Prop
-notation `⊢ₛ` s : 10 := stack.vcgen s
+inductive stack.vcgen : stack → propctx → Prop
+notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
 
 | top {R: spec} {H: history} {P: prop} {σ: env} {e: exp} {Q: propctx}:
     (⊢ σ : P) →
     FV R.to_prop ⊆ FV P →
     (σ ⊨ R.to_prop.instantiated_n) →
     (R ⋀ H ⋀ P ⊢ e : Q) →
-    (⊢ₛ (R, H, σ, e))
+    (⊢ₛ (R, H, σ, e) : H ⋀ P ⋀ Q)
 
-| cons {H₁ H₂: history} {P: prop} {s: stack} {σ₁ σ₂: env}
-       {f fx g x y: var} {R S R': spec} {e₁ e₂: exp} {v: value} {Q: propctx}:
-    (⊢ₛ s) →
-    (⊢ σ₁ : P) →
-    FV R'.to_prop ⊆ FV P →
-    (σ₁ ⊨ R'.to_prop.instantiated_n) →
-    (σ₁ g = value.func f fx R S e₂ H₂ σ₂) →
-    (σ₁ x = v) →
+| cons {H₁ H₂: history} {P₁ P₂: prop} {s: stack} {σ₁ σ₂: env}
+       {f fx g x y: var} {R₁ R₂ S₂: spec} {e₁ e₂: exp} {v: value} {Q₁ Q₂ Q₂': propctx}:
+    (⊢ₛ s : Q₂') →
     y ∉ σ₁ →
-    (R' ⋀ H₁ ⋀ P ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q) →
-    ⟪ prop.implies (R' ⋀ H₁ ⋀ P ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
-    ((R, H₂, σ₂[f↦value.func f fx R S e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
-    (⊢ₛ (s · [R', H₁, σ₁, letapp y = g[x] in e₁]))
+    (⊢ σ₁ : P₁) →
+    (⊢ σ₂ : P₂ ) →
+    FV R₁.to_prop ⊆ FV P₁ →
+    (σ₁ ⊨ R₁.to_prop.instantiated_n) →
+    (σ₁ g = value.func f fx R₂ S₂ e₂ H₂ σ₂) →
+    (σ₁ x = v) →
+    (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
+    (H₂ ⋀ P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
+    (∀σ' t, dominates σ' (H₂ ⋀ P₂ ⋀ (Q₂ t)) (Q₂' t)) →
+    ⟪ prop.implies (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
+    ((R₂, H₂, σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
+    (⊢ₛ (s · [R₁, H₁, σ₁, letapp y = g[x] in e₁]) : H₁ ⋀ P₁ ⋀
+          propctx.exis y (prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₂))
 
-notation `⊢ₛ` s : 10 := stack.vcgen s
+notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
 
 -- lemmas
 
