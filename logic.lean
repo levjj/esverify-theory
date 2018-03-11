@@ -67,11 +67,11 @@ axiom valid.binop {op: binop} {v₁ v₂ v: value}:
 -- However, given a complete evaluation derivation of a function call, we can add the
 -- equality `f(x)=y` as new axiom for closed values f, x, y and the resulting set
 -- of axioms is still sound due to deterministic evaluation.
-axiom valid.app {vₓ v: value} {σ σ': env} {H H': history} {f x y: var} {R S: spec} {e: exp}:
-  (R, H, σ[x↦vₓ], e) ⟶* (R, H', σ', exp.return y) ∧
+axiom valid.app {vₓ v: value} {σ σ': env} {H H': history} {f x y: var} {R R' S: spec} {e: exp}:
+  (R, H, σ[f↦value.func f x R S e H σ][x↦vₓ], e) ⟶* (R', H', σ', exp.return y) →
   (σ' y = some v)
   →
-  ⊨ term.app (value.func f x R S e H σ) vₓ ≡ v
+  ⊨ v ≡ term.app (value.func f x R S e H σ) vₓ
 
 -- can write pre₁ and pre₂ to check domain of operators
 

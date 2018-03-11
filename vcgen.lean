@@ -130,7 +130,7 @@ notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
     (σ₁ x = v) →
     (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
     (H₂ ⋀ P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
-    (∀σ' t, dominates σ' (H₂ ⋀ P₂ ⋀ (Q₂ t)) (Q₂' t)) →
+    (∀σ' t, dominates σ' (Q₂' t) (H₂ ⋀ P₂ ⋀ (Q₂ t))) →
     ⟪ prop.implies (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
     ((R₂, H₂, σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
     (⊢ₛ (s · [R₁, H₁, σ₁, letapp y = g[x] in e₁]) : H₁ ⋀ P₁ ⋀

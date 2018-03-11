@@ -1811,6 +1811,32 @@ begin
   ... = term.binop op (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end
 
+lemma term.subst_env.app {σ: env} {t₁ t₂: term}:
+      term.subst_env σ (term.app t₁ t₂) = term.app (term.subst_env σ t₁) (term.subst_env σ t₂) :=
+begin
+  induction σ with σ' x v ih,
+
+  show (term.subst_env env.empty (term.app t₁ t₂)
+      = term.app (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        term.subst_env env.empty (term.app t₁ t₂)
+      = (term.app t₁ t₂) : by unfold term.subst_env
+  ... = (term.app (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (term.app (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
+  show (term.subst_env (σ'[x↦v]) (term.app t₁ t₂)
+      = (term.app (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂))),
+  by calc
+        term.subst_env (σ'[x↦v]) (term.app t₁ t₂)
+      = term.subst x v (term.subst_env σ' (term.app t₁ t₂)) : by unfold term.subst_env
+  ... = term.subst x v (term.app (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = term.app (term.subst x v (term.subst_env σ' t₁))
+                      (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst
+  ... = term.app (term.subst_env (σ'[x↦v]) t₁)
+                      (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = term.app (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
+end
+
 lemma prop.subst_env.term {σ: env} {t: term}:
   prop.subst_env σ t = prop.term (term.subst_env σ t) :=
 begin

@@ -129,6 +129,7 @@ inductive dominates : env → prop → prop → Prop
                                                 dominates σ P₁ P₃
 | subst {σ: env} {x: var} {v: value} {P:prop} : (σ x = v) →
                                                 dominates σ (prop.subst x v P) P
+| exis {σ: env} {x: var} {P:prop}             : dominates σ P (prop.exis x P)
 
 -- axioms about instantiation
 
@@ -310,11 +311,17 @@ lemma dominates.and_elim_right {σ: env} {P₁ P₂ P₃: prop}:
   have h3: dominates σ P₁ (P₃ ⋀ P₂), from dominates.trans h1 h2,
   show dominates σ P₁ P₃, from dominates.and_elim_left h3
 
-lemma dominates.pre_elim {P₁ P₂ P₃: prop} {σ: env}:
+lemma dominates.left_elim {P₁ P₂ P₃: prop} {σ: env}:
       ((σ ⊨ P₁.instantiated_p) → dominates σ P₂ P₃) → dominates σ (P₁ ⋀ P₂) P₃ :=
   assume h1: (σ ⊨ P₁.instantiated_p) → dominates σ P₂ P₃,
   have h2: dominates σ (P₁ ⋀ P₂) (P₁ ⋀ P₃), from dominates.same_left h1,
   show dominates σ (P₁ ⋀ P₂) P₃, from dominates.and_elim_right h2
+
+lemma dominates.right_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₂.instantiated_p) → dominates σ P₁ P₃) → dominates σ (P₁ ⋀ P₂) P₃ :=
+  assume h1: (σ ⊨ P₂.instantiated_p) → dominates σ P₁ P₃,
+  have h2: dominates σ (P₁ ⋀ P₂) (P₃ ⋀ P₂), from dominates.same_right h1,
+  show dominates σ (P₁ ⋀ P₂) P₃, from dominates.and_elim_left h2
 
 lemma valid.instantiated_n_and {P Q: prop}:
       (⊨ P.instantiated_n ⋀ Q.instantiated_n) → ⊨ (P ⋀ Q).instantiated_n :=
