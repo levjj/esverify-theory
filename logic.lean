@@ -97,12 +97,19 @@ axiom valid.pre.mpr {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp} {H: 
   →
   (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ R.to_prop.instantiated_n)
 
-axiom valid.post {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp} {H: history}:
+axiom valid.post.mp {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp} {H: history}:
+  (⊢ σ : Q) →
+  (H ⋀ Q ⋀ spec.func f x R S ⋀ R ⊢ e : Q₂) →
+  (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ (Q₂ (term.app f x)).instantiated_p ⋀ S.to_prop.instantiated_p)
+  →
+  (⊨ vc.post (value.func f x R S e H σ) vₓ)
+
+axiom valid.post.mpr {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp} {H: history}:
   (⊢ σ : Q) →
   (H ⋀ Q ⋀ spec.func f x R S ⋀ R ⊢ e : Q₂) →
   (⊨ vc.post (value.func f x R S e H σ) vₓ)
   →
-  (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ (Q₂ (term.app f x) ⋀ S.to_prop).instantiated_n)
+  (σ[f↦value.func f x R S e H σ][x↦vₓ] ⊨ (Q₂ (term.app f x)).instantiated_n ⋀ S.to_prop.instantiated_n)
 
 -- only closed VCs can be validated
 axiom valid.closed {P: vc}:
@@ -972,8 +979,10 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
             have h14: ⊨ vc.post vf (term.subst gx v gx), from this ▸ h13,
             have term.subst gx v gx = v, from term.subst.var.same,
             have ⊨ vc.post vf v, from this ▸ h14,
+            have (σ₂[g↦vf][gx↦v] ⊨ (Q₃ (term.app g gx)).instantiated_n ⋀ S.to_prop.instantiated_n),
+            from valid.post.mpr σ₂_verified func_verified this,
             have h15: (σ₂[g↦vf][gx↦v] ⊨ (Q₃ (term.app g gx) ⋀ S.to_prop).instantiated_n),
-            from valid.post σ₂_verified func_verified this,
+            from valid_env.instantiated_n_and this,
             have vc.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop).instantiated_n
               = (prop.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop)).instantiated_n,
             from instantiated_n_distrib_subst_env,
@@ -1073,49 +1082,45 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
   end
 
 lemma env_translation_valid {R: spec} {H: history} {P: prop} {σ: env}:
-  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) → σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p :=
+  (⊢ σ: P) → (σ ⊨ R.to_prop.instantiated_n) → σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n :=
   assume env_verified: (⊢ σ : P),
-  assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
   have h1: σ ⊨ prop.instantiated_n ↑H, from history_valid σ,
   have h2: σ ⊨ P.instantiated_n, from env_translation_instantiated_n_valid env_verified,
   have σ ⊨ (prop.instantiated_n ↑H ⋀ P.instantiated_n), from valid_env.and h1 h2,
   have σ ⊨ (↑H ⋀ P).instantiated_n, from valid_env.instantiated_n_and this,
   have σ ⊨ R.to_prop.instantiated_n ⋀ (↑H ⋀ P).instantiated_n, from valid_env.and R_valid this,
-  have h3: σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n, from valid_env.instantiated_n_and this,
-  have closed (calls_to_prop H), from call_history_closed H,
-  have h4: closed_subst σ (calls_to_prop H), from prop.closed_any_subst_of_closed this,
-  have closed_subst σ P, from env_translation_closed_subst env_verified,
-  have closed_subst σ (↑H ⋀ P), from prop.closed_subst.and h4 this,
-  have closed_subst σ (↑R ⋀ ↑H ⋀ P), from prop.closed_subst.and R_closed this,
-  have closed_subst σ (↑R ⋀ ↑H ⋀ P).instantiated_p, from instantiated_p_closed_subst_of_closed this,
-  show σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this h3
+  show σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n, from valid_env.instantiated_n_and this
 
 lemma consequent_of_H_P {R: spec} {H: history} {σ: env} {P Q: prop}:
-      (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) → ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫ →
-      no_instantiations Q → σ ⊨ Q.erased_n :=
+      (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) →
+     closed_subst σ Q → ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫ → σ ⊨ Q.instantiated_p :=
   assume env_verified: (⊢ σ : P),
   assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
-  assume impl_vc: ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫,
-  assume : no_instantiations Q,
-  have h1: (prop.implies (R ⋀ ↑H ⋀ P) Q).instantiated_n = vc.or (↑R ⋀ ↑H ⋀ P).not.instantiated_n Q.erased_n,
-  from or_dist_of_no_instantiations_n this,
-  have h2: (↑R ⋀ ↑H ⋀ P).not.instantiated_n = (↑R ⋀ ↑H ⋀ P).instantiated_p.not, from not_dist_instantiated_n,
-  have σ ⊨ (prop.implies (↑R ⋀ ↑H ⋀ P) Q).instantiated_n, from impl_vc σ,
-  have σ ⊨ vc.or (↑R ⋀ ↑H ⋀ P).instantiated_p.not Q.erased_n, from h2 ▸ h1 ▸ this,
-  have h4: σ ⊨ vc.implies (↑R ⋀ ↑H ⋀ P).instantiated_p Q.erased_n, from this,
-  have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_p, from env_translation_valid env_verified R_closed R_valid,
-  show σ ⊨ Q.erased_n, from valid_env.mp h4 this
+  assume Q_closed: closed_subst σ Q,
+  assume : ⟪prop.implies (R ⋀ ↑H ⋀ P) Q⟫,
+  have impl: σ ⊨ (prop.implies (↑R ⋀ ↑H ⋀ P) Q).instantiated_n, from this σ,
+  have closed (calls_to_prop H), from call_history_closed H,
+  have h1: closed_subst σ (calls_to_prop H), from prop.closed_any_subst_of_closed this,
+  have closed_subst σ P, from env_translation_closed_subst env_verified,
+  have closed_subst σ (↑H ⋀ P), from prop.closed_subst.and h1 this,
+  have closed_subst σ (↑R ⋀ ↑H ⋀ P), from prop.closed_subst.and R_closed this,
+  have closed_subst σ (prop.implies (↑R ⋀ ↑H ⋀ P) Q), from prop.closed_subst.implies this Q_closed,
+  have closed_subst σ (prop.implies (↑R ⋀ ↑H ⋀ P) Q).instantiated_p, from instantiated_p_closed_subst_of_closed this,
+  have σ ⊨ (prop.implies (↑R ⋀ ↑H ⋀ P) Q).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this impl,
+  have σ ⊨ ((↑R ⋀ ↑H ⋀ P).not ⋁ Q).instantiated_p, from this,
+  have h2: σ ⊨ ((↑R ⋀ ↑H ⋀ P).not.instantiated_p ⋁ Q.instantiated_p), from valid_env.instantiated_p_or_elim this,
+  have (↑R ⋀ ↑H ⋀ P).not.instantiated_p = (↑R ⋀ ↑H ⋀ P).instantiated_n.not, from not_dist_instantiated_p,
+  have σ ⊨ ((↑R ⋀ ↑H ⋀ P).instantiated_n.not ⋁ Q.instantiated_p), from this ▸ h2,
+  have h3: σ ⊨ vc.implies (↑R ⋀ ↑H ⋀ P).instantiated_n Q.instantiated_p, from this,
+  have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n, from env_translation_valid env_verified R_valid,
+  show σ ⊨ Q.instantiated_p, from valid_env.mp h3 this
 
 lemma env_translation_call_valid {R: spec} {H: history} {P: prop} {σ: env} {f x: var}:
-  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) → f ∈ σ → x ∈ σ →
-  σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p :=
+  (⊢ σ: P) → (σ ⊨ R.to_prop.instantiated_n) → σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n :=
   assume env_verified: (⊢ σ : P),
-  assume R_closed: closed_subst σ R.to_prop,
   assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
-  assume f_in_σ: f ∈ σ,
-  assume x_in_σ: x ∈ σ,
   have h1: σ ⊨ prop.instantiated_n ↑H, from history_valid σ,
   have h2: σ ⊨ P.instantiated_n, from env_translation_instantiated_n_valid env_verified,
   have σ ⊨ (prop.instantiated_n ↑H ⋀ P.instantiated_n), from valid_env.and h1 h2,
@@ -1140,12 +1145,24 @@ lemma env_translation_call_valid {R: spec} {H: history} {P: prop} {σ: env} {f x
   have σ ⊨ (prop.call f x).instantiated_n, from this.symm ▸ h7,
 
   have σ ⊨ (↑R ⋀ ↑H ⋀ P).instantiated_n ⋀ (prop.call f x).instantiated_n, from valid_env.and h3 this,
-  have h8: σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n, from valid_env.instantiated_n_and this,
+  show σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n, from valid_env.instantiated_n_and this
+
+lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: var}:
+  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) →
+  ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫ → f ∈ σ → x ∈ σ → closed_subst σ Q → σ ⊨ Q.instantiated_p :=
+  assume env_verified: (⊢ σ : P),
+  assume R_closed: closed_subst σ R.to_prop,
+  assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
+  assume impl_vc: ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫,
+  assume f_in_σ: f ∈ σ,
+  assume x_in_σ: x ∈ σ,
+  assume Q_closed: closed_subst σ Q,
+  have h1: σ ⊨ (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_n, from impl_vc σ,
 
   have closed (calls_to_prop H), from call_history_closed H,
-  have h9: closed_subst σ (calls_to_prop H), from prop.closed_any_subst_of_closed this,
+  have h2: closed_subst σ (calls_to_prop H), from prop.closed_any_subst_of_closed this,
   have closed_subst σ P, from env_translation_closed_subst env_verified,
-  have closed_subst σ (↑H ⋀ P), from prop.closed_subst.and h9 this,
+  have closed_subst σ (↑H ⋀ P), from prop.closed_subst.and h2 this,
   have h10: closed_subst σ (↑R ⋀ ↑H ⋀ P), from prop.closed_subst.and R_closed this,
   have closed_subst σ (prop.call f x), from (
     assume z: var,
@@ -1161,60 +1178,48 @@ lemma env_translation_call_valid {R: spec} {H: history} {P: prop} {σ: env} {f x
     )
   ),
   have closed_subst σ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x), from prop.closed_subst.and h10 this,
-  have closed_subst σ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p,
+  have closed_subst σ (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q), from prop.closed_subst.implies this Q_closed,
+  have closed_subst σ (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_p,
   from instantiated_p_closed_subst_of_closed this,
-  show σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p, from valid_env.instantiated_p_of_instantiated_n this h8
+  have σ ⊨ (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_p,
+  from valid_env.instantiated_p_of_instantiated_n this h1,
+  have σ ⊨ (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not ⋁ Q).instantiated_p, from this,
+  have h2: σ ⊨ (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated_p ⋁ Q.instantiated_p), from valid_env.instantiated_p_or_elim this,
+  have ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated_p = ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n.not,
+  from not_dist_instantiated_p,
+  have σ ⊨ (((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n.not ⋁ Q.instantiated_p), from this ▸ h2,
+  have h3: σ ⊨ vc.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n Q.instantiated_p, from this,
+  have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_n, from env_translation_call_valid env_verified R_valid,
+  show σ ⊨ Q.instantiated_p, from valid_env.mp h3 this
 
-lemma consequent_of_H_P_call {R: spec} {H: history} {σ: env} {P Q: prop} {f x: var}:
-  (⊢ σ: P) → closed_subst σ R.to_prop → (σ ⊨ R.to_prop.instantiated_n) →
-  ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫ → f ∈ σ → x ∈ σ → no_instantiations Q → σ ⊨ Q.erased_n :=
-  assume env_verified: (⊢ σ : P),
-  assume R_closed: closed_subst σ R.to_prop,
-  assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
-  assume impl_vc: ⟪prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q⟫,
-  assume f_in_σ: f ∈ σ,
-  assume x_in_σ: x ∈ σ,
-  assume : no_instantiations Q,
-  have h1: (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_n
-         = vc.or ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated_n Q.erased_n,
-  from or_dist_of_no_instantiations_n this,
-  have h2: ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).not.instantiated_n = ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p.not,
-  from not_dist_instantiated_n,
-  have σ ⊨ (prop.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x) Q).instantiated_n, from impl_vc σ,
-  have σ ⊨ vc.or ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p.not Q.erased_n, from h2 ▸ h1 ▸ this,
-  have h4: σ ⊨ vc.implies ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p Q.erased_n, from this,
-  have σ ⊨ ((↑R ⋀ ↑H ⋀ P) ⋀ prop.call f x).instantiated_p,
-  from env_translation_call_valid env_verified R_closed R_valid f_in_σ x_in_σ,
-  show σ ⊨ Q.erased_n, from valid_env.mp h4 this
-
-lemma dominates_equiv_subst {σ₁ σ₂: env} {P: prop}:
-  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates σ₂ (prop.subst_env σ₁ P) P :=
+lemma dominates_p_equiv_subst {σ₁ σ₂: env} {P: prop}:
+  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates_p σ₂ (prop.subst_env σ₁ P) P :=
   begin
     assume env_equiv,
     
     induction σ₁ with σ' x v ih,
 
-    show dominates σ₂ (prop.subst_env env.empty P) P, by begin
+    show dominates_p σ₂ (prop.subst_env env.empty P) P, by begin
       unfold prop.subst_env,
-      from dominates.self
+      from dominates_p.self
     end,
 
-    show dominates σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
+    show dominates_p σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
       unfold prop.subst_env,
-      have h2: dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), by begin
+      have h2: dominates_p σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), by begin
         by_cases (x ∈ σ') with h,
 
         have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
         have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
         from unchanged_of_subst_nonfree_prop h3,
-        have h5: dominates σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from dominates.self,
-        show dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
+        have h5: dominates_p σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from dominates_p.self,
+        show dominates_p σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
 
         have h2, from env_equiv x env.contains.same,
         have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
         have h4: (σ₂ x = v), from eq.trans h2.symm h3,
-        show dominates σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
-        from dominates.subst h4
+        show dominates_p σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
+        from dominates_p.subst h4
       end,
       have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
         assume y,
@@ -1230,7 +1235,54 @@ lemma dominates_equiv_subst {σ₁ σ₂: env} {P: prop}:
         from eq.trans h11.symm h5
       end,
       have h4, from ih h3,
-      from dominates.trans h2 h4
+      from dominates_p.trans h2 h4
+    end,
+  end
+
+lemma dominates_n_equiv_subst {σ₁ σ₂: env} {P: prop}:
+  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates_n σ₂ (prop.subst_env σ₁ P) P :=
+  begin
+    assume env_equiv,
+    
+    induction σ₁ with σ' x v ih,
+
+    show dominates_n σ₂ (prop.subst_env env.empty P) P, by begin
+      unfold prop.subst_env,
+      from dominates_n.self
+    end,
+
+    show dominates_n σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
+      unfold prop.subst_env,
+      have h2: dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), by begin
+        by_cases (x ∈ σ') with h,
+
+        have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
+        have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
+        from unchanged_of_subst_nonfree_prop h3,
+        have h5: dominates_n σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from dominates_n.self,
+        show dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
+
+        have h2, from env_equiv x env.contains.same,
+        have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
+        have h4: (σ₂ x = v), from eq.trans h2.symm h3,
+        show dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
+        from dominates_n.subst h4
+      end,
+      have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
+        assume y,
+        assume h3,
+        have h4: y ∈ (σ'[x↦v]), from env.contains.rest h3,
+        have h5, from env_equiv y h4,
+        have h6: (∃ (v : value), env.apply σ' y = some v), from env.contains_apply_equiv.right.mpr h3,
+        have h7, from option.is_some_iff_exists.mpr h6,
+        have h8, from option.some_iff_not_none.mp h7,
+        have h9: (x ≠ y ∨ ¬ (option.is_none (env.apply σ' y))), from or.inr h8,
+        have h10: ¬ (x = y ∧ (option.is_none (env.apply σ' y))), from not_and_distrib.mpr h9,
+        have h11: (env.apply (σ'[x↦v]) y = (σ' y)), by { unfold env.apply, simp[h10], refl },
+        from eq.trans h11.symm h5
+      end,
+      have h4, from ih h3,
+      from dominates_n.trans h2 h4
     end,
   end
 

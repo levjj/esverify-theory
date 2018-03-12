@@ -118,19 +118,20 @@ notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
     (R ⋀ H ⋀ P ⊢ e : Q) →
     (⊢ₛ (R, H, σ, e) : H ⋀ P ⋀ Q)
 
-| cons {H₁ H₂: history} {P₁ P₂: prop} {s: stack} {σ₁ σ₂: env}
+| cons {H₁ H₂: history} {P₁ P₂ P₃: prop} {s: stack} {σ₁ σ₂: env}
        {f fx g x y: var} {R₁ R₂ S₂: spec} {e₁ e₂: exp} {v: value} {Q₁ Q₂ Q₂': propctx}:
     (⊢ₛ s : Q₂') →
     y ∉ σ₁ →
     (⊢ σ₁ : P₁) →
     (⊢ σ₂ : P₂ ) →
+    (⊢ (σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v]) : P₃) →
     FV R₁.to_prop ⊆ FV P₁ →
     (σ₁ ⊨ R₁.to_prop.instantiated_n) →
     (σ₁ g = value.func f fx R₂ S₂ e₂ H₂ σ₂) →
     (σ₁ x = v) →
     (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
     (H₂ ⋀ P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
-    (∀σ' t, dominates σ' (Q₂' t) (H₂ ⋀ P₂ ⋀ (Q₂ t))) →
+    (∀σ' t, dominates_n σ' (Q₂' t) (H₂ ⋀ P₃ ⋀ (Q₂ t)) ∧ (FV (↑H₂ ⋀ P₃ ⋀ (Q₂ t)) ⊆ FV (Q₂' t))) →
     ⟪ prop.implies (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
     ((R₂, H₂, σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
     (⊢ₛ (s · [R₁, H₁, σ₁, letapp y = g[x] in e₁]) : H₁ ⋀ P₁ ⋀
@@ -467,10 +468,10 @@ lemma stack.vcgen.inj {s: stack} {Q₁: propctx}: (⊢ₛ s : Q₁) → ∀Q₂,
 
     injection h2,
 
-    have h4: (P₁ = P₁_1), from env.vcgen.inj a_2 P₁_1 (h_4.symm ▸ a_15),
+    have h4: (P₁ = P₁_1), from env.vcgen.inj a_2 P₁_1 (h_4.symm ▸ a_16),
     have : R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁,
-    from h_2.symm ▸ h_3.symm ▸ h_6.symm ▸ h_7.symm ▸ h_5.symm ▸ h_8.symm ▸ h4.symm ▸ a_21,
-    have h5: (Q₁_1 = Q₁), from exp.vcgen.inj a_8 Q₁ this,
+    from h_2.symm ▸ h_3.symm ▸ h_6.symm ▸ h_7.symm ▸ h_5.symm ▸ h_8.symm ▸ h4.symm ▸ a_23,
+    have h5: (Q₁_1 = Q₁), from exp.vcgen.inj a_9 Q₁ this,
     rw[←h_3.symm],
     rw[←h4],
     rw[←h_5],

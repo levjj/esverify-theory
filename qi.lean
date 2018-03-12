@@ -104,32 +104,62 @@ def calls_p_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ)
 @[reducible]
 def calls_n_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_n P
 
-inductive dominates : env → prop → prop → Prop 
+mutual inductive dominates_p, dominates_n
+
+with dominates_p : env → prop → prop → Prop
 | no_quantifiers {σ: env} {P Q: prop}         : ((σ ⊨ P.instantiated_p) → (σ ⊨ Q.instantiated_p)) →
                                                 (calls_p_subst σ Q ⊆ calls_p_subst σ P) →
                                                 (quantifiers_p Q = ∅) →
-                                                dominates σ P Q
+                                                dominates_p σ P Q
 | quantifier {σ: env} {x: var} {t₁ t₂: term} {P₁ P₂: prop} : 
-                                                ((σ ⊨ t₁ ≡ t₂) → (∀v: value, dominates (σ[x↦v]) P₁ P₂)) →
-                                                dominates σ (prop.forallc x t₁ P₁) (prop.forallc x t₂ P₂)
-| not_not {σ: env} {P: prop}                  : dominates σ P.not.not P
-| of_not_not {σ: env} {P: prop}               : dominates σ P P.not.not
-| and_intro {σ: env} {P P' Q Q': prop}        : (dominates σ P P') →
-                                                ((σ ⊨ P.instantiated_p) → dominates σ Q Q') →
-                                                dominates σ (P ⋀ Q) (P' ⋀ Q')
-| and_symm {σ: env} {P₁ P₂: prop}             : dominates σ (P₁ ⋀ P₂) (P₂ ⋀ P₁)
-| and_elim_left {σ: env} {P₁ P₂ P₃: prop}     : dominates σ P₁ (P₂ ⋀ P₃) →
-                                                dominates σ P₁ P₂
-| and_assoc {σ: env} {P₁ P₂ P₃: prop}         : dominates σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃)
-| or_intro {σ: env} {P P' Q Q': prop}         : (dominates σ P P') →
-                                                (dominates σ Q Q') →
-                                                dominates σ (P ⋁ Q) (P' ⋁ Q')
-| trans {σ: env} {P₁ P₂ P₃: prop}             : dominates σ P₁ P₂ →
-                                                dominates σ P₂ P₃ →
-                                                dominates σ P₁ P₃
+                                                ((σ ⊨ t₁ ≡ t₂) → (∀v: value, dominates_p (σ[x↦v]) P₁ P₂)) →
+                                                dominates_p σ (prop.forallc x t₁ P₁) (prop.forallc x t₂ P₂)
+| not {σ: env} {P Q: prop}                    : dominates_n σ P Q →
+                                                dominates_p σ Q.not P.not
+| not_not {σ: env} {P: prop}                  : dominates_p σ P.not.not P
+| of_not_not {σ: env} {P: prop}               : dominates_p σ P P.not.not
+| and_intro {σ: env} {P P' Q Q': prop}        : (dominates_p σ P P') →
+                                                ((σ ⊨ P.instantiated_p) → dominates_p σ Q Q') →
+                                                dominates_p σ (P ⋀ Q) (P' ⋀ Q')
+| and_symm {σ: env} {P₁ P₂: prop}             : dominates_p σ (P₁ ⋀ P₂) (P₂ ⋀ P₁)
+| and_elim_left {σ: env} {P₁ P₂ P₃: prop}     : dominates_p σ P₁ (P₂ ⋀ P₃) →
+                                                dominates_p σ P₁ P₂
+| and_assoc {σ: env} {P₁ P₂ P₃: prop}         : dominates_p σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃)
+| or_intro {σ: env} {P P' Q Q': prop}         : (dominates_p σ P P') →
+                                                (dominates_p σ Q Q') →
+                                                dominates_p σ (P ⋁ Q) (P' ⋁ Q')
+| trans {σ: env} {P₁ P₂ P₃: prop}             : dominates_p σ P₁ P₂ →
+                                                dominates_p σ P₂ P₃ →
+                                                dominates_p σ P₁ P₃
 | subst {σ: env} {x: var} {v: value} {P:prop} : (σ x = v) →
-                                                dominates σ (prop.subst x v P) P
-| exis {σ: env} {x: var} {P:prop}             : dominates σ P (prop.exis x P)
+                                                dominates_p σ (prop.subst x v P) P
+| exis {σ: env} {x: var} {P:prop}             : dominates_p σ P (prop.exis x P)
+
+with dominates_n : env → prop → prop → Prop 
+| no_quantifiers {σ: env} {P Q: prop}         : ((σ ⊨ P.instantiated_n) → (σ ⊨ Q.instantiated_n)) →
+                                                (calls_n_subst σ Q ⊆ calls_n_subst σ P) →
+                                                (quantifiers_n Q = ∅) →
+                                                dominates_n σ P Q
+| not {σ: env} {P Q: prop}                    : dominates_p σ P Q →
+                                                dominates_n σ Q.not P.not
+| not_not {σ: env} {P: prop}                  : dominates_n σ P.not.not P
+| of_not_not {σ: env} {P: prop}               : dominates_n σ P P.not.not
+| and_intro {σ: env} {P P' Q Q': prop}        : (dominates_n σ P P') →
+                                                ((σ ⊨ P.instantiated_p) → dominates_n σ Q Q') →
+                                                dominates_n σ (P ⋀ Q) (P' ⋀ Q')
+| and_symm {σ: env} {P₁ P₂: prop}             : dominates_n σ (P₁ ⋀ P₂) (P₂ ⋀ P₁)
+| and_elim_left {σ: env} {P₁ P₂ P₃: prop}     : dominates_n σ P₁ (P₂ ⋀ P₃) →
+                                                dominates_n σ P₁ P₂
+| and_assoc {σ: env} {P₁ P₂ P₃: prop}         : dominates_n σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃)
+| or_intro {σ: env} {P P' Q Q': prop}         : (dominates_n σ P P') →
+                                                (dominates_n σ Q Q') →
+                                                dominates_n σ (P ⋁ Q) (P' ⋁ Q')
+| trans {σ: env} {P₁ P₂ P₃: prop}             : dominates_n σ P₁ P₂ →
+                                                dominates_n σ P₂ P₃ →
+                                                dominates_n σ P₁ P₃
+| subst {σ: env} {x: var} {v: value} {P:prop} : (σ x = v) →
+                                                dominates_n σ (prop.subst x v P) P
+| exis {σ: env} {x: var} {P:prop}             : dominates_n σ P (prop.exis x P)
 
 -- axioms about instantiation
 
@@ -172,19 +202,19 @@ axiom instantiated_p_distrib_subst {P: prop} {x: var} {v: value}:
 --         ⇗    ⇘ 
 -- erased_n(P)  ⇒  erased_p(P)
 
--- axiom valid_env.instantiated_n_of_erased_n {σ: env} {P: prop}:
---   closed_subst σ P.instantiated_n →
---   (σ ⊨ P.erased_n) →
---   σ ⊨ P.instantiated_n
+axiom valid_env.instantiated_n_of_erased_n {σ: env} {P: prop}:
+  closed_subst σ P.instantiated_n →
+  (σ ⊨ P.erased_n) →
+  σ ⊨ P.instantiated_n
 
 axiom valid_env.instantiated_p_of_instantiated_n {σ: env} {P: prop}:
   closed_subst σ P.instantiated_p →
   (σ ⊨ P.instantiated_n) →
   σ ⊨ P.instantiated_p
 
--- axiom valid_env.erased_p_of_instantiated_p {σ: env} {P: prop}:
---   (σ ⊨ P.instantiated_p) →
---   σ ⊨ P.erased_p
+axiom valid_env.erased_p_of_instantiated_p {σ: env} {P: prop}:
+  (σ ⊨ P.instantiated_p) →
+  σ ⊨ P.erased_p
 
 -- if a conjunction or disjunciton is valid without cross-instantiations
 -- then it remains valid, as potential new instantiations are in negative positions
@@ -211,8 +241,11 @@ axiom valid_env.instantiated_p_or_elim {σ: env} {P Q: prop}:
 -- any cross-instantiations with an arbitrary propostion Q are also the same,
 -- so if (P') implies (P) without cross-instantiations,
 -- then (P' ∧ Q) implies (P ∧ Q) without cross-instantiations
-axiom dominates.elim {σ: env} {P Q: prop}:
-  dominates σ P Q → (σ ⊨ P.instantiated_p) → (σ ⊨ Q.instantiated_p)
+axiom dominates_p.elim {σ: env} {P Q: prop}:
+  dominates_p σ P Q → (σ ⊨ P.instantiated_p) → (σ ⊨ Q.instantiated_p)
+
+axiom dominates_n.elim {σ: env} {P Q: prop}:
+  dominates_n σ P Q → (σ ⊨ P.instantiated_n) → (σ ⊨ Q.instantiated_n)
 
 axiom valid_env.or_not_dist_with_instantiations {σ: env} {P Q: prop}:
   (σ ⊨ (P ⋁ Q).not.instantiated_p) ↔ (σ ⊨ (P.not ⋀ Q.not).instantiated_p)
@@ -251,77 +284,149 @@ axiom free_in_prop.or_not_dist_with_instantiations {P Q: prop}:
 
 -- lemmas
 
-lemma dominates.self {P: prop} {σ: env}: dominates σ P P :=
-  dominates.trans dominates.of_not_not dominates.not_not
+lemma dominates_p.self {P: prop} {σ: env}: dominates_p σ P P :=
+  dominates_p.trans dominates_p.of_not_not dominates_p.not_not
 
-lemma dominates.of_and_left {P₁ P₂: prop} {σ: env}: dominates σ (P₁ ⋀ P₂) P₁ :=
-  have dominates σ (P₁ ⋀ P₂) (P₁ ⋀ P₂), from dominates.self,
-  show dominates σ (P₁ ⋀ P₂) P₁, from dominates.and_elim_left this
+lemma dominates_p.of_and_left {P₁ P₂: prop} {σ: env}: dominates_p σ (P₁ ⋀ P₂) P₁ :=
+  have dominates_p σ (P₁ ⋀ P₂) (P₁ ⋀ P₂), from dominates_p.self,
+  show dominates_p σ (P₁ ⋀ P₂) P₁, from dominates_p.and_elim_left this
 
-lemma dominates.of_and_right {P₁ P₂: prop} {σ: env}: dominates σ (P₁ ⋀ P₂) P₂ :=
-  have h1: dominates σ (P₁ ⋀ P₂) (P₂ ⋀ P₁), from dominates.and_symm,
-  have h2: dominates σ (P₂ ⋀ P₁) P₂, from dominates.of_and_left,
-  show dominates σ (P₁ ⋀ P₂) P₂, from dominates.trans h1 h2
+lemma dominates_p.of_and_right {P₁ P₂: prop} {σ: env}: dominates_p σ (P₁ ⋀ P₂) P₂ :=
+  have h1: dominates_p σ (P₁ ⋀ P₂) (P₂ ⋀ P₁), from dominates_p.and_symm,
+  have h2: dominates_p σ (P₂ ⋀ P₁) P₂, from dominates_p.of_and_left,
+  show dominates_p σ (P₁ ⋀ P₂) P₂, from dominates_p.trans h1 h2
 
-lemma dominates.and_assoc.symm {P₁ P₂ P₃: prop} {σ: env}:
-      dominates σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃) :=
-  have h1: dominates σ ((P₁ ⋀ P₂) ⋀ P₃) (P₃ ⋀ P₁ ⋀ P₂), from dominates.and_symm,
-  have h2: dominates σ (P₃ ⋀ P₁ ⋀ P₂) ((P₃ ⋀ P₁) ⋀ P₂), from dominates.and_assoc,
-  have h3: dominates σ ((P₃ ⋀ P₁) ⋀ P₂) (P₂ ⋀ P₃ ⋀ P₁), from dominates.and_symm,
-  have h4: dominates σ (P₂ ⋀ P₃ ⋀ P₁) ((P₂ ⋀ P₃) ⋀ P₁), from dominates.and_assoc,
-  have h5: dominates σ ((P₂ ⋀ P₃) ⋀ P₁) (P₁ ⋀ P₂ ⋀ P₃) , from dominates.and_symm,
-  show dominates σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃),
-  from dominates.trans h1 (dominates.trans h2 (dominates.trans h3 (dominates.trans h4 h5)))
+lemma dominates_p.and_assoc.symm {P₁ P₂ P₃: prop} {σ: env}:
+      dominates_p σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃) :=
+  have h1: dominates_p σ ((P₁ ⋀ P₂) ⋀ P₃) (P₃ ⋀ P₁ ⋀ P₂), from dominates_p.and_symm,
+  have h2: dominates_p σ (P₃ ⋀ P₁ ⋀ P₂) ((P₃ ⋀ P₁) ⋀ P₂), from dominates_p.and_assoc,
+  have h3: dominates_p σ ((P₃ ⋀ P₁) ⋀ P₂) (P₂ ⋀ P₃ ⋀ P₁), from dominates_p.and_symm,
+  have h4: dominates_p σ (P₂ ⋀ P₃ ⋀ P₁) ((P₂ ⋀ P₃) ⋀ P₁), from dominates_p.and_assoc,
+  have h5: dominates_p σ ((P₂ ⋀ P₃) ⋀ P₁) (P₁ ⋀ P₂ ⋀ P₃) , from dominates_p.and_symm,
+  show dominates_p σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃),
+  from dominates_p.trans h1 (dominates_p.trans h2 (dominates_p.trans h3 (dominates_p.trans h4 h5)))
 
-lemma dominates.same_right {σ: env} {P P' Q: prop}:
-      ((σ ⊨ Q.instantiated_p) → dominates σ P P') → dominates σ (P ⋀ Q) (P' ⋀ Q) :=
-  have h1: dominates σ (P ⋀ Q) (Q ⋀ P), from dominates.and_symm,
-  have h2: dominates σ Q Q, from dominates.self,
-  assume h3: ((σ ⊨ Q.instantiated_p) → dominates σ P P'),
-  have h4: dominates σ (Q ⋀ P) (Q ⋀ P'), from dominates.and_intro h2 h3,
-  have h5: dominates σ (Q ⋀ P') (P' ⋀ Q), from dominates.and_symm,
-  show dominates σ (P ⋀ Q) (P' ⋀ Q),
-  from dominates.trans h1 (dominates.trans h4 h5)
+lemma dominates_p.same_right {σ: env} {P P' Q: prop}:
+      ((σ ⊨ Q.instantiated_p) → dominates_p σ P P') → dominates_p σ (P ⋀ Q) (P' ⋀ Q) :=
+  have h1: dominates_p σ (P ⋀ Q) (Q ⋀ P), from dominates_p.and_symm,
+  have h2: dominates_p σ Q Q, from dominates_p.self,
+  assume h3: ((σ ⊨ Q.instantiated_p) → dominates_p σ P P'),
+  have h4: dominates_p σ (Q ⋀ P) (Q ⋀ P'), from dominates_p.and_intro h2 h3,
+  have h5: dominates_p σ (Q ⋀ P') (P' ⋀ Q), from dominates_p.and_symm,
+  show dominates_p σ (P ⋀ Q) (P' ⋀ Q),
+  from dominates_p.trans h1 (dominates_p.trans h4 h5)
 
-lemma dominates.shuffle {P Q R S: prop} {σ: env}:
-      dominates σ (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S):=
-  have h1: dominates σ (P ⋀ Q ⋀ R ⋀ S) ((Q ⋀ R ⋀ S) ⋀ P), from dominates.and_symm,
-  have h2: dominates σ ((Q ⋀ R ⋀ S) ⋀ P) (((Q ⋀ R) ⋀ S) ⋀ P),
-  from dominates.same_right (λ_, dominates.and_assoc),
-  have h3: dominates σ  (((Q ⋀ R) ⋀ S) ⋀ P) ((Q ⋀ R) ⋀ S ⋀ P), from dominates.and_assoc.symm,
-  have h4: dominates σ ((Q ⋀ R) ⋀ S ⋀ P) ((S ⋀ P) ⋀ Q ⋀ R), from dominates.and_symm,
-  have h5: dominates σ ((S ⋀ P) ⋀ Q ⋀ R) (S ⋀ P ⋀ Q ⋀ R), from dominates.and_assoc.symm,
-  have h6: dominates σ (S ⋀ P ⋀ Q ⋀ R) ((P ⋀ Q ⋀ R) ⋀ S), from dominates.and_symm,
-  show dominates σ  (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S),
-  from dominates.trans h1 (dominates.trans h2 (dominates.trans h3 (dominates.trans h4 (dominates.trans h5 h6))))
+lemma dominates_p.shuffle {P Q R S: prop} {σ: env}:
+      dominates_p σ (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S):=
+  have h1: dominates_p σ (P ⋀ Q ⋀ R ⋀ S) ((Q ⋀ R ⋀ S) ⋀ P), from dominates_p.and_symm,
+  have h2: dominates_p σ ((Q ⋀ R ⋀ S) ⋀ P) (((Q ⋀ R) ⋀ S) ⋀ P),
+  from dominates_p.same_right (λ_, dominates_p.and_assoc),
+  have h3: dominates_p σ  (((Q ⋀ R) ⋀ S) ⋀ P) ((Q ⋀ R) ⋀ S ⋀ P), from dominates_p.and_assoc.symm,
+  have h4: dominates_p σ ((Q ⋀ R) ⋀ S ⋀ P) ((S ⋀ P) ⋀ Q ⋀ R), from dominates_p.and_symm,
+  have h5: dominates_p σ ((S ⋀ P) ⋀ Q ⋀ R) (S ⋀ P ⋀ Q ⋀ R), from dominates_p.and_assoc.symm,
+  have h6: dominates_p σ (S ⋀ P ⋀ Q ⋀ R) ((P ⋀ Q ⋀ R) ⋀ S), from dominates_p.and_symm,
+  show dominates_p σ  (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S),
+  from dominates_p.trans h1 (dominates_p.trans h2 (dominates_p.trans h3 (dominates_p.trans h4 (dominates_p.trans h5 h6))))
 
-lemma dominates.same_left {σ: env} {P Q Q': prop}:
-      ((σ ⊨ P.instantiated_p) → dominates σ Q Q') → dominates σ (P ⋀ Q) (P ⋀ Q') :=
-  assume h1: (σ ⊨ P.instantiated_p) → dominates σ Q Q',
-  have h2: dominates σ (P ⋀ Q) (Q ⋀ P), from dominates.and_symm,
-  have h3: dominates σ (Q ⋀ P) (Q' ⋀ P), from dominates.same_right h1,
-  have h4: dominates σ (Q' ⋀ P) (P ⋀ Q'), from dominates.and_symm,
-  show dominates σ (P ⋀ Q) (P ⋀ Q'),
-  from dominates.trans h2 (dominates.trans h3 h4)
+lemma dominates_p.same_left {σ: env} {P Q Q': prop}:
+      ((σ ⊨ P.instantiated_p) → dominates_p σ Q Q') → dominates_p σ (P ⋀ Q) (P ⋀ Q') :=
+  assume h1: (σ ⊨ P.instantiated_p) → dominates_p σ Q Q',
+  have h2: dominates_p σ (P ⋀ Q) (Q ⋀ P), from dominates_p.and_symm,
+  have h3: dominates_p σ (Q ⋀ P) (Q' ⋀ P), from dominates_p.same_right h1,
+  have h4: dominates_p σ (Q' ⋀ P) (P ⋀ Q'), from dominates_p.and_symm,
+  show dominates_p σ (P ⋀ Q) (P ⋀ Q'),
+  from dominates_p.trans h2 (dominates_p.trans h3 h4)
 
-lemma dominates.and_elim_right {σ: env} {P₁ P₂ P₃: prop}:
-      dominates σ P₁ (P₂ ⋀ P₃) → dominates σ P₁ P₃ :=
-  assume h1: dominates σ P₁ (P₂ ⋀ P₃),
-  have h2: dominates σ (P₂ ⋀ P₃) (P₃ ⋀ P₂), from dominates.and_symm,
-  have h3: dominates σ P₁ (P₃ ⋀ P₂), from dominates.trans h1 h2,
-  show dominates σ P₁ P₃, from dominates.and_elim_left h3
+lemma dominates_p.and_elim_right {σ: env} {P₁ P₂ P₃: prop}:
+      dominates_p σ P₁ (P₂ ⋀ P₃) → dominates_p σ P₁ P₃ :=
+  assume h1: dominates_p σ P₁ (P₂ ⋀ P₃),
+  have h2: dominates_p σ (P₂ ⋀ P₃) (P₃ ⋀ P₂), from dominates_p.and_symm,
+  have h3: dominates_p σ P₁ (P₃ ⋀ P₂), from dominates_p.trans h1 h2,
+  show dominates_p σ P₁ P₃, from dominates_p.and_elim_left h3
 
-lemma dominates.left_elim {P₁ P₂ P₃: prop} {σ: env}:
-      ((σ ⊨ P₁.instantiated_p) → dominates σ P₂ P₃) → dominates σ (P₁ ⋀ P₂) P₃ :=
-  assume h1: (σ ⊨ P₁.instantiated_p) → dominates σ P₂ P₃,
-  have h2: dominates σ (P₁ ⋀ P₂) (P₁ ⋀ P₃), from dominates.same_left h1,
-  show dominates σ (P₁ ⋀ P₂) P₃, from dominates.and_elim_right h2
+lemma dominates_p.left_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₁.instantiated_p) → dominates_p σ P₂ P₃) → dominates_p σ (P₁ ⋀ P₂) P₃ :=
+  assume h1: (σ ⊨ P₁.instantiated_p) → dominates_p σ P₂ P₃,
+  have h2: dominates_p σ (P₁ ⋀ P₂) (P₁ ⋀ P₃), from dominates_p.same_left h1,
+  show dominates_p σ (P₁ ⋀ P₂) P₃, from dominates_p.and_elim_right h2
 
-lemma dominates.right_elim {P₁ P₂ P₃: prop} {σ: env}:
-      ((σ ⊨ P₂.instantiated_p) → dominates σ P₁ P₃) → dominates σ (P₁ ⋀ P₂) P₃ :=
-  assume h1: (σ ⊨ P₂.instantiated_p) → dominates σ P₁ P₃,
-  have h2: dominates σ (P₁ ⋀ P₂) (P₃ ⋀ P₂), from dominates.same_right h1,
-  show dominates σ (P₁ ⋀ P₂) P₃, from dominates.and_elim_left h2
+lemma dominates_p.right_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₂.instantiated_p) → dominates_p σ P₁ P₃) → dominates_p σ (P₁ ⋀ P₂) P₃ :=
+  assume h1: (σ ⊨ P₂.instantiated_p) → dominates_p σ P₁ P₃,
+  have h2: dominates_p σ (P₁ ⋀ P₂) (P₃ ⋀ P₂), from dominates_p.same_right h1,
+  show dominates_p σ (P₁ ⋀ P₂) P₃, from dominates_p.and_elim_left h2
+
+lemma dominates_n.self {P: prop} {σ: env}: dominates_n σ P P :=
+  dominates_n.trans dominates_n.of_not_not dominates_n.not_not
+
+lemma dominates_n.of_and_left {P₁ P₂: prop} {σ: env}: dominates_n σ (P₁ ⋀ P₂) P₁ :=
+  have dominates_n σ (P₁ ⋀ P₂) (P₁ ⋀ P₂), from dominates_n.self,
+  show dominates_n σ (P₁ ⋀ P₂) P₁, from dominates_n.and_elim_left this
+
+lemma dominates_n.of_and_right {P₁ P₂: prop} {σ: env}: dominates_n σ (P₁ ⋀ P₂) P₂ :=
+  have h1: dominates_n σ (P₁ ⋀ P₂) (P₂ ⋀ P₁), from dominates_n.and_symm,
+  have h2: dominates_n σ (P₂ ⋀ P₁) P₂, from dominates_n.of_and_left,
+  show dominates_n σ (P₁ ⋀ P₂) P₂, from dominates_n.trans h1 h2
+
+lemma dominates_n.and_assoc.symm {P₁ P₂ P₃: prop} {σ: env}:
+      dominates_n σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃) :=
+  have h1: dominates_n σ ((P₁ ⋀ P₂) ⋀ P₃) (P₃ ⋀ P₁ ⋀ P₂), from dominates_n.and_symm,
+  have h2: dominates_n σ (P₃ ⋀ P₁ ⋀ P₂) ((P₃ ⋀ P₁) ⋀ P₂), from dominates_n.and_assoc,
+  have h3: dominates_n σ ((P₃ ⋀ P₁) ⋀ P₂) (P₂ ⋀ P₃ ⋀ P₁), from dominates_n.and_symm,
+  have h4: dominates_n σ (P₂ ⋀ P₃ ⋀ P₁) ((P₂ ⋀ P₃) ⋀ P₁), from dominates_n.and_assoc,
+  have h5: dominates_n σ ((P₂ ⋀ P₃) ⋀ P₁) (P₁ ⋀ P₂ ⋀ P₃) , from dominates_n.and_symm,
+  show dominates_n σ ((P₁ ⋀ P₂) ⋀ P₃) (P₁ ⋀ P₂ ⋀ P₃),
+  from dominates_n.trans h1 (dominates_n.trans h2 (dominates_n.trans h3 (dominates_n.trans h4 h5)))
+
+lemma dominates_n.same_right {σ: env} {P P' Q: prop}:
+      ((σ ⊨ Q.instantiated_p) → dominates_n σ P P') → dominates_n σ (P ⋀ Q) (P' ⋀ Q) :=
+  have h1: dominates_n σ (P ⋀ Q) (Q ⋀ P), from dominates_n.and_symm,
+  have h2: dominates_n σ Q Q, from dominates_n.self,
+  assume h3: ((σ ⊨ Q.instantiated_p) → dominates_n σ P P'),
+  have h4: dominates_n σ (Q ⋀ P) (Q ⋀ P'), from dominates_n.and_intro h2 h3,
+  have h5: dominates_n σ (Q ⋀ P') (P' ⋀ Q), from dominates_n.and_symm,
+  show dominates_n σ (P ⋀ Q) (P' ⋀ Q),
+  from dominates_n.trans h1 (dominates_n.trans h4 h5)
+
+lemma dominates_n.shuffle {P Q R S: prop} {σ: env}:
+      dominates_n σ (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S):=
+  have h1: dominates_n σ (P ⋀ Q ⋀ R ⋀ S) ((Q ⋀ R ⋀ S) ⋀ P), from dominates_n.and_symm,
+  have h2: dominates_n σ ((Q ⋀ R ⋀ S) ⋀ P) (((Q ⋀ R) ⋀ S) ⋀ P),
+  from dominates_n.same_right (λ_, dominates_n.and_assoc),
+  have h3: dominates_n σ  (((Q ⋀ R) ⋀ S) ⋀ P) ((Q ⋀ R) ⋀ S ⋀ P), from dominates_n.and_assoc.symm,
+  have h4: dominates_n σ ((Q ⋀ R) ⋀ S ⋀ P) ((S ⋀ P) ⋀ Q ⋀ R), from dominates_n.and_symm,
+  have h5: dominates_n σ ((S ⋀ P) ⋀ Q ⋀ R) (S ⋀ P ⋀ Q ⋀ R), from dominates_n.and_assoc.symm,
+  have h6: dominates_n σ (S ⋀ P ⋀ Q ⋀ R) ((P ⋀ Q ⋀ R) ⋀ S), from dominates_n.and_symm,
+  show dominates_n σ  (P ⋀ Q ⋀ R ⋀ S) ((P ⋀ Q ⋀ R) ⋀ S),
+  from dominates_n.trans h1 (dominates_n.trans h2 (dominates_n.trans h3 (dominates_n.trans h4 (dominates_n.trans h5 h6))))
+
+lemma dominates_n.same_left {σ: env} {P Q Q': prop}:
+      ((σ ⊨ P.instantiated_p) → dominates_n σ Q Q') → dominates_n σ (P ⋀ Q) (P ⋀ Q') :=
+  assume h1: (σ ⊨ P.instantiated_p) → dominates_n σ Q Q',
+  have h2: dominates_n σ (P ⋀ Q) (Q ⋀ P), from dominates_n.and_symm,
+  have h3: dominates_n σ (Q ⋀ P) (Q' ⋀ P), from dominates_n.same_right h1,
+  have h4: dominates_n σ (Q' ⋀ P) (P ⋀ Q'), from dominates_n.and_symm,
+  show dominates_n σ (P ⋀ Q) (P ⋀ Q'),
+  from dominates_n.trans h2 (dominates_n.trans h3 h4)
+
+lemma dominates_n.and_elim_right {σ: env} {P₁ P₂ P₃: prop}:
+      dominates_n σ P₁ (P₂ ⋀ P₃) → dominates_n σ P₁ P₃ :=
+  assume h1: dominates_n σ P₁ (P₂ ⋀ P₃),
+  have h2: dominates_n σ (P₂ ⋀ P₃) (P₃ ⋀ P₂), from dominates_n.and_symm,
+  have h3: dominates_n σ P₁ (P₃ ⋀ P₂), from dominates_n.trans h1 h2,
+  show dominates_n σ P₁ P₃, from dominates_n.and_elim_left h3
+
+lemma dominates_n.left_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₁.instantiated_p) → dominates_n σ P₂ P₃) → dominates_n σ (P₁ ⋀ P₂) P₃ :=
+  assume h1: (σ ⊨ P₁.instantiated_p) → dominates_n σ P₂ P₃,
+  have h2: dominates_n σ (P₁ ⋀ P₂) (P₁ ⋀ P₃), from dominates_n.same_left h1,
+  show dominates_n σ (P₁ ⋀ P₂) P₃, from dominates_n.and_elim_right h2
+
+lemma dominates_n.right_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₂.instantiated_p) → dominates_n σ P₁ P₃) → dominates_n σ (P₁ ⋀ P₂) P₃ :=
+  assume h1: (σ ⊨ P₂.instantiated_p) → dominates_n σ P₁ P₃,
+  have h2: dominates_n σ (P₁ ⋀ P₂) (P₃ ⋀ P₂), from dominates_n.same_right h1,
+  show dominates_n σ (P₁ ⋀ P₂) P₃, from dominates_n.and_elim_left h2
 
 lemma valid.instantiated_n_and {P Q: prop}:
       (⊨ P.instantiated_n ⋀ Q.instantiated_n) → ⊨ (P ⋀ Q).instantiated_n :=
@@ -499,6 +604,10 @@ lemma prop.has_call_n.post.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_n
   assume post_has_call_n: c ∈ calls_n (prop.post t₁ t₂),
   show «false», by cases post_has_call_n
 
+lemma prop.has_call_n.call.inv {c: calltrigger} {t₁ t₂: term}: c ∉ calls_n (prop.call t₁ t₂) :=
+  assume call_has_call_n: c ∈ calls_n (prop.call t₁ t₂),
+  show «false», by cases call_has_call_n
+
 lemma prop.has_call_n.forallc.inv {c: calltrigger} {x: var} {t: term} {P: prop}:
       c ∉ calls_n (prop.forallc x t P) :=
   assume forall_has_call_n: c ∈ calls_n (prop.forallc x t P),
@@ -671,6 +780,17 @@ lemma prop.has_call_p_subst.not {c: calltrigger} {P: prop} {σ: env}:
     assume : c' ∈ calls_p P,
     have c' ∈ calls_n P.not, from prop.has_call_n.not this,
     show calltrigger.subst σ c' ∈ calls_n_subst σ P.not, from set.mem_image this rfl
+  )
+
+lemma prop.has_call_n_subst.term.inv {c: calltrigger} {t: term} {σ: env}:
+      c ∉ calls_n_subst σ t :=
+  assume : c ∈ calls_n_subst σ t,
+  have c ∈ (calltrigger.subst σ) '' calls_n t, from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_n t)
+      (λa, «false») c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls_n t,
+    show «false», from prop.has_call_n.term.inv this
   )
 
 lemma prop.has_call_n_subst.not {c: calltrigger} {P: prop} {σ: env}:

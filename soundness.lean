@@ -58,7 +58,7 @@ lemma trivial_calls_p: calls_p (prop.term value.true ⋀ prop.term value.true) =
   ),
   show calls_p (prop.term value.true ⋀ prop.term value.true) = calls_p (prop.term value.true), from eq.trans h1 h2.symm
 
-lemma trivial_dominates {σ: env}: dominates σ (prop.term value.true ⋀ prop.term value.true) (prop.term value.true) :=
+lemma trivial_dominates_n {σ: env}: dominates_n σ (prop.term value.true ⋀ prop.term value.true) (prop.term value.true) :=
   let P:prop := prop.term value.true ⋀ prop.term value.true in
   let P':prop := prop.term value.true in
 
@@ -73,14 +73,14 @@ lemma trivial_dominates {σ: env}: dominates σ (prop.term value.true ⋀ prop.t
     (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
                           have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
     ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates' Q' Q (σ[x↦v]))), from (
+                          (∀v: value, dominates_n' Q' Q (σ[x↦v]))), from (
     assume (t': term) (x:var) (Q': prop),
     assume h3: callquantifier.mk t' x Q' ∈ quantifiers_p P',
     have h4: callquantifier.mk t' x Q' ∉ quantifiers_p P', from prop.has_quantifier_p.term.inv,
     absurd h3 h4
   ),
 
-  show dominates σ P P', from dominates_of h_impl h_calls_p h_quantifiers_p
+  show dominates_n σ P P', from dominates_n_of h_impl h_calls_p h_quantifiers_p
 
 lemma soundness {s s': stack}: (s ⟶* s') → (⊢ₛ s) → (is_value s' ∨ ∃s'', s' ⟶ s'') :=
   assume steps_to_s': s ⟶* s',
@@ -104,7 +104,7 @@ theorem soundness_source_programs {e: exp} {s: stack} {Q: propctx}:
   assume steps_to_s: (spec.term value.true, history.empty, env.empty, e) ⟶* s,
   have (prop.term value.true ⋀ prop.term value.true) ⊢ e: Q,
   from strengthen_exp initial_verified (prop.term value.true ⋀ prop.term value.true)
-       trivial_freevars (λσ, trivial_dominates),
+       trivial_freevars (λσ, trivial_dominates_n),
   have ⊢ₛ (spec.term value.true, history.empty, env.empty, e),
   from stack.vcgen.top env.vcgen.empty this,
   show is_value s ∨ ∃s', s ⟶ s', from soundness steps_to_s this
