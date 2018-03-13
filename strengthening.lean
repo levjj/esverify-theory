@@ -1,36 +1,5 @@
 import .syntax .notations .logic .evaluation .vcgen .bindings
 
-lemma same_free_and_left {P P' Q: prop}: FV P' = FV P → (FV (P' ⋀ Q) = FV (P ⋀ Q)) :=
-  assume free_P'_P: FV P' = FV P,
-  set.eq_of_subset_of_subset (
-    assume x,
-    assume : x ∈ FV (P' ⋀ Q),
-    or.elim (free_in_prop.and.inv this) (
-      assume : x ∈ FV P',
-      have x ∈ FV P, from free_P'_P ▸ this,
-      show x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this
-    ) (
-      assume : x ∈ FV Q,
-      show x ∈ FV (P ⋀ Q), from free_in_prop.and₂ this
-    )
-  ) (
-    assume x,
-    assume : x ∈ FV (P ⋀ Q),
-    or.elim (free_in_prop.and.inv this) (
-      assume : x ∈ FV P,
-      have x ∈ FV P', from free_P'_P.symm ▸ this,
-      show x ∈ FV (P' ⋀ Q), from free_in_prop.and₁ this
-    ) (
-      assume : x ∈ FV Q,
-      show x ∈ FV (P' ⋀ Q), from free_in_prop.and₂ this
-    )
-  )
-
-lemma free_in_left {P Q: prop}: FV P ⊆ FV (P ⋀ Q) :=
-  assume x: var,
-  assume : x ∈ FV P,
-  show x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this
-
 lemma strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates_p σ P P' → (σ ⊨ (P ⋀ Q).instantiated_p) → σ ⊨ (P' ⋀ Q).instantiated_p :=
   assume h1: dominates_p σ P P',

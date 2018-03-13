@@ -66,6 +66,16 @@ using_well_founded {
   dec_tac := tactic.assumption
 }
 
+def env.without: env → var → env
+| env.empty y := env.empty
+| (σ[x↦v]) y := have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
+                if x = y then env.without σ y else ((env.without σ y)[x↦v])
+
+using_well_founded {
+  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
+  dec_tac := tactic.assumption
+}
+
 -- notation
 
 @[reducible]
@@ -76,6 +86,214 @@ notation σ `⊨` p: 20 := valid (vc.subst_env σ p)
 notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated_n P)
 
 -- lemmas
+
+lemma env.contains_without.inv {σ: env} {x y: var}:
+      (x ∈ σ.without y) → (x ≠ y) ∧ x ∈ σ :=
+  begin
+    assume h1,
+
+    induction σ with σ' z v ih,
+    unfold env.without at h1,
+    cases h1,
+
+    unfold env.without at h1,
+
+    by_cases (z = y) with h2,
+
+    simp[h2] at h1,
+    have h3, from ih h1,
+    split,
+    from h3.left,
+    apply env.contains.rest,
+    from h3.right,
+
+    simp[h2] at h1,
+    have h3, from env.contains.inv h1,
+    cases h3 with h4 h5,
+    rw[h4],
+    split,
+    from h2,
+    from env.contains.same,
+
+    have h3, from ih h5,
+    split,
+    from h3.left,
+    apply env.contains.rest,
+    from h3.right
+  end
+
+lemma env.contains_without.rinv {σ: env} {x y: var}:
+      x ∈ σ ∧ (x ≠ y) → x ∈ σ.without y :=
+  begin
+    assume h1,
+
+    induction σ with σ' z v ih,
+    cases h1.left,
+
+    unfold env.without,
+    by_cases (z = y) with h2,
+
+    simp[h2],
+    have h3, from env.contains.inv h1.left,
+    cases h3 with h4 h5,
+    have : (x = y), from eq.trans h4 h2,
+    have : (y ≠ y), from @eq.subst var (λa, a ≠ y) x y this h1.right,
+    contradiction,
+
+    from ih ⟨h5, h1.right⟩,
+
+    simp[h2],
+    have h3, from env.contains.inv h1.left,
+    cases h3 with h4 h5,
+    rw[h4],
+    apply env.contains.same,
+
+    apply env.contains.rest,
+    from ih ⟨h5, h1.right⟩,
+  end
+
+lemma env.without_equiv {σ: env} {x y: var} {v: value}:
+      (x ∉ σ) ∨ (σ x = v) → (x ∉ σ.without y ∨ (σ.without y x = v)) :=
+  begin
+    assume h1,
+
+    induction σ with σ' z v' ih,
+
+    cases h1 with h2 h3,
+    left,
+    unfold env.without,
+    assume h4,
+    cases h4,
+
+    cases h3,
+
+    cases h1 with h2 h3,
+    left,
+    unfold env.without,
+    by_cases (z = y) with h4,
+    simp[h4],
+    assume h5,
+    have h6, from env.contains_without.inv h5,
+    have : x ∈ (σ'[z↦v']), from env.contains.rest h6.right,
+    contradiction,
+
+    simp[h4],
+    assume h5,
+    have h6, from env.contains.inv h5,
+    cases h6 with h7 h8,
+    rw[h7] at h2,
+    have : z ∈ (σ'[z↦v']), from env.contains.same,
+    contradiction,
+
+    have h9, from env.contains_without.inv h8,
+    have : x ∈ (σ'[z↦v']), from env.contains.rest h9.right,
+    contradiction,
+
+    by_cases (x = y) with h4,
+    left,
+    unfold env.without,
+    by_cases (z = y) with h5,
+    simp[h5],
+    rw[h4],
+    assume h6,
+    have h7, from env.contains_without.inv h6,
+    have : ¬ (y = y), from h7.left,
+    contradiction,
+    
+    simp[h5],
+    assume h6,
+    have h7, from env.contains.inv h6,
+    cases h7 with h8 h9,
+    have : (y = z), from eq.trans h4.symm h8,
+    have : ¬ (z = z), from @eq.subst var (λa, ¬ (z = a)) y z this h5,
+    contradiction,
+
+    rw[h4] at h9,
+    have h10, from env.contains_without.inv h9,
+    have : ¬ (y = y), from h10.left,
+    contradiction,
+
+    right,
+    have h5: (env.apply (σ'[z↦v']) x = some v), from h3,
+    unfold env.apply at h5,
+    by_cases (z = x ∧ (option.is_none (env.apply σ' x))) with h6,
+    simp[h6] at h5,
+    have : (some v' = some v), from h5,
+    have h7: (v' = v), from option.some.inj this,
+    have h8, from env.contains_apply_equiv.left.mp (option.is_none.inv.mpr h6.right),
+    have h9, from ih (or.inl h8),
+
+    let a' := ((env.without σ' y)[z↦v']),
+    have h12: (env.without (σ'[z↦v']) y = (if z = y then (env.without σ' y) else a')),
+    by unfold env.without,
+    rw[h12],
+    change ((ite (z = y) (env.without σ' y) a') x = ↑v),
+    have : ¬ (z = y), from @eq.subst var (λa, ¬ (a = y)) x z h6.left.symm h4,
+    have : (ite (z = y) (env.without σ' y) a'
+             = ((env.without σ' y)[z↦v'])), by simp[this],
+    have h13: (
+      ((ite (z = y) (env.without σ' y) a') x = ↑v)
+    = (((env.without σ' y)[z↦v']) x = ↑v)
+    ), by rw[this],
+    rw[h13],
+    change (env.apply (env.without σ' y[z↦v']) x = ↑v),
+    unfold env.apply,
+
+    cases h9 with h10 h11,
+
+    have h14, from env.contains_apply_equiv.left.mpr h10,
+    have h15, from option.is_none.inv.mp h14,
+    have h16: (z = x ∧ (option.is_none (env.apply (env.without σ' y) x))), from and.intro h6.left h15,
+    simp[h16],
+    from some.inj.inv h7,
+
+    have h14, from option.is_some_iff_exists.mpr (exists.intro v h11),
+    have h15, from option.some_iff_not_none.mp h14,
+    have h16: ¬ (z = x ∧ option.is_none (env.apply (env.without σ' y) x)),
+    from not_and_distrib.mpr (or.inr h15),
+    simp[h16],
+    from h11,
+
+    simp[h6] at h5,
+    let a' := ((env.without σ' y)[z↦v']),
+    have h7: (env.without (σ'[z↦v']) y = (if z = y then (env.without σ' y) else a')),
+    by unfold env.without,
+    rw[h7],
+
+    by_cases (z = y) with h8,
+    have : (ite (z = y) (env.without σ' y) ((env.without σ' y)[z↦v'])
+             = (env.without σ' y)), by simp[h8],
+    rw[this],
+    have h8, from ih (or.inr h5),
+    cases h8 with h9 h10,
+
+    have : x ∈ σ', from env.contains_apply_equiv.right.mp (exists.intro v h5),
+    have h9: x ∈ env.without σ' y,
+    from env.contains_without.rinv ⟨this, h4⟩,
+    contradiction,
+
+    from h10,
+
+    have : (ite (z = y) (env.without σ' y) ((env.without σ' y)[z↦v'])
+             = ((env.without σ' y)[z↦v'])), by simp[h8],
+    rw[this],
+    change (env.apply ((env.without σ' y)[z↦v']) x = ↑v),
+    unfold env.apply,
+
+    have h10b: x ∈ σ', from env.contains_apply_equiv.right.mp (exists.intro v h5),
+    have h11: x ∈ env.without σ' y,
+    from env.contains_without.rinv ⟨h10b, h4⟩,
+    have h12, from env.contains_apply_equiv.right.mpr h11,
+    have h13, from option.is_some_iff_exists.mpr h12,
+    have h14, from option.some_iff_not_none.mp h13,
+    have h15: ¬ (z = x ∧ option.is_none (env.apply (env.without σ' y) x)),
+    from not_and_distrib.mpr (or.inr h14),
+    simp[h15],
+    have h16, from ih (or.inr h5),
+    cases h16 with h17 h18,
+    contradiction,
+    from h18
+  end
 
 lemma unchanged_of_subst_nonfree_term {t: term} {x: var} {v: value}:
     x ∉ FV t → (term.subst x v t = t) :=
@@ -1747,6 +1965,159 @@ lemma vc.free_of_subst_env {x: var} {σ: env} {P: vc}: x ∈ FV P → x ∉ σ �
     end
   end
 
+lemma term.free_of_free_in_subst {x y: var} {v: value} {t: term}: x ∈ FV (term.subst y v t) → x ∈ FV t :=
+  begin
+    assume h1,
+    induction t with v' z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+
+    show x ∈ FV (term.value v'), by begin
+      unfold term.subst at h1,
+      cases h1
+    end,
+
+    show x ∈ FV (term.var z), by begin
+      unfold term.subst at h1,
+      by_cases (y = z) with h2,
+      simp[h2] at h1,
+      cases h1,
+      simp[h2] at h1,
+      from h1
+    end,
+
+    show x ∈ FV (term.unop unop t₁), by begin
+      unfold term.subst at h1,
+      apply free_in_term.unop,
+      have h2, from free_in_term.unop.inv h1,
+      from t₁_ih h2
+    end,
+
+    show x ∈ FV (term.binop binop t₂ t₃), by begin
+      unfold term.subst at h1,
+      have h2, from free_in_term.binop.inv h1,
+      cases h2,
+      apply free_in_term.binop₁,
+      from t₂_ih a,
+      apply free_in_term.binop₂,
+      from t₃_ih a
+    end,
+
+    show x ∈ FV (term.app t₄ t₅), by begin
+      unfold term.subst at h1,
+      have h2, from free_in_term.app.inv h1,
+      cases h2,
+      apply free_in_term.app₁,
+      from t₄_ih a,
+      apply free_in_term.app₂,
+      from t₅_ih a
+    end
+  end
+
+lemma vc.free_of_free_in_subst {x y: var} {v: value} {P: vc}: x ∈ FV (vc.subst y v P) → x ∈ FV P :=
+  begin
+    assume h1,
+    induction P,
+    case vc.term t {
+      apply free_in_vc.term,
+      have h2, from free_in_vc.term.inv h1,
+      from term.free_of_free_in_subst h2
+    },
+    case vc.not P₁ ih {
+      apply free_in_vc.not,
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.not.inv h1,
+      from ih h2     
+    },
+    case vc.and P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.and.inv h1,
+      cases h2,
+      apply free_in_vc.and₁,
+      from P₁_ih a,
+      apply free_in_vc.and₂,
+      from P₂_ih a
+    },
+    case vc.or P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.or.inv h1,
+      cases h2,
+      apply free_in_vc.or₁,
+      from P₁_ih a,
+      apply free_in_vc.or₂,
+      from P₂_ih a
+    },
+    case vc.pre t₁ t₂ {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.pre.inv h1,
+      cases h2,
+      apply free_in_vc.pre₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_vc.pre₂,
+      from term.free_of_free_in_subst  a
+    },
+    case vc.pre₁ op t {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.pre₁.inv h1,
+      apply free_in_vc.preop,
+      from term.free_of_free_in_subst h2
+    },
+    case vc.pre₂ op t₁ t₂ {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.pre₂.inv h1,
+      cases h2,
+      apply free_in_vc.preop₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_vc.preop₂,
+      from term.free_of_free_in_subst  a
+    },
+    case vc.post t₁ t₂ {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.post.inv h1,
+      cases h2,
+      apply free_in_vc.post₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_vc.post₂,
+      from term.free_of_free_in_subst  a
+    },
+    case vc.univ z P' P'_ih {
+      unfold vc.subst at h1,
+      have h2, from free_in_vc.univ.inv h1,
+      by_cases (y = z) with h3,
+      have h4, from h2.right,
+      rw[h3] at h4,
+      simp at h4,
+      apply free_in_vc.univ,
+      from h2.left,
+      from h4,
+
+      have h4, from h2.right,
+      simp[h3] at h4,
+      have : ((ite (y = z) P' (vc.subst y v P')) = (vc.subst y v P')), by simp[h3],
+      rw[this] at h4,
+      apply free_in_vc.univ,
+      from h2.left,
+      from P'_ih h4
+    }
+  end
+
+lemma vc.free_of_free_subst_env {x: var} {σ: env} {P: vc}: x ∈ FV (vc.subst_env σ P) → x ∈ FV P :=
+  assume x_free: x ∈ FV (vc.subst_env σ P),
+  show x ∈ FV P, begin
+    induction σ with σ' y v ih,
+
+    -- env.empty
+    show x ∈ FV P, begin
+      unfold vc.subst_env at x_free,
+      from x_free
+    end,
+
+    -- σ'[x↦v]
+    show x ∈ FV P, begin
+      unfold vc.subst_env at x_free,
+      have h1: x ∈ FV (vc.subst_env σ' P), from vc.free_of_free_in_subst x_free,
+      from ih h1
+    end
+  end
+
 lemma vc.closed_subst_of_closed {σ: env} {P: vc}: closed (vc.subst_env σ P) → closed_subst σ P :=
   assume P_closed_subst: closed (vc.subst_env σ P),
   show closed_subst σ P, from (
@@ -2186,7 +2557,31 @@ begin
   ... = vc.pre (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end
 
-lemma vc.subst_env.univ {σ: env} {x: var} {P: vc}:
+lemma vc.subst_env.post {σ: env} {t₁ t₂: term}:
+      vc.subst_env σ (vc.post t₁ t₂) = vc.post (term.subst_env σ t₁) (term.subst_env σ t₂) :=
+begin
+  induction σ with σ' x v ih,
+
+  show (vc.subst_env env.empty (vc.post t₁ t₂)
+      = vc.post (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)),
+  by calc
+        vc.subst_env env.empty (vc.post t₁ t₂)
+      = (vc.post t₁ t₂) : by unfold vc.subst_env
+  ... = (vc.post (term.subst_env env.empty t₁) t₂) : by unfold term.subst_env
+  ... = (vc.post (term.subst_env env.empty t₁) (term.subst_env env.empty t₂)) : by unfold term.subst_env,
+
+  show (vc.subst_env (σ'[x↦v]) (vc.post t₁ t₂)
+      = vc.post (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂)),
+  by calc
+        vc.subst_env (σ'[x↦v]) (vc.post t₁ t₂)
+      = vc.subst x v (vc.subst_env σ' (vc.post t₁ t₂)) : by unfold vc.subst_env
+  ... = vc.subst x v (vc.post (term.subst_env σ' t₁) (term.subst_env σ' t₂)) : by rw[ih]
+  ... = vc.post (term.subst x v (term.subst_env σ' t₁)) (term.subst x v (term.subst_env σ' t₂)) : by unfold vc.subst
+  ... = vc.post (term.subst_env (σ'[x↦v]) t₁) (term.subst x v (term.subst_env σ' t₂)) : by unfold term.subst_env
+  ... = vc.post (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
+end
+
+lemma vc.subst_env.univ_not_in {σ: env} {x: var} {P: vc}:
       (x ∉ σ) → (vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env σ P)) :=
 begin
   assume x_not_in_σ,
@@ -2211,6 +2606,45 @@ begin
        ... = vc.univ x ((vc.subst_env σ' P).subst y v) : by simp[x_neq_y.symm]
        ... = vc.univ x (vc.subst_env (σ'[y↦v]) P) : by unfold vc.subst_env
   )
+end
+
+lemma vc.subst_env.univ {σ: env} {x: var} {P: vc}:
+      (vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env (σ.without x) P)) :=
+begin
+  induction σ with σ' y v ih,
+
+  show (vc.subst_env env.empty (vc.univ x P) = vc.univ x (vc.subst_env (env.empty.without x) P)),
+  by calc
+        vc.subst_env env.empty (vc.univ x P) = (vc.univ x P) : by unfold vc.subst_env
+                                         ... = vc.univ x (vc.subst_env env.empty P) : by unfold vc.subst_env,
+
+  show (vc.subst_env (σ'[y↦v]) (vc.univ x P) = vc.univ x (vc.subst_env ((σ'[y↦v]).without x) P)), by begin
+    unfold vc.subst_env,
+    by_cases (y = x) with h1,
+    rw[←h1],
+    rw[←h1] at ih,
+    unfold env.without,
+    simp,
+    have : y ∉ FV (vc.subst_env σ' (vc.univ y P)), from (
+      assume : y ∈ FV (vc.subst_env σ' (vc.univ y P)),
+      have y ∈ FV (vc.univ y P), from vc.free_of_free_subst_env this,
+      show «false», from free_in_vc.univ.same.inv this
+    ),
+    have h2: (vc.subst y v (vc.subst_env σ' (vc.univ y P)) = vc.subst_env σ' (vc.univ y P)),
+    from unchanged_of_subst_nonfree_vc this,
+    rw[h2],
+    from ih,
+
+    unfold env.without,
+    simp[h1],
+    unfold vc.subst_env,
+    have : (vc.subst y v (vc.univ x (vc.subst_env (env.without σ' x) P))
+         = vc.univ x (vc.subst y v (vc.subst_env (env.without σ' x) P))),
+    by { unfold vc.subst, simp[h1] },
+    rw[←this],
+    congr,
+    from ih  
+  end
 end
 
 lemma term.closed_subst.value {v: value} {σ: env}: closed_subst σ (term.value v) :=

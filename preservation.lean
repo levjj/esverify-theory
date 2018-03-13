@@ -304,70 +304,6 @@ lemma env_dominates_p_rest {P: prop} {σ: env} {x: var} {v: value}:
     }
   end
 
-lemma env_dominates_n_rest {P: prop} {σ: env} {x: var} {v: value}:
-      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ ∀σ', dominates_n σ' P Q) :=
-  assume σ_verified: ⊢ (σ[x↦v]) : P,
-  begin
-    cases σ_verified,
-    case env.vcgen.tru Q _ σ_verified ih { from
-      have ∀σ', dominates_n σ' (prop.and Q (x ≡ value.true)) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q (x ≡ value.true)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.fls Q _ σ_verified { from
-      have ∀σ', dominates_n σ' (prop.and Q (x ≡ value.false)) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q (x ≡ value.false)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.num n Q _ σ_verified { from
-      have ∀σ', dominates_n σ' (prop.and Q (x ≡ value.num n)) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q (x ≡ value.num n)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
-         fx_not_in_σ₂ f_neq_fx σ₁_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
-      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
-                                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
-      have ∀σ', dominates_n σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃Q_1, (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q ((x ≡ (value.func f fx R S e H σ₂)) ⋀ funcp)) Q_1,
-      from exists.intro Q ⟨σ₁_verified, this⟩
-    }
-  end
-
-lemma env_free_rest {P: prop} {σ: env} {x: var} {v: value}:
-      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ FV Q ⊆ FV P) :=
-  assume σ_verified: ⊢ (σ[x↦v]) : P,
-  begin
-    cases σ_verified,
-    case env.vcgen.tru Q _ σ_verified ih { from
-      have FV Q ⊆ FV (prop.and Q (x ≡ value.true)), from free_in_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.true)),
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.fls Q _ σ_verified { from
-      have FV Q ⊆ FV (prop.and Q (x ≡ value.false)), from free_in_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.false)),
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.num n Q _ σ_verified { from
-      have FV Q ⊆ FV (prop.and Q (x ≡ value.num n)), from free_in_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.num n)),
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
-         fx_not_in_σ₂ f_neq_fx σ₁_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
-      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
-                                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
-      have FV Q ⊆ FV (prop.and Q (x ≡ value.func f fx R S e H σ₂ ⋀ funcp)), from free_in_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.func f fx R S e H σ₂ ⋀ funcp)),
-      from exists.intro Q ⟨σ₁_verified, this⟩
-    }
-  end
-
 lemma propctx_apply_hpq {P₁ P₂: prop} {Q: propctx} {t: term}: (↑P₁ ⋀ ↑P₂ ⋀ Q) t = (P₁ ⋀ P₂ ⋀ Q t) :=
   have h1: P₁.to_propctx t = P₁, from unchanged_of_apply_propctx_without_hole,
   have h2: P₂.to_propctx t = P₂, from unchanged_of_apply_propctx_without_hole,
@@ -1062,65 +998,18 @@ theorem preservation {s: stack} {Q: propctx}:
               ⟶* (R₂, H₂, σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂][gx↦vₓ], e₁),
           from trans_step.rfl,
 
-          have h10: ∀σ' t, dominates_n σ' ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t) (↑H₂ ⋀ Q₂ ⋀ Q₃ t)
-                        ∧ (FV (↑H₂ ⋀ Q₂ ⋀ Q₃ t) ⊆ FV ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t)), from (
+          have h10: ∀σ' t, dominates_n σ' ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t) (↑H₂ ⋀ (Q₂'⋀P₃') ⋀ Q₃ t)
+                        ∧ (FV (↑H₂ ⋀ (Q₂'⋀P₃') ⋀ Q₃ t) ⊆ FV ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t)), from (
             assume σ': env,
             assume t: term,
             have h11: (↑H₂ ⋀ ↑P₃ ⋀ Q₃) t = (↑H₂ ⋀ P₃ ⋀ Q₃ t), from propctx_apply_hpq,
 
-            have dominates_n σ' (↑H₂ ⋀ P₃ ⋀ Q₃ t) (↑H₂ ⋀ Q₂ ⋀ Q₃ t),
-            from dominates_n.same_left (
-              assume _,
-              show dominates_n σ' (P₃ ⋀ Q₃ t) (Q₂ ⋀ Q₃ t),
-              from dominates_n.same_right (
-                assume _,
-
-                have (∃Q, (⊢ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]) : Q) ∧ ∀σ', dominates_n σ' P₃ Q),
-                from env_dominates_n_rest ha5,
-                let ⟨Q₂', ⟨hb1, hb2⟩⟩ := this in
-
-                have (∃Q, (⊢ σ₂ : Q) ∧ ∀σ', dominates_n σ' Q₂' Q),
-                from env_dominates_n_rest hb1,
-                let ⟨Q₂'', ⟨hb3, hb4⟩⟩ := this in
-                have Q₂ = Q₂'', from env.vcgen.inj ha2.right.right.right.right.right.left Q₂'' hb3,
-
-                show dominates_n σ' P₃ Q₂, from this.symm ▸ dominates_n.trans (hb2 σ') (hb4 σ')
-              )
-            ),
-            have h12: dominates_n σ' ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t) (↑H₂ ⋀ Q₂ ⋀ Q₃ t), from h11.symm ▸ this,
-            have FV (↑H₂ ⋀ Q₂ ⋀ Q₃ t) ⊆ FV (↑H₂ ⋀ P₃ ⋀ Q₃ t), from (
-
-              have (∃Q, (⊢ (σ₂[g↦value.func g gx R₂ S₂ e₁ H₂ σ₂]) : Q) ∧ FV Q ⊆ FV P₃),
-              from env_free_rest ha5,
-              let ⟨Q₂', ⟨hb1, hb2⟩⟩ := this in
-
-              have (∃Q, (⊢ σ₂ : Q) ∧ FV Q ⊆ FV Q₂'),
-              from env_free_rest hb1,
-              let ⟨Q₂'', ⟨hb3, hb4⟩⟩ := this in
-              have Q₂ = Q₂'', from env.vcgen.inj ha2.right.right.right.right.right.left Q₂'' hb3,
-
-              have h13: FV Q₂ ⊆ FV P₃, from this.symm ▸ (set.subset.trans hb4 hb2),
-
-              assume z: var,
-              assume : z ∈ FV (↑H₂ ⋀ Q₂ ⋀ Q₃ t),
-              or.elim (free_in_prop.and.inv this) (
-                assume : free_in_prop z H₂,
-                show z ∈ FV (↑H₂ ⋀ P₃ ⋀ Q₃ t), from free_in_prop.and₁ this
-              ) (
-                assume : z ∈ FV (Q₂ ⋀ Q₃ t),
-                or.elim (free_in_prop.and.inv this) (
-                  assume : z ∈ FV Q₂,
-                  have z ∈ FV P₃, from set.mem_of_subset_of_mem h13 this,
-                  have z ∈ FV (P₃ ⋀ Q₃ t), from free_in_prop.and₁ this,
-                  show z ∈ FV (↑H₂ ⋀ P₃ ⋀ Q₃ t), from free_in_prop.and₂ this
-                ) (
-                  assume : z ∈ FV (Q₃ t),
-                  have z ∈ FV (P₃ ⋀ Q₃ t), from free_in_prop.and₂ this,
-                  show z ∈ FV (↑H₂ ⋀ P₃ ⋀ Q₃ t), from free_in_prop.and₂ this
-                )
-              )
-            ),
-            have h13: FV (↑H₂ ⋀ Q₂ ⋀ Q₃ t) ⊆ FV ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t), from h11.symm ▸ this,
+            have dominates_n σ' (↑H₂ ⋀ P₃ ⋀ Q₃ t) (↑H₂ ⋀ (Q₂'⋀ P₃') ⋀ Q₃ t),
+            from dominates_n.self,
+            have h12: dominates_n σ' ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t) (↑H₂ ⋀ (Q₂'⋀ P₃') ⋀ Q₃ t), from h11.symm ▸ this,
+            have FV (↑H₂ ⋀ (Q₂'⋀ P₃') ⋀ Q₃ t) ⊆ FV (↑H₂ ⋀ P₃ ⋀ Q₃ t),
+            from set.subset.refl (FV (↑H₂ ⋀ P₃ ⋀ Q₃ t)),
+            have h13: FV (↑H₂ ⋀ (Q₂'⋀ P₃') ⋀ Q₃ t) ⊆ FV ((↑H₂ ⋀ ↑P₃ ⋀ Q₃) t), from h11.symm ▸ this,
             ⟨h12, h13⟩
           ),
 
@@ -1148,8 +1037,8 @@ theorem preservation {s: stack} {Q: propctx}:
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       }
     },
-    case stack.vcgen.cons H H' P P' s' σ σ' f g x y fx R' R S e e' vₓ Q₂ Q₃ Q₂' s'_verified y_not_in_σ σ_verified
-                          σ'_verified fv_R' R'_valid g_is_func x_is_v cont e'_verified Q₂'_dom pre_vc steps ih {
+    case stack.vcgen.cons H H' P P' P'' s' σ σ' f g x y fx R' R S e e' vₓ Q₂ Q₃ Q₂' s'_verified y_not_in_σ σ_verified
+                          σ'_verified σ''_verified fv_R' R'_valid g_is_func x_is_v cont e'_verified Q₂'_dom pre_vc steps ih {
       assume s''',
       assume s_steps: ((s' · [R', H, σ, letapp y = g[x] in e]) ⟶ s'''),
       cases s_steps,
@@ -1161,23 +1050,23 @@ theorem preservation {s: stack} {Q: propctx}:
         have new_steps: ((R, H', σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ], e') ⟶* s''),
         from trans_step.trans steps s'_steps,
 
-        have h3: ∀ (σ' : env) (t : term), dominates_n σ' (Q' t) (↑H' ⋀ P' ⋀ Q₂ t)
-                                  ∧ (FV (↑H' ⋀ P' ⋀ Q₂ t) ⊆ FV (Q' t)), from (
+        have h3: ∀ (σ' : env) (t : term), dominates_n σ' (Q' t) (↑H' ⋀ P'' ⋀ Q₂ t)
+                                  ∧ (FV (↑H' ⋀ P'' ⋀ Q₂ t) ⊆ FV (Q' t)), from (
           assume σ'': env,
           assume t: term,
           have h4: dominates_n σ'' (Q' t) (Q₂' t), from (h2 σ'' t).left,
-          have h5: dominates_n σ'' (Q₂' t) (↑H' ⋀ P' ⋀ Q₂ t), from (Q₂'_dom σ'' t).left,
-          have h6: dominates_n σ'' (Q' t) (↑H' ⋀ P' ⋀ Q₂ t), from dominates_n.trans h4 h5,
+          have h5: dominates_n σ'' (Q₂' t) (↑H' ⋀ P'' ⋀ Q₂ t), from (Q₂'_dom σ'' t).left,
+          have h6: dominates_n σ'' (Q' t) (↑H' ⋀ P'' ⋀ Q₂ t), from dominates_n.trans h4 h5,
 
           have h7: FV (Q₂' t) ⊆ FV (Q' t), from (h2 σ'' t).right,
-          have h8: FV (↑H' ⋀ P' ⋀ Q₂ t) ⊆ FV (Q₂' t), from (Q₂'_dom σ'' t).right,
-          have h9: FV (↑H' ⋀ P' ⋀ Q₂ t) ⊆ FV (Q' t), from set.subset.trans h8 h7,
+          have h8: FV (↑H' ⋀ P'' ⋀ Q₂ t) ⊆ FV (Q₂' t), from (Q₂'_dom σ'' t).right,
+          have h9: FV (↑H' ⋀ P'' ⋀ Q₂ t) ⊆ FV (Q' t), from set.subset.trans h8 h7,
 
           ⟨h6, h9⟩
         ),
         have h4: ⊢ₛ (s'' · [R', H, σ, letapp y = g[x] in e])
                  : H ⋀ P ⋀ propctx.exis y (prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₃),
-        from stack.vcgen.cons h1 y_not_in_σ σ_verified σ'_verified fv_R' R'_valid
+        from stack.vcgen.cons h1 y_not_in_σ σ_verified σ'_verified σ''_verified fv_R' R'_valid
                               g_is_func x_is_v cont e'_verified h3 pre_vc new_steps,
 
         have h7: ∀σ'' t, dominates_n σ''
@@ -1429,27 +1318,9 @@ theorem preservation {s: stack} {Q: propctx}:
             let ⟨P₁, Q₁', ⟨σ₁_verified, ⟨fv_R'₁, ⟨R'₁_valid, return_verified⟩⟩⟩⟩ := this in
 
             have h42: σ₁.dom = FV P₁, from free_iff_contains σ₁_verified,
-            have y₁ ∈ FV (↑R'₁ ⋀ ↑H₁ ⋀ P₁), from exp.vcgen.return.inv return_verified,
-            have y₁_in_σ₁: y₁ ∈ σ₁, from or.elim (free_in_prop.and.inv this) (
-              assume : free_in_prop y₁ R'₁,
-              have y₁ ∈ FV P₁, from set.mem_of_subset_of_mem fv_R'₁ this,
-              have y₁ ∈ σ₁.dom, from h42.symm ▸ this,
-              show y₁ ∈ σ₁, from this
-            ) (
-              assume : y₁ ∈ FV (↑H₁ ⋀ P₁),
-              or.elim (free_in_prop.and.inv this) (
-                assume : free_in_prop y₁ H₁,
-                show y₁ ∈ σ₁, from absurd this (call_history_closed H₁ y₁)
-              ) (
-                assume : y₁ ∈ FV P₁,
-                have y₁ ∈ σ₁.dom, from h42.symm ▸ this,
-                show y₁ ∈ σ₁, from this
-              )
-            ),
-            have ∃vy₁', σ₁ y₁ = some vy₁', from env.contains_apply_equiv.right.mpr y₁_in_σ₁,
-            let ⟨vy₁', h43⟩ := this in
-            have h26: term.subst_env σ₁ y₁ = vy₁',
-            from (term.subst_env.var.right vy₁').mp h43,
+            have y₁_in_σ₁: y₁ ∈ σ₁, from env.contains_apply_equiv.right.mp (exists.intro vy₁ y_is_vy₁),
+            have h26: term.subst_env σ₁ y₁ = vy₁,
+            from (term.subst_env.var.right vy₁).mp y_is_vy₁,
 
             have R'₁ ⋀ H₁ ⋀ P₁ ⊢ exp.return y₁ : y₁ ≣ •,
             from exp.vcgen.return (exp.vcgen.return.inv return_verified),
@@ -1465,127 +1336,250 @@ theorem preservation {s: stack} {Q: propctx}:
             have σ₁ ⊨ (prop.instantiated_n ↑H₁ ⋀ P₁.instantiated_n), from valid_env.and h45a h45b,
             have h45d: σ₁ ⊨ (↑H₁ ⋀ P₁).instantiated_n, from valid_env.instantiated_n_and this,
 
-            have h46: σ₁ ⊨ P'.instantiated_p, from (
-              have h47: Q₂' vy₁' = (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) vy₁',
+            have h46: σ₁ ⊨ P''.instantiated_p, from (
+              have h47: Q₂' vy₁ = (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) vy₁,
               from h44 ▸ rfl,
 
-              have h48: (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) vy₁'
-                      = (↑H₁ ⋀ P₁ ⋀ (y₁ ≣ •) vy₁'), from propctx_apply_hpq,
+              have h48: (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) vy₁
+                      = (↑H₁ ⋀ P₁ ⋀ (y₁ ≣ •) vy₁), from propctx_apply_hpq,
 
-              have ((y₁ ≣ •):propctx) vy₁' = (y₁ ≡ vy₁'),
+              have ((y₁ ≣ •):propctx) vy₁ = (y₁ ≡ vy₁),
               by {
-                change (propctx.apply (propctx.term (y₁ ≣ •)) vy₁' = ↑(y₁ ≡ vy₁')),
+                change (propctx.apply (propctx.term (y₁ ≣ •)) vy₁ = ↑(y₁ ≡ vy₁)),
                 unfold propctx.apply,
-                change (↑(termctx.apply (termctx.binop binop.eq y₁ •) vy₁') = ↑(y₁ ≡ vy₁')),
+                change (↑(termctx.apply (termctx.binop binop.eq y₁ •) vy₁) = ↑(y₁ ≡ vy₁)),
                 unfold termctx.apply,
-                change (↑((term.to_termctx y₁) vy₁' ≡ vy₁') = ↑(↑y₁ ≡ vy₁')),
-                rw[@unchanged_of_apply_termctx_without_hole y₁ vy₁']
+                change (↑((term.to_termctx y₁) vy₁ ≡ vy₁) = ↑(↑y₁ ≡ vy₁)),
+                rw[@unchanged_of_apply_termctx_without_hole y₁ vy₁]
               },
 
-              have h49: Q₂' vy₁' = (↑H₁ ⋀ P₁ ⋀ y₁ ≡ vy₁'), from eq.trans h47 (this ▸ h48),
-              have ⊨ vy₁' ≡ vy₁', from valid.refl,
-              have ⊨ (term.subst_env σ₁ y₁) ≡ vy₁', from h26.symm ▸ this,
-              have h50: ⊨ (term.subst_env σ₁ y₁) ≡ (term.subst_env σ₁ vy₁'),
-              from (@term.subst_env.value σ₁ vy₁').symm ▸ this,
-              have term.subst_env σ₁ (y₁ ≡ vy₁') = (term.subst_env σ₁ y₁ ≡ term.subst_env σ₁ vy₁'),
+              have h49: Q₂' vy₁ = (↑H₁ ⋀ P₁ ⋀ y₁ ≡ vy₁), from eq.trans h47 (this ▸ h48),
+              have ⊨ vy₁ ≡ vy₁, from valid.refl,
+              have ⊨ (term.subst_env σ₁ y₁) ≡ vy₁, from h26.symm ▸ this,
+              have h50: ⊨ (term.subst_env σ₁ y₁) ≡ (term.subst_env σ₁ vy₁),
+              from (@term.subst_env.value σ₁ vy₁).symm ▸ this,
+              have term.subst_env σ₁ (y₁ ≡ vy₁) = (term.subst_env σ₁ y₁ ≡ term.subst_env σ₁ vy₁),
               from term.subst_env.binop,
-              have h51: ⊨ term.subst_env σ₁ (y₁ ≡ vy₁'), from this.symm ▸ h50,
-              have vc.subst_env σ₁ (y₁ ≡ vy₁') = vc.term (term.subst_env σ₁ (y₁ ≡ vy₁')),
+              have h51: ⊨ term.subst_env σ₁ (y₁ ≡ vy₁), from this.symm ▸ h50,
+              have vc.subst_env σ₁ (y₁ ≡ vy₁) = vc.term (term.subst_env σ₁ (y₁ ≡ vy₁)),
               from vc.subst_env.term,
-              have ⊨ vc.subst_env σ₁ (y₁ ≡ vy₁'), from this.symm ▸ h51,
-              have h52: σ₁ ⊨ y₁ ≡ vy₁', from this,
-              have prop.erased_n (prop.term (y₁ ≡ vy₁')) = vc.term (y₁ ≡ vy₁'), by unfold prop.erased_n,
-              have h53: σ₁ ⊨ prop.erased_n (y₁ ≡ vy₁') , from this.symm ▸ h52,
-              have h53b: closed_subst σ₁ (prop.term (y₁ ≡ vy₁')), from (
+              have ⊨ vc.subst_env σ₁ (y₁ ≡ vy₁), from this.symm ▸ h51,
+              have h52: σ₁ ⊨ y₁ ≡ vy₁, from this,
+              have prop.erased_n (prop.term (y₁ ≡ vy₁)) = vc.term (y₁ ≡ vy₁), by unfold prop.erased_n,
+              have h53: σ₁ ⊨ prop.erased_n (y₁ ≡ vy₁) , from this.symm ▸ h52,
+              have h53b: closed_subst σ₁ (prop.term (y₁ ≡ vy₁)), from (
                 assume z: var,
-                assume : free_in_prop z (y₁ ≡ vy₁'),
-                have free_in_term z (y₁ ≡ vy₁'), from free_in_prop.term.inv this,
+                assume : free_in_prop z (y₁ ≡ vy₁),
+                have free_in_term z (y₁ ≡ vy₁), from free_in_prop.term.inv this,
                 or.elim (free_in_term.binop.inv this) (
                   assume : free_in_term z y₁,
                   have z = y₁, from free_in_term.var.inv this,
                   have z ∈ σ₁, from this.symm ▸ y₁_in_σ₁,
                   show z ∈ σ₁.dom, from this
                 ) (
-                  assume : free_in_term z vy₁',
+                  assume : free_in_term z vy₁,
                   show z ∈ σ₁.dom, from absurd this free_in_term.value.inv
                 )
               ),
-              have closed_subst σ₁ (prop.term (y₁ ≡ vy₁')).instantiated_n,
+              have closed_subst σ₁ (prop.term (y₁ ≡ vy₁)).instantiated_n,
               from instantiated_n_closed_subst_of_closed h53b,
-              have σ₁ ⊨ prop.instantiated_n (y₁ ≡ vy₁'), from valid_env.instantiated_n_of_erased_n this h53,
-              have σ₁ ⊨ P₁.instantiated_n ⋀ prop.instantiated_n (y₁ ≡ vy₁'),
+              have σ₁ ⊨ prop.instantiated_n (y₁ ≡ vy₁), from valid_env.instantiated_n_of_erased_n this h53,
+              have σ₁ ⊨ P₁.instantiated_n ⋀ prop.instantiated_n (y₁ ≡ vy₁),
               from valid_env.and h45b this,
-              have σ₁ ⊨ (P₁ ⋀ y₁ ≡ vy₁').instantiated_n,
+              have σ₁ ⊨ (P₁ ⋀ y₁ ≡ vy₁).instantiated_n,
               from valid_env.instantiated_n_and this,
-              have σ₁ ⊨ prop.instantiated_n ↑H₁ ⋀ (P₁ ⋀ y₁ ≡ vy₁').instantiated_n,
+              have σ₁ ⊨ prop.instantiated_n ↑H₁ ⋀ (P₁ ⋀ y₁ ≡ vy₁).instantiated_n,
               from valid_env.and h45a this,
-              have σ₁ ⊨ (↑H₁ ⋀ P₁ ⋀ y₁ ≡ vy₁').instantiated_n,
+              have σ₁ ⊨ (↑H₁ ⋀ P₁ ⋀ y₁ ≡ vy₁).instantiated_n,
               from valid_env.instantiated_n_and this,
-              have h54: σ₁ ⊨ (Q₂' vy₁').instantiated_n, from h49.symm ▸ this,
+              have h54: σ₁ ⊨ (Q₂' vy₁).instantiated_n, from h49.symm ▸ this,
 
-              have dominates_n σ₁ (Q₂' vy₁') (H'⋀ P' ⋀ Q₂ vy₁'), from (Q₂'_dom σ₁ vy₁').left,
+              have dominates_n σ₁ (Q₂' vy₁) (H'⋀ P'' ⋀ Q₂ vy₁), from (Q₂'_dom σ₁ vy₁).left,
 
-              have h55: σ₁ ⊨ (↑H'⋀ P' ⋀ Q₂ vy₁').instantiated_n,
+              have h55: σ₁ ⊨ (↑H'⋀ P'' ⋀ Q₂ vy₁).instantiated_n,
               from dominates_n.elim this h54,
 
-              have h56: FV (↑H'⋀ P' ⋀ Q₂ vy₁') ⊆ FV (Q₂' vy₁'), from (Q₂'_dom σ₁ vy₁').right,
+              have h56: FV (↑H'⋀ P'' ⋀ Q₂ vy₁) ⊆ FV (Q₂' vy₁), from (Q₂'_dom σ₁ vy₁).right,
 
               have closed_subst σ₁ P₁, from env_translation_closed_subst σ₁_verified,
-              have h53c: closed_subst σ₁ (P₁ ⋀ y₁ ≡ vy₁'), from prop.closed_subst.and this h53b,
+              have h53c: closed_subst σ₁ (P₁ ⋀ y₁ ≡ vy₁), from prop.closed_subst.and this h53b,
               have closed ↑H₁, from call_history_closed H₁,
               have closed_subst σ₁ ↑H₁, from prop.closed_any_subst_of_closed this,
-              have closed_subst σ₁ (↑H₁ ⋀ P₁ ⋀ y₁ ≡ vy₁'), from prop.closed_subst.and this h53c,
-              have h53d: closed_subst σ₁ (Q₂' vy₁'), from h49.symm ▸ this,
-              have closed_subst σ₁ (↑H'⋀ P' ⋀ Q₂ vy₁'), from (
+              have closed_subst σ₁ (↑H₁ ⋀ P₁ ⋀ y₁ ≡ vy₁), from prop.closed_subst.and this h53c,
+              have h53d: closed_subst σ₁ (Q₂' vy₁), from h49.symm ▸ this,
+              have closed_subst σ₁ (↑H'⋀ P'' ⋀ Q₂ vy₁), from (
                 assume z: var,
-                assume : z ∈ FV (↑H'⋀ P' ⋀ Q₂ vy₁'),
-                have z ∈ FV (Q₂' vy₁'), from set.mem_of_subset_of_mem h56 this,
+                assume : z ∈ FV (↑H'⋀ P'' ⋀ Q₂ vy₁),
+                have z ∈ FV (Q₂' vy₁), from set.mem_of_subset_of_mem h56 this,
                 show z ∈ σ₁, from h53d this
               ),
-              have closed_subst σ₁ (↑H'⋀ P' ⋀ Q₂ vy₁').instantiated_p,
+              have closed_subst σ₁ (↑H'⋀ P'' ⋀ Q₂ vy₁).instantiated_p,
               from instantiated_p_closed_subst_of_closed this,
 
-              have σ₁ ⊨ (↑H'⋀ P' ⋀ Q₂ vy₁').instantiated_p,
+              have σ₁ ⊨ (↑H'⋀ P'' ⋀ Q₂ vy₁).instantiated_p,
               from valid_env.instantiated_p_of_instantiated_n this h55,
-              have σ₁ ⊨ (P' ⋀ Q₂ vy₁').instantiated_p,
+              have σ₁ ⊨ (P'' ⋀ Q₂ vy₁).instantiated_p,
               from (valid_env.and.elim (valid_env.instantiated_p_and_elim this)).right,
-              show σ₁ ⊨ P'.instantiated_p,
+              show σ₁ ⊨ P''.instantiated_p,
               from (valid_env.and.elim (valid_env.instantiated_p_and_elim this)).left
             ),
 
-            have env_equiv: (∀z, z ∈ σ' → (σ' z = σ₁ z)),
-            from env_equiv_of_translation_valid σ'_verified σ₁ h46,
+            have env_equiv3: (∀z, z ∈ (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]) →
+                                       (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ] z = σ₁ z)),
+            from env_equiv_of_translation_valid σ''_verified σ₁ h46,
 
+            have fx_is_vₓ: (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]) fx = vₓ,
+            from env.apply_of_vcgen σ''_verified,
+            have fx_in_σ'': fx ∈ (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]), from env.contains.same,
+            have σ₁ fx = vₓ,
+            from eq.trans (env_equiv3 fx fx_in_σ'').symm fx_is_vₓ,
+            have h34: term.subst_env σ₁ fx = vₓ,
+            from (term.subst_env.var.right vₓ).mp this,
+            have fx_in_σ₁: fx ∈ σ₁,
+            from env.contains_apply_equiv.right.mp (exists.intro vₓ this),
 
+            have (σ'[f↦value.func f fx R S e' H' σ']) f = value.func f fx R S e' H' σ',
+            from exists.elim (env.rest_verified σ''_verified) (λ_, env.apply_of_vcgen),
+            have f_is_vf: (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]) f = value.func f fx R S e' H' σ',
+            from env.apply_of_rest_apply this,
+            have f_in_σ'': f ∈ (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]),
+            from env.contains.rest env.contains.same,
+            have σ₁ f = (value.func f fx R S e' H' σ'),
+            from eq.trans (env_equiv3 f f_in_σ'').symm f_is_vf,
+            have h35: term.subst_env σ₁ f = value.func f fx R S e' H' σ',
+            from (term.subst_env.var.right (value.func f fx R S e' H' σ')).mp this,
+            have f_in_σ₁: f ∈ σ₁,
+            from env.contains_apply_equiv.right.mp (exists.intro (value.func f fx R S e' H' σ') this),
 
-            have h46: Q₂' (term.app f fx) = (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) (term.app f fx),
-            from h44 ▸ rfl,
+            have h36: σ₁ ⊨ (↑H'⋀ P'' ⋀ Q₂ (term.app f fx)).instantiated_n, from (
+              have h37: Q₂' (term.app f fx) = (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) (term.app f fx),
+              from h44 ▸ rfl,
 
-            have h45: (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) (term.app f fx)
-                    = (↑H₁ ⋀ P₁ ⋀ (y₁ ≣ •) (term.app f fx)), from propctx_apply_hpq,
+              have h38: (↑H₁ ⋀ P₁.to_propctx ⋀ y₁ ≣ •) (term.app f fx)
+                      = (↑H₁ ⋀ P₁ ⋀ (y₁ ≣ •) (term.app f fx)), from propctx_apply_hpq,
 
-            have ((y₁ ≣ •):propctx) (term.app f fx) = (y₁ ≡ term.app f fx),
-            by {
-              change (propctx.apply (propctx.term (y₁ ≣ •)) (term.app f fx) = (y₁ ≡ term.app f fx)),
-              unfold propctx.apply,
-              change (↑(termctx.apply (termctx.binop binop.eq y₁ •) (term.app f fx)) = ↑(y₁ ≡ term.app f fx)),
-              unfold termctx.apply,
-              change (↑((term.to_termctx y₁) (term.app ↑f ↑fx) ≡ term.app ↑f ↑fx) = ↑(↑y₁ ≡ term.app ↑f ↑fx)),
-              rw[@unchanged_of_apply_termctx_without_hole y₁ (term.app f fx)]
-            },
+              have ((y₁ ≣ •):propctx) (term.app f fx) = (y₁ ≡ term.app f fx),
+              by {
+                change (propctx.apply (propctx.term (y₁ ≣ •)) (term.app f fx) = (y₁ ≡ term.app f fx)),
+                unfold propctx.apply,
+                change (↑(termctx.apply (termctx.binop binop.eq y₁ •) (term.app f fx)) = ↑(y₁ ≡ term.app f fx)),
+                unfold termctx.apply,
+                change (↑((term.to_termctx y₁) (term.app ↑f ↑fx) ≡ term.app ↑f ↑fx) = ↑(↑y₁ ≡ term.app ↑f ↑fx)),
+                rw[@unchanged_of_apply_termctx_without_hole y₁ (term.app f fx)]
+              },
 
-            have h45: Q₂' (term.app f fx) = (↑H₁ ⋀ P₁ ⋀ (y₁ ≡ term.app f fx)),
-            from eq.trans h44 (this ▸ h45),
+              have h39: Q₂' (term.app f fx) = (↑H₁ ⋀ P₁ ⋀ (y₁ ≡ term.app f fx)),
+              from eq.trans h37 (this ▸ h38),
 
+              have h40: σ₁ ⊨ y₁ ≡ term.app f fx, from (
+                have h73: (R₁, H₂, σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ H₂ σ₂][x₁↦vx₁], e₁)
+                ⟶* (R'₁, H₁, σ₁, exp.return y₁),
+                from h65.symm ▸ h66.symm ▸ h67.symm ▸ h68.symm ▸ h69.symm ▸ h70.symm ▸ h71.symm ▸ h72.symm ▸ steps, 
 
-            have σ₁ ⊨ (↑H₁ ⋀ P₁ ⋀ y₁ ≡ term.app f fx).instantiated_n, from sorry,
+                have ⊨ vy₁ ≡ term.app (value.func f₁ x₁ R₁ S₁ e₁ H₂ σ₂) vx₁,
+                from valid.app h73 y_is_vy₁,
+                have ⊨ vy₁ ≡ term.app (value.func f fx R S e' H' σ') vₓ,
+                from h65 ▸ h66 ▸ h67 ▸ h68 ▸ h69 ▸ h70 ▸ h71 ▸ h72 ▸ this, 
+                have h76: ⊨ (term.subst_env σ₁ y₁) ≡ term.app (term.subst_env σ₁ f) (term.subst_env σ₁ fx),
+                from h26.symm ▸ h34.symm ▸ h35.symm ▸ this,
+                have term.subst_env σ₁ (term.app f fx) = term.app (term.subst_env σ₁ f) (term.subst_env σ₁ fx),
+                from term.subst_env.app,
+                have h77: ⊨ term.subst_env σ₁ y₁ ≡ term.subst_env σ₁ (term.app f fx), from this.symm ▸ h76,
+                have term.subst_env σ₁ (y₁ ≡ term.app f fx)
+                   = (term.subst_env σ₁ y₁ ≡ term.subst_env σ₁ (term.app f fx)),
+                from term.subst_env.binop,
+                have h78: ⊨ term.subst_env σ₁ (y₁ ≡ term.app f fx), from this.symm ▸ h77,
+                have vc.subst_env σ₁ (y₁ ≡ term.app f fx) = vc.term (term.subst_env σ₁ (y₁ ≡ term.app f fx)),
+                from vc.subst_env.term,
+                have ⊨ vc.subst_env σ₁ (y₁ ≡ term.app f fx), from this.symm ▸ h78,
+                show σ₁ ⊨ y₁ ≡ term.app f fx, from this
+              ),
+              have prop.erased_n (prop.term (y₁ ≡ term.app f fx)) = vc.term (y₁ ≡ term.app f fx),
+              by unfold prop.erased_n,
+              have h41: σ₁ ⊨ prop.erased_n (y₁ ≡ term.app f fx) , from this.symm ▸ h40,
+              have h42b: closed_subst σ₁ (prop.term (y₁ ≡ term.app f fx)), from (
+                assume z: var,
+                assume : free_in_prop z (y₁ ≡ term.app f fx),
+                have free_in_term z (y₁ ≡ term.app f fx), from free_in_prop.term.inv this,
+                or.elim (free_in_term.binop.inv this) (
+                  assume : free_in_term z y₁,
+                  have z = y₁, from free_in_term.var.inv this,
+                  have z ∈ σ₁, from this.symm ▸ y₁_in_σ₁,
+                  show z ∈ σ₁.dom, from this
+                ) (
+                  assume : free_in_term z (term.app f fx),
+                  or.elim (free_in_term.app.inv this) (
+                    assume : free_in_term z f,
+                    have z = f, from free_in_term.var.inv this,
+                    have z ∈ σ₁, from this.symm ▸ f_in_σ₁,
+                    show z ∈ σ₁.dom, from this
+                  ) (
+                    assume : free_in_term z fx,
+                    have z = fx, from free_in_term.var.inv this,
+                    have z ∈ σ₁, from this.symm ▸ fx_in_σ₁,
+                    show z ∈ σ₁.dom, from this
+                  )
+                )
+              ),
+              have closed_subst σ₁ (prop.term (y₁ ≡ term.app f fx)).instantiated_n,
+              from instantiated_n_closed_subst_of_closed h42b,
+              have σ₁ ⊨ prop.instantiated_n (y₁ ≡ term.app f fx), from valid_env.instantiated_n_of_erased_n this h41,
+              have σ₁ ⊨ P₁.instantiated_n ⋀ prop.instantiated_n (y₁ ≡ term.app f fx),
+              from valid_env.and h45b this,
+              have σ₁ ⊨ (P₁ ⋀ y₁ ≡ term.app f fx).instantiated_n,
+              from valid_env.instantiated_n_and this,
+              have σ₁ ⊨ prop.instantiated_n ↑H₁ ⋀ (P₁ ⋀ y₁ ≡ term.app f fx).instantiated_n,
+              from valid_env.and h45a this,
+              have σ₁ ⊨ (↑H₁ ⋀ P₁ ⋀ y₁ ≡ term.app f fx).instantiated_n,
+              from valid_env.instantiated_n_and this,
+              have h43: σ₁ ⊨ (Q₂' (term.app f fx)).instantiated_n, from h39.symm ▸ this,
 
-            have h44: dominates_n σ₁ (Q₂' (term.app f fx)) (H'⋀ P' ⋀ Q₂ (term.app f fx)),
-            from Q₂'_dom σ₁ (term.app f fx),
+              have dominates_n σ₁ (Q₂' (term.app f fx)) (H'⋀ P'' ⋀ Q₂ (term.app f fx)),
+              from (Q₂'_dom σ₁ (term.app f fx)).left,
 
+              show σ₁ ⊨ (↑H'⋀ P'' ⋀ Q₂ (term.app f fx)).instantiated_n,
+              from dominates_n.elim this h43
+            ),
+
+            have ∃Q', ⊢ (σ'[f↦value.func f fx R S e' H' σ']) : Q',
+            from env.rest_verified σ''_verified,
+
+            let ⟨Q', h90⟩ := this in
+            
+            have ∃Q₁ Q₂ Q₃,
+              f ∉ σ' ∧
+              f ∉ σ' ∧
+              fx ∉ σ' ∧
+              f ≠ fx ∧
+              (⊢ σ' : Q₁) ∧
+              (⊢ σ' : Q₂) ∧
+              fx ∈ FV R.to_prop ∧
+              FV R.to_prop ⊆ FV Q₂ ∪ { f, fx } ∧
+              FV S.to_prop ⊆ FV Q₂ ∪ { f, fx } ∧
+              (H' ⋀ Q₂ ⋀ spec.func f fx R S ⋀ R ⊢ e' : Q₃) ∧
+              ⟪prop.implies (H' ⋀ Q₂ ⋀ spec.func f fx R S ⋀ R ⋀ Q₃ (term.app f fx)) S⟫ ∧
+              (Q' = (Q₁ ⋀
+                  ((f ≡ (value.func f fx R S e' H' σ')) ⋀
+                  prop.subst_env (σ'[f↦value.func f fx R S e' H' σ'])
+                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S))))),
+            from env.vcgen.func.inv h90,
+
+-- lemma vc.subst_env_equivalent_env {P: vc} {σ₁ σ₂: env}:
+--   (∀z, z ∈ σ₁ → (σ₁ z = σ₂ z)) → closed_subst σ₁ P → (vc.subst_env σ₁ P = vc.subst_env σ₂ P) :=
+
+            have h97: ⊨ vc.subst_env (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]) (Q₂ (term.app f fx)).instantiated_p,
+            from sorry,
+
+            have ⊨ vc.subst_env σ₁ S.to_prop.instantiated_p,
+            from sorry,
+            have h98: ⊨ vc.subst_env (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ]) S.to_prop.instantiated_p,
+            from sorry,
+            have ⊨ vc.subst_env (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ])
+                                (vc.and (Q₂ (term.app f fx)).instantiated_p S.to_prop.instantiated_p),
+            from valid_env.and h97 h98,
             have (σ'[f↦value.func f fx R S e' H' σ'][fx↦vₓ] ⊨ (Q₂ (term.app f fx)).instantiated_p ⋀
                                                                 S.to_prop.instantiated_p),
-            from sorry,
+            from this,
             have ⊨ vc.post (value.func f fx R S e' H' σ') vₓ,
             from valid.post.mp σ'_verified e'_verified this,
             have ⊨ vc.post (value.func f₁ x₁ R₁ S₁ e₁ H₂ σ₂) vx₁,
