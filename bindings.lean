@@ -1191,6 +1191,40 @@ lemma env.rest_verified {P: prop} {σ: env} {x: var} {v: value}:
     }
   end
 
+lemma env_dominates_p_rest {P: prop} {σ: env} {x: var} {v: value}:
+      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ ∀σ', dominates_p σ' P Q) :=
+  assume σ_verified: ⊢ (σ[x↦v]) : P,
+  begin
+    cases σ_verified,
+    case env.vcgen.tru Q _ σ_verified ih { from
+      have ∀σ', dominates_p σ' (prop.and Q (x ≡ value.true)) Q,
+      from λσ', dominates_p.of_and_left,
+      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q (x ≡ value.true)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    },
+    case env.vcgen.fls Q _ σ_verified { from
+      have ∀σ', dominates_p σ' (prop.and Q (x ≡ value.false)) Q,
+      from λσ', dominates_p.of_and_left,
+      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q (x ≡ value.false)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    },
+    case env.vcgen.num n Q _ σ_verified { from
+      have ∀σ', dominates_p σ' (prop.and Q (x ≡ value.num n)) Q,
+      from λσ', dominates_p.of_and_left,
+      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q (x ≡ value.num n)) Q_1,
+      from exists.intro Q ⟨σ_verified, this⟩
+    },
+    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
+         fx_not_in_σ₂ f_neq_fx σ₁_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
+      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
+                                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
+      have ∀σ', dominates_p σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) Q,
+      from λσ', dominates_p.of_and_left,
+      show ∃Q_1, (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q ((x ≡ (value.func f fx R S e H σ₂)) ⋀ funcp)) Q_1,
+      from exists.intro Q ⟨σ₁_verified, this⟩
+    }
+  end
+
 lemma env_dominates_n_rest {P: prop} {σ: env} {x: var} {v: value}:
       (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ ∀σ', dominates_n σ' P Q) :=
   assume σ_verified: ⊢ (σ[x↦v]) : P,
@@ -1555,3 +1589,44 @@ lemma vc.subst_env_equivalent_env {P: vc} {σ₁ σ₂: env}:
   have vc.subst_env σ₂ (vc.subst_env σ₁ P) = vc.subst_env σ₂ P,
   from vc.subst_env_with_equivalent_env h1,
   show vc.subst_env σ₁ P = vc.subst_env σ₂ P, from h2 ▸ this
+
+lemma env.dom_subset_of_equivalent_env {σ₁ σ₂: env}:
+  (∀z, z ∈ σ₁ → (σ₁ z = σ₂ z)) → (σ₁.dom ⊆ σ₂.dom) :=
+  assume env_equiv: (∀z, z ∈ σ₁ → (σ₁ z = σ₂ z)),
+  assume x: var,
+  assume : x ∈ σ₁.dom,
+  have h1: x ∈ σ₁, from this,
+  have ∃v, σ₁ x = some v, from env.contains_apply_equiv.right.mpr h1,
+  let ⟨v, h2⟩ := this in
+  have σ₁ x = σ₂ x, from env_equiv x h1,
+  have σ₂ x = some v, from eq.trans this.symm h2,
+  show x ∈ σ₂, from env.contains_apply_equiv.right.mp (exists.intro v this)
+
+lemma env.remove_unimportant_equivalence {σ₁ σ₂: env} {x: var}:
+  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → x ∉ σ₁ → (∀y, y ∈ σ₁ → (σ₁ y = σ₂.without x y)) :=
+  assume h1: (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)),
+  assume h2: x ∉ σ₁,
+  assume y: var,
+  assume h3: y ∈ σ₁,
+  have ∃v, σ₁ y = some v, from env.contains_apply_equiv.right.mpr h3,
+  let ⟨v, h4⟩ := this in
+  have σ₁ y = σ₂ y, from h1 y h3,
+  have h5: σ₂ y = v, from eq.trans this.symm h4,
+  have h6: x ≠ y, from (
+    assume : x = y,
+    have x ∈ σ₁, from this.symm ▸ h3,
+    show «false», from h2 this
+  ),
+  have y ∈ σ₁.dom, from h3,
+  have y ∈ σ₂.dom, from set.mem_of_subset_of_mem (env.dom_subset_of_equivalent_env h1) this,
+  have y ∈ σ₂, from this,
+  have h7: y ∈ σ₂.without x, from env.contains_without.rinv ⟨this, h6.symm⟩,
+  -- have ∃v', σ₂.without x y = some v', from env.contains_apply_equiv.right.mpr this,
+  have y ∉ σ₂.without x ∨ (σ₂.without x y = v), from env.without_equiv (or.inr h5),
+  or.elim this (
+    assume : y ∉ σ₂.without x,
+    show σ₁ y = σ₂.without x y, from absurd h7 this
+  ) (
+    assume : σ₂.without x y = v,
+    show σ₁ y = σ₂.without x y, from eq.trans h4 this.symm
+  )

@@ -1031,7 +1031,7 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
         have gx ∉ (σ₂[g↦vf]), from (mt env.contains.inv) this,
         have (prop.subst_env (σ₂[g↦vf]) (prop.forallc gx g forallp)
             = prop.forallc gx (term.subst_env (σ₂[g↦vf]) g) (prop.subst_env (σ₂[g↦vf]) forallp)),
-        from prop.subst_env.forallc this,
+        from prop.subst_env.forallc_not_in this,
         show ⊨ prop.instantiated_n (prop.subst_env (σ₂[g↦vf]) (prop.forallc gx g forallp)), from this.symm ▸ h7
       ),
 
@@ -1299,3 +1299,77 @@ lemma valid_env.subst_non_free_of_valid_env {σ: env} {x: var} {v: value} {P: vc
   by unfold vc.subst_env,
   have ⊨ vc.subst_env (σ[x↦v]) P, from this.symm ▸ h2,
   show σ[x↦v] ⊨ P, from this
+
+lemma dominates_n.quantifier {σ: env} {x: var} {t₁ t₂: term} {P Q: prop} : 
+      (∀v: value, dominates_n (σ.without x[x↦v]) P Q) →
+      dominates_n σ (prop.forallc x t₁ P) (prop.forallc x t₂ Q) :=
+  assume h0: ∀v: value, dominates_n (σ.without x[x↦v]) P Q,
+  
+  have h_impl: ((σ ⊨ (prop.forallc x t₁ P).instantiated_n) → (σ ⊨ (prop.forallc x t₂ Q).instantiated_n)), from (
+    assume : σ ⊨ (prop.forallc x t₁ P).instantiated_n,
+    have ⊨ vc.subst_env σ (prop.forallc x t₁ P).instantiated_n, from this,
+    have h1: ⊨ (prop.subst_env σ (prop.forallc x t₁ P)).instantiated_n,
+    from @instantiated_n_distrib_subst_env (prop.forallc x t₁ P) σ ▸ this,
+    have prop.subst_env σ (prop.forallc x t₁ P) = prop.forallc x (term.subst_env (σ.without x) t₁)
+                                                                 (prop.subst_env (σ.without x) P),
+    from prop.subst_env.forallc,
+    have ⊨ (prop.forallc x (term.subst_env (σ.without x) t₁)
+                           (prop.subst_env (σ.without x) P)).instantiated_n,
+    from this ▸ h1,
+    have ⊨ vc.univ x (prop.subst_env (σ.without x) P).instantiated_n,
+    from @instantiated_n.forallc x (term.subst_env (σ.without x) t₁) (prop.subst_env (σ.without x) P) ▸ this,
+    have h2: ∀v, ⊨ vc.subst x v (prop.subst_env (σ.without x) P).instantiated_n,
+    from valid.univ.mpr this,
+
+    have ∀v, ⊨ vc.subst x v (prop.subst_env (σ.without x) Q).instantiated_n, from (
+      assume v: value,
+      have ⊨ vc.subst x v (prop.subst_env (σ.without x) P).instantiated_n,
+      from h2 v,
+      have h3: ⊨ (prop.subst x v (prop.subst_env (σ.without x) P)).instantiated_n,
+      from @instantiated_n_distrib_subst (prop.subst_env (σ.without x) P) x v ▸ this,
+      have prop.subst x v (prop.subst_env (σ.without x) P) = prop.subst_env ((σ.without x)[x↦v]) P,
+      by unfold prop.subst_env,
+      have ⊨ (prop.subst_env ((σ.without x)[x↦v]) P).instantiated_n,
+      from this ▸ h3,
+      have ⊨ vc.subst_env ((σ.without x)[x↦v]) P.instantiated_n,
+      from (@instantiated_n_distrib_subst_env P ((σ.without x)[x↦v])).symm ▸ this,
+      have h4: ⊨ vc.subst_env ((σ.without x)[x↦v]) Q.instantiated_n,
+      from dominates_n.elim (h0 v) this,
+      have vc.subst_env ((σ.without x)[x↦v]) Q.instantiated_n
+         = vc.subst x v (vc.subst_env (σ.without x) Q.instantiated_n),
+      by unfold vc.subst_env,
+      have ⊨ vc.subst x v (vc.subst_env (σ.without x) Q.instantiated_n),
+      from this ▸ h4,
+      show ⊨ vc.subst x v (prop.subst_env (σ.without x) Q).instantiated_n,
+      from (@instantiated_n_distrib_subst_env Q (σ.without x)) ▸ this
+    ),
+    have ⊨ vc.univ x (prop.subst_env (σ.without x) Q).instantiated_n, from valid.univ.mp this,
+    have h3: ⊨ (prop.forallc x (term.subst_env (σ.without x) t₂)
+                           (prop.subst_env (σ.without x) Q)).instantiated_n,
+    from (@instantiated_n.forallc x (term.subst_env (σ.without x) t₂) (prop.subst_env (σ.without x) Q)).symm ▸ this,
+    have prop.subst_env σ (prop.forallc x t₂ Q) = prop.forallc x (term.subst_env (σ.without x) t₂)
+                                                                 (prop.subst_env (σ.without x) Q),
+    from prop.subst_env.forallc,
+    have ⊨ (prop.subst_env σ (prop.forallc x t₂ Q)).instantiated_n, from this.symm ▸ h3,
+    have ⊨ vc.subst_env σ (prop.forallc x t₂ Q).instantiated_n,
+    from (@instantiated_n_distrib_subst_env (prop.forallc x t₂ Q) σ).symm ▸ this,
+    show σ ⊨ (prop.forallc x t₂ Q).instantiated_n, from this
+  ),
+  have h_calls: (calls_n_subst σ (prop.forallc x t₂ Q) ⊆ calls_n_subst σ (prop.forallc x t₁ P)), from (
+    assume c: calltrigger,
+    assume : c ∈ calls_n_subst σ (prop.forallc x t₂ Q),
+    have c ∈ (calltrigger.subst σ) '' calls_n (prop.forallc x t₂ Q), from this,
+    @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_n (prop.forallc x t₂ Q))
+        (λa, a ∈ calls_n_subst σ (prop.forallc x t₁ P)) c this (
+      assume c': calltrigger,
+      assume : c' ∈ calls_n (prop.forallc x t₂ Q),
+      show calltrigger.subst σ c' ∈ calls_n_subst σ (prop.forallc x t₁ P), from absurd this prop.has_call_n.forallc.inv
+    )
+  ),
+  have h_quantifiers: quantifiers_n (prop.forallc x t₂ Q) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n (prop.forallc x t₂ Q),
+    show «false», from prop.has_quantifier_n.forallc.inv this
+  ),
+  show dominates_n σ (prop.forallc x t₁ P) (prop.forallc x t₂ Q),
+  from dominates_n.no_quantifiers h_impl h_calls h_quantifiers

@@ -202,6 +202,18 @@ lemma free_in_prop.forallc.inv {P: prop} {t: term} {x fx: var}:
     }
   end
 
+lemma free_in_prop.forallc.same.inv {P: prop} {t: term} {x: var}: ¬ free_in_prop x (prop.forallc x t P) :=
+  assume x_free: free_in_prop x (prop.forallc x t P),
+  begin
+    cases x_free,
+    case free_in_prop.forallc₁ x_neq_y free_in_P {
+      contradiction
+    },
+    case free_in_prop.forallc₂ x_neq_y free_in_P {
+      contradiction
+    }
+  end
+
 lemma free_in_prop.exis.inv {P: prop} {x fx: var}:
       free_in_prop x (prop.exis fx P) → (x ≠ fx) ∧ (free_in_prop x P) :=
   assume x_free_in_exis: free_in_prop x (prop.exis fx P),

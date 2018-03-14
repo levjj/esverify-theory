@@ -1063,6 +1063,12 @@ lemma unchanged_of_apply_propctx_without_hole {P: prop} {t: term}:
     }
   end
 
+-- stack precondition projection
+
+def stack.pre: stack → spec
+| (stack.top R _ _ _) := R
+| (stack.cons _ R _ _ _ _ _ _) := R
+
 -- call history to prop coercion
 
 def calls_to_prop: history → prop

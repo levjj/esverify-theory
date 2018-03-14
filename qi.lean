@@ -112,7 +112,7 @@ with dominates_p : env → prop → prop → Prop
                                                 (quantifiers_p Q = ∅) →
                                                 dominates_p σ P Q
 | quantifier {σ: env} {x: var} {t₁ t₂: term} {P₁ P₂: prop} : 
-                                                ((σ ⊨ t₁ ≡ t₂) → (∀v: value, dominates_p (σ[x↦v]) P₁ P₂)) →
+                                                (∀v: value, dominates_p (σ.without x[x↦v]) P₁ P₂) →
                                                 dominates_p σ (prop.forallc x t₁ P₁) (prop.forallc x t₂ P₂)
 | not {σ: env} {P Q: prop}                    : dominates_n σ P Q →
                                                 dominates_p σ Q.not P.not

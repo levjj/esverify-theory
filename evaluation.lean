@@ -174,3 +174,17 @@ lemma binop.eq.inv {v₁ v₂: value}: binop.apply binop.eq v₁ v₂ = value.tr
     have h2, from option.some.inj eq_is_true,
     contradiction
   end
+
+lemma pre_preserved {s s': stack}: s ⟶* s' → (s.pre = s'.pre) :=
+  begin
+    assume h1,
+    induction h1,
+    case trans_step.rfl {
+      refl
+    },
+    case trans_step.trans s₁ s₂ s₃ h2 h3 ih {
+      apply eq.trans ih,
+      cases h3,
+      repeat {refl}
+    }
+  end

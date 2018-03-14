@@ -2012,6 +2012,148 @@ lemma term.free_of_free_in_subst {x y: var} {v: value} {t: term}: x ∈ FV (term
     end
   end
 
+lemma prop.free_of_free_in_subst {x y: var} {v: value} {P: prop}: x ∈ FV (prop.subst y v P) → x ∈ FV P :=
+  begin
+    assume h1,
+    induction P,
+    case prop.term t {
+      apply free_in_prop.term,
+      have h2, from free_in_prop.term.inv h1,
+      from term.free_of_free_in_subst h2
+    },
+    case prop.not P₁ ih {
+      apply free_in_prop.not,
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.not.inv h1,
+      from ih h2     
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.and.inv h1,
+      cases h2,
+      apply free_in_prop.and₁,
+      from P₁_ih a,
+      apply free_in_prop.and₂,
+      from P₂_ih a
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.or.inv h1,
+      cases h2,
+      apply free_in_prop.or₁,
+      from P₁_ih a,
+      apply free_in_prop.or₂,
+      from P₂_ih a
+    },
+    case prop.pre t₁ t₂ {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.pre.inv h1,
+      cases h2,
+      apply free_in_prop.pre₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_prop.pre₂,
+      from term.free_of_free_in_subst  a
+    },
+    case prop.pre₁ op t {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.pre₁.inv h1,
+      apply free_in_prop.preop,
+      from term.free_of_free_in_subst h2
+    },
+    case prop.pre₂ op t₁ t₂ {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.pre₂.inv h1,
+      cases h2,
+      apply free_in_prop.preop₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_prop.preop₂,
+      from term.free_of_free_in_subst  a
+    },
+    case prop.call t₁ t₂ {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.call.inv h1,
+      cases h2,
+      apply free_in_prop.call₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_prop.call₂,
+      from term.free_of_free_in_subst  a
+    },
+    case prop.post t₁ t₂ {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.post.inv h1,
+      cases h2,
+      apply free_in_prop.post₁,
+      from term.free_of_free_in_subst a,
+      apply free_in_prop.post₂,
+      from term.free_of_free_in_subst  a
+    },
+    case prop.forallc z t P' P'_ih {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.forallc.inv h1,
+      by_cases (y = z) with h3,
+      have h4, from h2.right,
+      rw[h3] at h4,
+      simp at h4,
+      cases h4 with h5 h6,
+      apply free_in_prop.forallc₂,
+      from h2.left,
+      from h5,
+      apply free_in_prop.forallc₁,
+      from h2.left,
+      from h6,
+
+      have h4, from h2.right,
+      simp[h3] at h4,
+      cases h4 with h5 h6,
+      -- have : ((ite (y = z) P' (prop.subst y v P')) = (prop.subst y v P')), by simp[h3],
+      -- rw[this] at h4,
+      apply free_in_prop.forallc₂,
+      from h2.left,
+      from P'_ih h5,
+      apply free_in_prop.forallc₁,
+      from h2.left,
+      from term.free_of_free_in_subst h6
+    },
+    case prop.exis z P' P'_ih {
+      unfold prop.subst at h1,
+      have h2, from free_in_prop.exis.inv h1,
+      by_cases (y = z) with h3,
+      have h4, from h2.right,
+      rw[h3] at h4,
+      simp at h4,
+      apply free_in_prop.exis,
+      from h2.left,
+      from h4,
+
+      have h4, from h2.right,
+      simp[h3] at h4,
+      have : ((ite (y = z) P' (prop.subst y v P')) = (prop.subst y v P')), by simp[h3],
+      rw[this] at h4,
+      apply free_in_prop.exis,
+      from h2.left,
+      from P'_ih h4
+    }
+  end
+
+lemma prop.free_of_free_subst_env {x: var} {σ: env} {P: prop}: x ∈ FV (prop.subst_env σ P) → x ∈ FV P :=
+  assume x_free: x ∈ FV (prop.subst_env σ P),
+  show x ∈ FV P, begin
+    induction σ with σ' y v ih,
+
+    -- env.empty
+    show x ∈ FV P, begin
+      unfold prop.subst_env at x_free,
+      from x_free
+    end,
+
+    -- σ'[x↦v]
+    show x ∈ FV P, begin
+      unfold prop.subst_env at x_free,
+      have h1: x ∈ FV (prop.subst_env σ' P), from prop.free_of_free_in_subst x_free,
+      from ih h1
+    end
+  end
+
 lemma vc.free_of_free_in_subst {x y: var} {v: value} {P: vc}: x ∈ FV (vc.subst y v P) → x ∈ FV P :=
   begin
     assume h1,
@@ -2353,7 +2495,7 @@ begin
   ... = prop.post (term.subst_env (σ'[x↦v]) t₁) (term.subst_env (σ'[x↦v]) t₂) : by unfold term.subst_env
 end
 
-lemma prop.subst_env.forallc {σ: env} {x: var} {t: term} {P: prop}:
+lemma prop.subst_env.forallc_not_in {σ: env} {x: var} {t: term} {P: prop}:
       (x ∉ σ) → (prop.subst_env σ (prop.forallc x t P) = prop.forallc x (term.subst_env σ t) (prop.subst_env σ P)) :=
 begin
   assume x_not_in_σ,
@@ -2386,6 +2528,53 @@ begin
   ... = prop.forallc x (term.subst y v (term.subst_env σ' t)) (prop.subst_env (σ'[y↦v]) P) : by unfold prop.subst_env
   ... = prop.forallc x (term.subst_env (σ'[y↦v]) t) (prop.subst_env (σ'[y↦v]) P) : by unfold term.subst_env
   )
+end
+
+lemma prop.subst_env.forallc {σ: env} {x: var} {t: term} {P: prop}:
+      (prop.subst_env σ (prop.forallc x t P) = prop.forallc x (term.subst_env (σ.without x) t)
+                                                              (prop.subst_env (σ.without x) P)) :=
+begin
+  induction σ with σ' y v ih,
+
+  show (prop.subst_env env.empty (prop.forallc x t P) = prop.forallc x (term.subst_env (env.empty.without x) t)
+                                                                       (prop.subst_env (env.empty.without x) P)),
+  by calc
+        prop.subst_env env.empty (prop.forallc x t P) = (prop.forallc x t P) : by unfold prop.subst_env
+                                         ... = prop.forallc x t (prop.subst_env env.empty P) : by unfold prop.subst_env
+                                         ... = prop.forallc x (term.subst_env env.empty t)
+                                                              (prop.subst_env env.empty P) : by unfold term.subst_env,
+
+  show (prop.subst_env (σ'[y↦v]) (prop.forallc x t P)
+      = prop.forallc x (term.subst_env ((σ'[y↦v]).without x) t) (prop.subst_env ((σ'[y↦v]).without x) P)),
+  by begin
+    unfold prop.subst_env,
+    by_cases (y = x) with h1,
+    rw[←h1],
+    rw[←h1] at ih,
+    unfold env.without,
+    simp,
+    have : y ∉ FV (prop.subst_env σ' (prop.forallc y t P)), from (
+      assume : y ∈ FV (prop.subst_env σ' (prop.forallc y t P)),
+      have y ∈ FV (prop.forallc y t P), from prop.free_of_free_subst_env this,
+      show «false», from free_in_prop.forallc.same.inv this
+    ),
+    have h2: (prop.subst y v (prop.subst_env σ' (prop.forallc y t P)) = prop.subst_env σ' (prop.forallc y t P)),
+    from unchanged_of_subst_nonfree_prop this,
+    rw[h2],
+    from ih,
+
+    unfold env.without,
+    simp[h1],
+    unfold prop.subst_env,
+    unfold term.subst_env,
+    have : (prop.subst y v (prop.forallc x (term.subst_env (env.without σ' x) t) (prop.subst_env (env.without σ' x) P))
+         = prop.forallc x (term.subst y v (term.subst_env (env.without σ' x) t))
+                          (prop.subst y v (prop.subst_env (env.without σ' x) P))),
+    by { unfold prop.subst, simp[h1] },
+    rw[←this],
+    congr,
+    from ih  
+  end
 end
 
 lemma vc.subst.implies {x: var} {v: value} {P Q: vc}:
