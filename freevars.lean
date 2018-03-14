@@ -952,6 +952,11 @@ lemma free_in_propctx.exis.inv {x fx: var} {Q: propctx} {t: term}:
   have x ∈ FV (prop.exis fx (Q.apply t)), from this ▸ x_free_in_eQt,
   show x ≠ fx ∧ x ∈ FV (Q t), from free_in_prop.exis.inv this
 
+lemma free_in_prop.and_left_subset {P₁ P₂: prop}: FV P₁ ⊆ FV (P₁ ⋀ P₂) :=
+  assume x: var,
+  assume : x ∈ FV P₁,
+  show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
+
 lemma free_in_prop.and_elim {P₁ P₂: prop}:
       FV (P₁ ⋀ P₂) = FV P₁ ∪ FV P₂ :=
   set.eq_of_subset_of_subset (
@@ -976,7 +981,7 @@ lemma free_in_prop.and_elim {P₁ P₂: prop}:
     )
   )
 
-lemma free_in_prop.and_comm {P₁ P₂ P₃: prop}:
+lemma free_in_prop.and_assoc {P₁ P₂ P₃: prop}:
       FV (P₁ ⋀ P₂ ⋀ P₃) = FV ((P₁ ⋀ P₂) ⋀ P₃) :=
   set.eq_of_subset_of_subset (
     assume x: var,
@@ -1038,6 +1043,100 @@ lemma free_in_prop.and_symm {P₁ P₂: prop}:
       assume : x ∈ FV P₁,
       show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
     )
+  )
+
+lemma free_in_prop.same_left {P₁ P₂ P₃: prop}:
+      (FV P₂ = FV P₃) → (FV (P₁ ⋀ P₂) = FV (P₁ ⋀ P₃)) :=
+  assume h1: FV P₂ = FV P₃,
+  set.eq_of_subset_of_subset (
+    assume x: var,
+    assume : x ∈ FV (P₁ ⋀ P₂),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₁,
+      show x ∈ FV (P₁ ⋀ P₃), from free_in_prop.and₁ this
+    ) (
+      assume : x ∈ FV P₂,
+      have x ∈ FV P₃, from h1 ▸ this,
+      show x ∈ FV (P₁ ⋀ P₃), from free_in_prop.and₂ this
+    )
+  ) (
+    assume x: var,
+    assume : x ∈ FV (P₁ ⋀ P₃),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₁,
+      show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₁ this
+    ) (
+      assume : x ∈ FV P₃,
+      have x ∈ FV P₂, from h1.symm ▸ this,
+      show x ∈ FV (P₁ ⋀ P₂), from free_in_prop.and₂ this
+    )
+  )
+
+lemma free_in_prop.same_right {P₁ P₂ P₃: prop}:
+      (FV P₁ = FV P₂) → (FV (P₁ ⋀ P₃) = FV (P₂ ⋀ P₃)) :=
+  assume h1: FV P₁ = FV P₂,
+  set.eq_of_subset_of_subset (
+    assume x: var,
+    assume : x ∈ FV (P₁ ⋀ P₃),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₁,
+      have x ∈ FV P₂, from h1 ▸ this,
+      show x ∈ FV (P₂ ⋀ P₃), from free_in_prop.and₁ this
+    ) (
+      assume : x ∈ FV P₃,
+      show x ∈ FV (P₂ ⋀ P₃), from free_in_prop.and₂ this
+    )
+  ) (
+    assume x: var,
+    assume : x ∈ FV (P₂ ⋀ P₃),
+    or.elim (free_in_prop.and.inv this) (
+      assume : x ∈ FV P₂,
+      have x ∈ FV P₁, from h1.symm ▸ this,
+      show x ∈ FV (P₁ ⋀ P₃), from free_in_prop.and₁ this
+    ) (
+      assume : x ∈ FV P₃,
+      show x ∈ FV (P₁ ⋀ P₃), from free_in_prop.and₂ this
+    )
+  )
+
+lemma free_in_prop.shuffle {P Q R S: prop}:
+      FV (P ⋀ Q ⋀ R ⋀ S) = FV ((P ⋀ Q ⋀ R) ⋀ S):=
+  have h1: FV (P ⋀ Q ⋀ R ⋀ S) = FV ((Q ⋀ R ⋀ S) ⋀ P), from free_in_prop.and_symm,
+  have h2: FV ((Q ⋀ R ⋀ S) ⋀ P) = FV (((Q ⋀ R) ⋀ S) ⋀ P),
+  from free_in_prop.same_right free_in_prop.and_assoc,
+  have h3: FV (((Q ⋀ R) ⋀ S) ⋀ P) = FV ((Q ⋀ R) ⋀ S ⋀ P), from free_in_prop.and_assoc.symm,
+  have h4: FV ((Q ⋀ R) ⋀ S ⋀ P) = FV ((S ⋀ P) ⋀ Q ⋀ R), from free_in_prop.and_symm,
+  have h5: FV ((S ⋀ P) ⋀ Q ⋀ R) = FV (S ⋀ P ⋀ Q ⋀ R), from free_in_prop.and_assoc.symm,
+  have h6: FV (S ⋀ P ⋀ Q ⋀ R) = FV ((P ⋀ Q ⋀ R) ⋀ S), from free_in_prop.and_symm,
+  show FV (P ⋀ Q ⋀ R ⋀ S) = FV ((P ⋀ Q ⋀ R) ⋀ S),
+  from eq.trans h1 (eq.trans h2 (eq.trans h3 (eq.trans h4 (eq.trans h5 h6))))
+
+lemma free_in_prop.sub_same_left {P₁ P₂ P₃: prop}:
+      (FV P₂ ⊆ FV P₃) → (FV (P₁ ⋀ P₂) ⊆ FV (P₁ ⋀ P₃)) :=
+  assume h1: FV P₂ ⊆ FV P₃,
+  assume x: var,
+  assume : x ∈ FV (P₁ ⋀ P₂),
+  or.elim (free_in_prop.and.inv this) (
+    assume : x ∈ FV P₁,
+    show x ∈ FV (P₁ ⋀ P₃), from free_in_prop.and₁ this
+  ) (
+    assume : x ∈ FV P₂,
+    have x ∈ FV P₃, from set.mem_of_subset_of_mem h1 this,
+    show x ∈ FV (P₁ ⋀ P₃), from free_in_prop.and₂ this
+  )
+
+lemma free_in_prop.sub_same_right {P₁ P₂ P₃: prop}:
+      (FV P₁ ⊆ FV P₂) → (FV (P₁ ⋀ P₃) ⊆ FV (P₂ ⋀ P₃)) :=
+  assume h1: FV P₁ ⊆ FV P₂,
+  assume x: var,
+  assume : x ∈ FV (P₁ ⋀ P₃),
+  or.elim (free_in_prop.and.inv this) (
+    assume : x ∈ FV P₁,
+    have x ∈ FV P₂, from set.mem_of_subset_of_mem h1 this,
+    show x ∈ FV (P₂ ⋀ P₃), from free_in_prop.and₁ this
+  ) (
+    assume : x ∈ FV P₃,
+    show x ∈ FV (P₂ ⋀ P₃), from free_in_prop.and₂ this
   )
 
 lemma prop.closed.and {P Q: prop}: closed P → closed Q → closed (P ⋀ Q) :=
@@ -1232,34 +1331,3 @@ lemma vc.closed.implies.inv {P Q: vc}: closed (vc.implies P Q) → closed P ∧ 
   have P_closed: closed P, from vc.closed.not.inv P_not_closed,
   have Q_closed: closed Q, from (vc.closed.or.inv P_not_or_Q_closed).right,
   ⟨P_closed, Q_closed⟩
-
-lemma same_free_and_left {P P' Q: prop}: FV P' = FV P → (FV (P' ⋀ Q) = FV (P ⋀ Q)) :=
-  assume free_P'_P: FV P' = FV P,
-  set.eq_of_subset_of_subset (
-    assume x,
-    assume : x ∈ FV (P' ⋀ Q),
-    or.elim (free_in_prop.and.inv this) (
-      assume : x ∈ FV P',
-      have x ∈ FV P, from free_P'_P ▸ this,
-      show x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this
-    ) (
-      assume : x ∈ FV Q,
-      show x ∈ FV (P ⋀ Q), from free_in_prop.and₂ this
-    )
-  ) (
-    assume x,
-    assume : x ∈ FV (P ⋀ Q),
-    or.elim (free_in_prop.and.inv this) (
-      assume : x ∈ FV P,
-      have x ∈ FV P', from free_P'_P.symm ▸ this,
-      show x ∈ FV (P' ⋀ Q), from free_in_prop.and₁ this
-    ) (
-      assume : x ∈ FV Q,
-      show x ∈ FV (P' ⋀ Q), from free_in_prop.and₂ this
-    )
-  )
-
-lemma free_in_left {P Q: prop}: FV P ⊆ FV (P ⋀ Q) :=
-  assume x: var,
-  assume : x ∈ FV P,
-  show x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this

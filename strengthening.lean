@@ -91,7 +91,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       assume P'_dominates_p_P: (∀σ, dominates_p σ P' P),
 
       have h1: FV (P' ⋀ x ≡ value.true) = FV (P ⋀ x ≡ value.true),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ x ≡ value.true) (P ⋀ x ≡ value.true)),
       from λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ),
       have e'_verified': P' ⋀ x ≡ value.true ⊢ e': Q, from ih (P' ⋀ x ≡ value.true) h1 h2,
@@ -105,7 +105,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       assume P'_dominates_p_P: (∀σ, dominates_p σ P' P),
 
       have h1: FV (P' ⋀ (x ≡ value.false)) = FV (P ⋀ x ≡ value.false),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ x ≡ value.false) (P ⋀ x ≡ value.false)),
       from λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ),
       have e'_verified': P' ⋀ x ≡ value.false ⊢ e': Q, from ih (P' ⋀ x ≡ value.false) h1 h2,
@@ -119,7 +119,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       assume P'_dominates_p_P: (∀σ, dominates_p σ P' P),
 
       have h1: FV (P' ⋀ x ≡ value.num n) = FV (P ⋀ x ≡ value.num n),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ x ≡ value.num n) (P ⋀ x ≡ value.num n)),
       from λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ),
       have e'_verified': P' ⋀ (x ≡ value.num n) ⊢ e': Q, from ih (P' ⋀ (x ≡ value.num n)) h1 h2,
@@ -139,7 +139,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       have fv_S': FV S.to_prop ⊆ FV P' ∪ { f, x }, from free_P'_P.symm ▸ fv_S,
 
       have h1: FV (P' ⋀ ((spec.func f x R S) ⋀ R)) = FV (P ⋀ ((spec.func f x R S) ⋀ R)),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ (spec.func f x R S) ⋀ R) (P ⋀ (spec.func f x R S) ⋀ R)),
       from λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ),
       have e₁_verified': P' ⋀ (spec.func f x R S) ⋀ R ⊢ e₁ : Q₁,
@@ -147,7 +147,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have h3: FV (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))
              = FV (P ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S))),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
 
       have h5: (∀σ, dominates_p σ (P' ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))
                       (P ⋀ (prop.func f x R (Q₁ (term.app ↑f ↑x) ⋀ ↑S)))),
@@ -173,7 +173,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       have y_not_free_in_P': y ∉ FV P', from free_P'_P.symm ▸ y_not_free_in_P,
 
       have h1: FV (P' ⋀ y ≡ term.unop op x) = FV (P ⋀ y ≡ term.unop op x),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ y ≡ term.unop op x) (P ⋀ y ≡ term.unop op x)),
       from (λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ)),
       have e'_verified': P' ⋀ y ≡ term.unop op x ⊢ e' : Q',
@@ -196,7 +196,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       have z_not_free_in_P': z ∉ FV P', from free_P'_P.symm ▸ z_not_free_in_P,
 
       have h1: FV (P' ⋀ z ≡ term.binop op x y) = FV (P ⋀ z ≡ term.binop op x y),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ z ≡ term.binop op x y) (P ⋀ z ≡ term.binop op x y)),
       from (λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ)),
       have e'_verified': P' ⋀ z ≡ term.binop op x y ⊢ e' : Q',
@@ -220,7 +220,7 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have h1: FV (P' ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
              = FV (P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x),
-      from same_free_and_left free_P'_P,
+      from free_in_prop.same_right free_P'_P,
 
       have h2: (∀σ, dominates_p σ (P' ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)
                                 (P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x)),
@@ -243,11 +243,11 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
 
       have x_free_in_P': x ∈ FV P', from free_P'_P.symm ▸ x_free_in_P,
 
-      have h1: FV (P' ⋀ x) = FV (P ⋀ x), from same_free_and_left free_P'_P,
+      have h1: FV (P' ⋀ x) = FV (P ⋀ x), from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ x) (P ⋀ x)), from (λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ)),
       have e₁_verified': P' ⋀ x ⊢ e₁ : Q₁, from ih₁ (P' ⋀ x) h1 h2,
 
-      have h1: FV (P' ⋀ term.unop unop.not x) = FV (P ⋀ term.unop unop.not x), from same_free_and_left free_P'_P,
+      have h1: FV (P' ⋀ term.unop unop.not x) = FV (P ⋀ term.unop unop.not x), from free_in_prop.same_right free_P'_P,
       have h2: (∀σ, dominates_p σ (P' ⋀ term.unop unop.not x) (P ⋀ term.unop unop.not x)),
       from (λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ)),
       have e₂_verified': P' ⋀ term.unop unop.not x ⊢ e₂ : Q₂, from ih₂ (P' ⋀ term.unop unop.not x) h1 h2,

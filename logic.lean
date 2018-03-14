@@ -502,7 +502,7 @@ lemma val_of_free_in_hist_env {R: spec} {H: history} {σ: env} {P: prop} {x: var
   assume σ_verified: ⊢ σ : P,
   assume fv_R: FV R.to_prop ⊆ FV P,
   assume x_free_in_R_H_P: x ∈ FV (R.to_prop ⋀ ↑H ⋀ P),
-  have FV (R.to_prop ⋀ ↑H ⋀ P) = FV ((R.to_prop ⋀ ↑H) ⋀ P), from free_in_prop.and_comm,
+  have FV (R.to_prop ⋀ ↑H ⋀ P) = FV ((R.to_prop ⋀ ↑H) ⋀ P), from free_in_prop.and_assoc,
   have x ∈ FV ((R.to_prop ⋀ ↑H) ⋀ P), from this ▸ x_free_in_R_H_P,
   have free_in_prop x (R.to_prop ⋀ ↑H) ∨ free_in_prop x P, from free_in_prop.and.inv this,
   have x ∈ FV P, from or.elim this.symm id (
