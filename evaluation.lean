@@ -188,3 +188,368 @@ lemma pre_preserved {s s': stack}: s ⟶* s' → (s.pre = s'.pre) :=
       repeat {refl}
     }
   end
+
+lemma unop_result_not_function {vx vy: value} {op: unop}:
+      (unop.apply op vx = some vy) → (vy = value.true) ∨ (vy = value.false) :=
+  begin
+    assume h1,
+    cases op,
+    case unop.not {
+      cases vx,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.true = vy), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      contradiction,
+
+      unfold unop.apply at h1,
+      contradiction
+    },
+    case unop.isInt {
+      cases vx,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.true = vy), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm
+    },
+    case unop.isBool {
+      cases vx,
+
+      unfold unop.apply at h1,
+      have h2: (value.true = vy), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.true = vy), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm
+    },
+    case unop.isFunc {
+      cases vx,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.false = vy), from option.some.inj h1,
+      right,
+      from h2.symm,
+
+      unfold unop.apply at h1,
+      have h2: (value.true = vy), from option.some.inj h1,
+      left,
+      from h2.symm
+    }
+  end
+
+lemma binop_result_not_function {vx vy vz: value} {op: binop}:
+      (binop.apply op vx vy = some vz) → (vz = value.true) ∨ (vz = value.false) ∨ (∃n, vz = value.num n) :=
+  begin
+    assume h1,
+    cases op,
+    case binop.plus {
+      cases vx,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      have h2: (value.num (a + a_1) = vz), from option.some.inj h1,
+      right,
+      right,
+      existsi (a + a_1),
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction
+    },
+    case binop.minus {
+      cases vx,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      have h2: (value.num (a - a_1) = vz), from option.some.inj h1,
+      right,
+      right,
+      existsi (a - a_1),
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction
+    },
+    case binop.times {
+      cases vx,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      have h2: (value.num (a * a_1) = vz), from option.some.inj h1,
+      right,
+      right,
+      existsi (a * a_1),
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction
+    },
+    case binop.div {
+      cases vx,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      have h2: (value.num (a / a_1) = vz), from option.some.inj h1,
+      right,
+      right,
+      existsi (a / a_1),
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction
+    },
+    case binop.and {
+      cases vx,
+      cases vy,
+
+      unfold binop.apply at h1,
+      have h2: (value.true = vz), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      have h2: (value.false = vz), from option.some.inj h1,
+      right,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      have h2: (value.false = vz), from option.some.inj h1,
+      right,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      have h2: (value.false = vz), from option.some.inj h1,
+      right,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction
+    },
+    case binop.or {
+      cases vx,
+      cases vy,
+
+      unfold binop.apply at h1,
+      have h2: (value.true = vz), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      have h2: (value.true = vz), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      have h2: (value.true = vz), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      have h2: (value.false = vz), from option.some.inj h1,
+      right,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction
+    },
+    case binop.eq {
+      unfold binop.apply at h1,
+      by_cases (vx = vy),
+      simp[h] at h1,
+
+      have h2: (value.true = vz), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      simp[h] at h1,
+      have h2: (value.false = vz), from option.some.inj h1,
+      right,
+      left,
+      from h2.symm
+    },
+    case binop.lt {
+      cases vx,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      cases vy,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      by_cases (a < a_1),
+
+      simp[h] at h1,
+      have h2: (value.true = vz), from option.some.inj h1,
+      left,
+      from h2.symm,
+
+      simp[h] at h1,
+      have h2: (value.false = vz), from option.some.inj h1,
+      right,
+      left,
+      from h2.symm,
+
+      unfold binop.apply at h1,
+      contradiction,
+
+      unfold binop.apply at h1,
+      contradiction    }
+  end

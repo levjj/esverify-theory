@@ -96,7 +96,7 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     g ≠ x →
     (⊢ σ₁ : Q₁) →
     (⊢ σ₂ : Q₂) →
-    x ∈ FV R.to_prop →
+    x ∈ FV R.to_prop.instantiated_p →
     FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
     FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
     (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) →
@@ -288,7 +288,7 @@ lemma env.vcgen.func.inv {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {H
       g ≠ x ∧
       (⊢ σ₁ : Q₁) ∧
       (⊢ σ₂ : Q₂) ∧
-      x ∈ FV R.to_prop ∧
+      x ∈ FV R.to_prop.instantiated_p ∧
       FV R.to_prop ⊆ FV Q₂ ∪ { g, x } ∧
       FV S.to_prop ⊆ FV Q₂ ∪ { g, x } ∧
       (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) ∧

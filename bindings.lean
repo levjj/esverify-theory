@@ -1003,12 +1003,10 @@ lemma contains_of_free {P: prop} {σ: env} {x: var}: (⊢ σ : P) → free_in_pr
  end
 
 lemma prop_func_closed {P: prop} {Q: propctx} {σ: env} {f fx: var} {R S: spec} {e: exp} {H: history}:
-  (H ⋀ P ⋀ spec.func f fx R S ⋀ R ⊢ e : Q) →
   (⊢ (σ[f↦value.func f fx R S e H σ]) : (P
        ⋀ (f ≡ value.func f fx R S e H σ)
        ⋀ prop.subst_env (σ[f↦value.func f fx R S e H σ]) (prop.func f fx R (Q (term.app f fx) ⋀ S)))) →
   closed (prop.subst_env (σ[f↦value.func f fx R S e H σ]) (prop.func f fx R (Q (term.app f fx) ⋀ S))) :=
-  assume e_verified: (H ⋀ P ⋀ spec.func f fx R S ⋀ R ⊢ e : Q),
   assume env_verified: ⊢ (σ[f↦value.func f fx R S e H σ]) : (P
        ⋀ (f ≡ value.func f fx R S e H σ)
        ⋀ prop.subst_env (σ[f↦value.func f fx R S e H σ]) (prop.func f fx R (Q (term.app f fx) ⋀ S))),

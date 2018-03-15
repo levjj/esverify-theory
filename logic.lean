@@ -1059,7 +1059,7 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
           ⋀ prop.subst_env (σ₂[g↦vf]) (prop.func g gx R (Q₃ (term.app g gx) ⋀ S)),
         from env.vcgen.func g_not_free_in_σ₂ g_not_free_in_σ₂ gx_not_free_in_σ₂ g_neq_gx
              σ₂_verified σ₂_verified gx_free_in_R R_fv S_fv func_verified S_valid,
-        prop_func_closed func_verified this
+        prop_func_closed this
       ),
 
       have h11: (∀x, x ∉ FV pfunc.instantiated_n), from (
@@ -1373,3 +1373,69 @@ lemma dominates_n.quantifier {σ: env} {x: var} {t₁ t₂: term} {P Q: prop} :
   ),
   show dominates_n σ (prop.forallc x t₁ P) (prop.forallc x t₂ Q),
   from dominates_n.no_quantifiers h_impl h_calls h_quantifiers
+
+lemma dominates_p.true {σ: env} {P: prop}:
+      dominates_p σ P value.true :=
+
+  have h1: σ ⊨ value.true, from valid_env.true,
+  have (prop.term value.true).erased_n = vc.term value.true, by unfold prop.erased_n,
+  have h2: σ ⊨ (prop.term value.true).erased_n, from this ▸ h1,
+  have calls_p (prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_p (prop.term value.true),
+    show «false», from prop.has_call_p.term.inv this
+  ),
+  have (prop.term value.true).instantiated_p = (prop.term value.true).erased_p,
+  from instantiated_p_eq_erased_p_without_calls this,
+  have h_impl: (σ ⊨ P.instantiated_p) → σ ⊨ (prop.term value.true).instantiated_p, from (λ_, this.symm ▸ h2),
+  have h_calls: calls_p_subst σ value.true ⊆ calls_p_subst σ P, from (
+    assume c: calltrigger,
+    assume : c ∈ calls_p_subst σ value.true,
+    show c ∈ calls_p_subst σ P, from absurd this prop.has_call_p_subst.term.inv
+  ),
+  have h_quantifiers: quantifiers_p value.true = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_p value.true,
+    show «false», from prop.has_quantifier_p.term.inv this
+  ),
+  show dominates_p σ P value.true, from dominates_p.no_quantifiers h_impl h_calls h_quantifiers
+
+lemma dominates_n.true {σ: env} {P: prop}:
+      dominates_n σ P value.true :=
+
+  have h1: σ ⊨ value.true, from valid_env.true,
+  have (prop.term value.true).erased_n = vc.term value.true, by unfold prop.erased_n,
+  have h2: σ ⊨ (prop.term value.true).erased_n, from this ▸ h1,
+  have calls_n (prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.term value.true),
+    show «false», from prop.has_call_n.term.inv this
+  ),
+  have (prop.term value.true).instantiated_n = (prop.term value.true).erased_n,
+  from instantiated_n_eq_erased_n_without_calls this,
+  have h_impl: (σ ⊨ P.instantiated_n) → σ ⊨ (prop.term value.true).instantiated_n, from (λ_, this.symm ▸ h2),
+  have h_calls: calls_n_subst σ value.true ⊆ calls_n_subst σ P, from (
+    assume c: calltrigger,
+    assume : c ∈ calls_n_subst σ value.true,
+    show c ∈ calls_n_subst σ P, from absurd this prop.has_call_n_subst.term.inv
+  ),
+  have h_quantifiers: quantifiers_n value.true = ∅, from set.eq_empty_of_forall_not_mem (
+    assume q: callquantifier,
+    assume : q ∈ quantifiers_n value.true,
+    show «false», from prop.has_quantifier_n.term.inv this
+  ),
+  show dominates_n σ P value.true, from dominates_n.no_quantifiers h_impl h_calls h_quantifiers
+
+lemma dominates_p.and_intro_of_no_calls {P Q: prop} {σ: env}:
+      (closed_subst σ P) → (σ ⊨ P.instantiated_n) → (calls_p P = ∅) → (calls_n P = ∅) →
+      dominates_p σ Q (P ⋀ Q) :=
+  assume h1: closed_subst σ P,
+  assume h2: σ ⊨ P.instantiated_n,
+  assume h3: calls_p P = ∅,
+  assume h4: calls_n P = ∅,
+  have h5: dominates_p σ Q (Q ⋀ Q), from dominates_p.and_dup,
+  have h6: dominates_p σ (Q ⋀ Q) (value.true ⋀ Q), from dominates_p.same_right (λ_, dominates_p.true),
+  have h7: dominates_p σ (value.true ⋀ Q) (P ⋀ Q),
+  from dominates_p.same_right (λ_, dominates_p.no_calls h1 h2 h3 h4),
+  show dominates_p σ Q (P ⋀ Q),
+  from dominates_p.trans h5 (dominates_p.trans h6 h7)

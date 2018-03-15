@@ -107,6 +107,11 @@ def calls_n_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ)
 mutual inductive dominates_p, dominates_n
 
 with dominates_p : env → prop → prop → Prop
+| no_calls {σ: env} {P: prop}                 : (closed_subst σ P) →
+                                                (σ ⊨ P.instantiated_n) →
+                                                (calls_p P = ∅) →
+                                                (calls_n P = ∅) →
+                                                dominates_p σ value.true P
 | no_quantifiers {σ: env} {P Q: prop}         : ((σ ⊨ P.instantiated_p) → (σ ⊨ Q.instantiated_p)) →
                                                 (calls_p_subst σ Q ⊆ calls_p_subst σ P) →
                                                 (quantifiers_p Q = ∅) →
@@ -125,6 +130,7 @@ with dominates_p : env → prop → prop → Prop
 | and_elim_left {σ: env} {P₁ P₂ P₃: prop}     : dominates_p σ P₁ (P₂ ⋀ P₃) →
                                                 dominates_p σ P₁ P₂
 | and_assoc {σ: env} {P₁ P₂ P₃: prop}         : dominates_p σ (P₁ ⋀ P₂ ⋀ P₃) ((P₁ ⋀ P₂) ⋀ P₃)
+| and_dup {σ: env} {P: prop}                  : dominates_p σ P (P ⋀ P)
 | or_intro {σ: env} {P P' Q Q': prop}         : (dominates_p σ P P') →
                                                 (dominates_p σ Q Q') →
                                                 dominates_p σ (P ⋁ Q) (P' ⋁ Q')
@@ -154,6 +160,7 @@ with dominates_n : env → prop → prop → Prop
 | or_intro {σ: env} {P P' Q Q': prop}         : (dominates_n σ P P') →
                                                 (dominates_n σ Q Q') →
                                                 dominates_n σ (P ⋁ Q) (P' ⋁ Q')
+| or_symm {σ: env} {P₁ P₂: prop}              : dominates_n σ (P₁ ⋁ P₂) (P₂ ⋁ P₁)
 | trans {σ: env} {P₁ P₂ P₃: prop}             : dominates_n σ P₁ P₂ →
                                                 dominates_n σ P₂ P₃ →
                                                 dominates_n σ P₁ P₃
@@ -386,6 +393,16 @@ lemma dominates_n.same_right {σ: env} {P P' Q: prop}:
   have h4: dominates_n σ (Q ⋀ P) (Q ⋀ P'), from dominates_n.and_intro h2 h3,
   have h5: dominates_n σ (Q ⋀ P') (P' ⋀ Q), from dominates_n.and_symm,
   show dominates_n σ (P ⋀ Q) (P' ⋀ Q),
+  from dominates_n.trans h1 (dominates_n.trans h4 h5)
+
+lemma dominates_n.same_right_or {σ: env} {P P' Q: prop}:
+      (dominates_n σ P P') → dominates_n σ (P ⋁ Q) (P' ⋁ Q) :=
+  have h1: dominates_n σ (P ⋁ Q) (Q ⋁ P), from dominates_n.or_symm,
+  have h2: dominates_n σ Q Q, from dominates_n.self,
+  assume h3: dominates_n σ P P',
+  have h4: dominates_n σ (Q ⋁ P) (Q ⋁ P'), from dominates_n.or_intro h2 h3,
+  have h5: dominates_n σ (Q ⋁ P') (P' ⋁ Q), from dominates_n.or_symm,
+  show dominates_n σ (P ⋁ Q) (P' ⋁ Q),
   from dominates_n.trans h1 (dominates_n.trans h4 h5)
 
 lemma dominates_n.shuffle {P Q R S: prop} {σ: env}:
@@ -847,6 +864,69 @@ lemma prop.has_call_p_subst.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}
       have calltrigger.subst σ c' ∈ calls_p_subst σ P₂, from set.mem_image this rfl,
       show calltrigger.subst σ c' ∈ calls_p_subst σ P₁
          ∨ calltrigger.subst σ c' ∈ calls_p_subst σ P₂, from or.inr this
+    )
+  )
+
+lemma prop.has_call_p_subst.or.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+      c ∈ calls_p_subst σ (P₁ ⋁ P₂) → c ∈ calls_p_subst σ P₁ ∨ c ∈ calls_p_subst σ P₂ :=
+  assume : c ∈ calls_p_subst σ (P₁ ⋁ P₂),
+  have c ∈ (calltrigger.subst σ) '' calls_p (P₁ ⋁ P₂), from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_p (P₁ ⋁ P₂))
+      (λa, a ∈ calls_p_subst σ P₁ ∨ a ∈ calls_p_subst σ P₂) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls_p (P₁ ⋁ P₂),
+    or.elim (prop.has_call_p.or.inv this) (
+      assume : c' ∈ calls_p P₁,
+      have calltrigger.subst σ c' ∈ calls_p_subst σ P₁, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_p_subst σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_p_subst σ P₂, from or.inl this
+    ) (
+      assume : c' ∈ calls_p P₂,
+      have calltrigger.subst σ c' ∈ calls_p_subst σ P₂, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_p_subst σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_p_subst σ P₂, from or.inr this
+    )
+  )
+
+lemma prop.has_call_n_subst.and.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+      c ∈ calls_n_subst σ (P₁ ⋀ P₂) → c ∈ calls_n_subst σ P₁ ∨ c ∈ calls_n_subst σ P₂ :=
+  assume : c ∈ calls_n_subst σ (P₁ ⋀ P₂),
+  have c ∈ (calltrigger.subst σ) '' calls_n (P₁ ⋀ P₂), from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_n (P₁ ⋀ P₂))
+      (λa, a ∈ calls_n_subst σ P₁ ∨ a ∈ calls_n_subst σ P₂) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls_n (P₁ ⋀ P₂),
+    or.elim (prop.has_call_n.and.inv this) (
+      assume : c' ∈ calls_n P₁,
+      have calltrigger.subst σ c' ∈ calls_n_subst σ P₁, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_n_subst σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_n_subst σ P₂, from or.inl this
+    ) (
+      assume : c' ∈ calls_n P₂,
+      have calltrigger.subst σ c' ∈ calls_n_subst σ P₂, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_n_subst σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_n_subst σ P₂, from or.inr this
+    )
+  )
+
+lemma prop.has_call_n_subst.or.inv {c: calltrigger} {P₁ P₂: prop} {σ: env}:
+      c ∈ calls_n_subst σ (P₁ ⋁ P₂) → c ∈ calls_n_subst σ P₁ ∨ c ∈ calls_n_subst σ P₂ :=
+  assume : c ∈ calls_n_subst σ (P₁ ⋁ P₂),
+  have c ∈ (calltrigger.subst σ) '' calls_n (P₁ ⋁ P₂), from this,
+  @set.mem_image_elim_on calltrigger calltrigger (calltrigger.subst σ) (calls_n (P₁ ⋁ P₂))
+      (λa, a ∈ calls_n_subst σ P₁ ∨ a ∈ calls_n_subst σ P₂) c this (
+    assume c': calltrigger,
+    assume : c' ∈ calls_n (P₁ ⋁ P₂),
+    or.elim (prop.has_call_n.or.inv this) (
+      assume : c' ∈ calls_n P₁,
+      have calltrigger.subst σ c' ∈ calls_n_subst σ P₁, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_n_subst σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_n_subst σ P₂, from or.inl this
+    ) (
+      assume : c' ∈ calls_n P₂,
+      have calltrigger.subst σ c' ∈ calls_n_subst σ P₂, from set.mem_image this rfl,
+      show calltrigger.subst σ c' ∈ calls_n_subst σ P₁
+         ∨ calltrigger.subst σ c' ∈ calls_n_subst σ P₂, from or.inr this
     )
   )
 
