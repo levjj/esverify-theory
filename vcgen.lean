@@ -131,7 +131,8 @@ notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
     (σ₁ x = v) →
     (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
     (H₂ ⋀ P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
-    (∀σ' t, dominates_n σ' (Q₂' t) (H₂ ⋀ P₃ ⋀ (Q₂ t)) ∧ (FV (↑H₂ ⋀ P₃ ⋀ (Q₂ t)) ⊆ FV (Q₂' t))) →
+    (∀σ' t, dominates_n σ' (Q₂' t) (H₂ ⋀ P₃ ⋀ (Q₂ t))) →
+    (∀v: value, FV (↑H₂ ⋀ P₃ ⋀ (Q₂ v)) ⊆ FV (Q₂' v)) →
     ⟪ prop.implies (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
     ((R₂, H₂, σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
     (⊢ₛ (s · [R₁, H₁, σ₁, letapp y = g[x] in e₁]) : H₁ ⋀ P₁ ⋀
@@ -468,9 +469,9 @@ lemma stack.vcgen.inj {s: stack} {Q₁: propctx}: (⊢ₛ s : Q₁) → ∀Q₂,
 
     injection h2,
 
-    have h4: (P₁ = P₁_1), from env.vcgen.inj a_2 P₁_1 (h_4.symm ▸ a_16),
+    have h4: (P₁ = P₁_1), from env.vcgen.inj a_2 P₁_1 (h_4.symm ▸ a_17),
     have : R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁,
-    from h_2.symm ▸ h_3.symm ▸ h_6.symm ▸ h_7.symm ▸ h_5.symm ▸ h_8.symm ▸ h4.symm ▸ a_23,
+    from h_2.symm ▸ h_3.symm ▸ h_6.symm ▸ h_7.symm ▸ h_5.symm ▸ h_8.symm ▸ h4.symm ▸ a_24,
     have h5: (Q₁_1 = Q₁), from exp.vcgen.inj a_9 Q₁ this,
     rw[←h_3.symm],
     rw[←h4],
