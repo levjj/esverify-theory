@@ -43,7 +43,7 @@ axiom valid.em {P: vc}:
 axiom valid.eq.true {t: term}:
   ⊨ t
   ↔
-  ⊨ t ≡ value.true
+  ⊨ value.true ≡ t
 
 axiom valid.univ {x: var} {P: vc}:
   (∀v, ⊨ vc.subst x v P)
@@ -54,12 +54,12 @@ axiom valid.univ {x: var} {P: vc}:
 axiom valid.unop {op: unop} {vₓ v: value}:
   unop.apply op vₓ = some v
   ↔
-  ⊨ term.unop op vₓ ≡ v
+  ⊨ v ≡ term.unop op vₓ
 
 axiom valid.binop {op: binop} {v₁ v₂ v: value}:
   binop.apply op v₁ v₂ = some v
   ↔
-  ⊨ term.binop op v₁ v₂ ≡ v
+  ⊨ v ≡ term.binop op v₁ v₂
 
 -- The following equality axiom is non-standard and makes validity undecidable.
 -- It is only used in the preservation proof of e-return and in no other lemmas.
@@ -121,7 +121,7 @@ lemma valid.false.elim {P: vc}: closed P → (⊨ vc.implies value.false P) :=
   assume P_closed: closed P,
   have h1: ⊨ value.true, from valid.tru,
   have unop.apply unop.not value.false = value.true, by unfold unop.apply,
-  have ⊨ term.unop unop.not value.false ≡ value.true, from valid.unop.mp this,
+  have ⊨ value.true ≡ term.unop unop.not value.false, from valid.unop.mp this,
   have ⊨ term.unop unop.not value.false, from valid.eq.true.mpr this,
   have ⊨ vc.not value.false, from valid.not.term.mp this,
   have ⊨ vc.not value.false ⋁ P, from valid.or.left this P_closed,
@@ -205,7 +205,7 @@ lemma valid.mt {P Q: vc}: (⊨ vc.implies P Q) → (⊨ Q.not) → ⊨ P.not :=
 
 lemma valid.refl {v: value}: ⊨ (v ≡ v) :=
   have binop.apply binop.eq v v = value.true, from binop.eq_of_equal_values,
-  have ⊨ ((v ≡ v) ≡ value.true), from valid.binop.mp this,
+  have ⊨ (value.true ≡ (v ≡ v)), from valid.binop.mp this,
   show ⊨ (v ≡ v), from valid.eq.true.mpr this
 
 lemma valid.implies.trans {P₁ P₂ P₃: vc}:
@@ -245,32 +245,31 @@ lemma valid_env.mt {σ: env} {P Q: vc}: (σ ⊨ vc.implies P Q) → (σ ⊨ Q.no
   have vc.subst_env σ P.not = (vc.subst_env σ P).not, from vc.subst_env.not,
   show σ ⊨ P.not, from this.symm ▸ h5
 
-lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (t ≡ value.true) :=
+lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (value.true ≡ t) :=
   iff.intro (
     assume t_valid: ⊨ vc.subst_env σ t,
     have vc.subst_env σ t = vc.term (term.subst_env σ t), from vc.subst_env.term,
     have ⊨ vc.term (term.subst_env σ t), from this ▸ t_valid,
-    have h: ⊨ vc.term ((term.subst_env σ t) ≡ value.true), from valid.eq.true.mp this,
+    have h: ⊨ vc.term (value.true ≡ (term.subst_env σ t)), from valid.eq.true.mp this,
     have term.subst_env σ value.true = value.true, from term.subst_env.value,
-    have h2: ⊨ vc.term ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    have h2: ⊨ vc.term ((term.subst_env σ value.true) ≡ (term.subst_env σ t)),
     from this.symm ▸ h,
-    have (term.subst_env σ (t ≡ value.true)) = ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    have (term.subst_env σ (value.true ≡ t)) = ((term.subst_env σ value.true) ≡ (term.subst_env σ t)),
     from term.subst_env.binop,
-    have h3: ⊨ term.subst_env σ (t ≡ value.true),
-    from this.symm ▸ h2,
-    have vc.subst_env σ (t ≡ value.true) = vc.term (term.subst_env σ (t ≡ value.true)), from vc.subst_env.term,
-    show σ ⊨ (t ≡ value.true), from this.symm ▸ h3
+    have h3: ⊨ term.subst_env σ (value.true ≡ t), from this.symm ▸ h2,
+    have vc.subst_env σ (value.true ≡ t) = vc.term (term.subst_env σ (value.true ≡ t)), from vc.subst_env.term,
+    show σ ⊨ (value.true ≡ t), from this.symm ▸ h3
   ) (
-    assume t_valid: ⊨ vc.subst_env σ (t ≡ value.true),
-    have vc.subst_env σ (t ≡ value.true) = vc.term (term.subst_env σ (t ≡ value.true)), from vc.subst_env.term,
-    have h: ⊨ vc.term (term.subst_env σ (t ≡ value.true)),
+    assume t_valid: ⊨ vc.subst_env σ (value.true ≡ t),
+    have vc.subst_env σ (value.true ≡ t) = vc.term (term.subst_env σ (value.true ≡ t)), from vc.subst_env.term,
+    have h: ⊨ vc.term (term.subst_env σ (value.true ≡ t)),
     from this ▸ t_valid,
-    have (term.subst_env σ (t ≡ value.true)) = ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    have (term.subst_env σ (value.true ≡ t)) = ((term.subst_env σ value.true) ≡ (term.subst_env σ t)),
     from term.subst_env.binop,
-    have h2: ⊨ vc.term ((term.subst_env σ t) ≡ (term.subst_env σ value.true)),
+    have h2: ⊨ vc.term ((term.subst_env σ value.true) ≡ (term.subst_env σ t)),
     from this ▸ h,
     have term.subst_env σ value.true = value.true, from term.subst_env.value,
-    have ⊨ vc.term ((term.subst_env σ t) ≡ value.true), from this ▸ h2,
+    have ⊨ vc.term (value.true ≡ (term.subst_env σ t)), from this ▸ h2,
     have h3: ⊨ vc.term (term.subst_env σ t), from valid.eq.true.mpr this,
     have vc.subst_env σ t = vc.term (term.subst_env σ t), from vc.subst_env.term,
     show ⊨ vc.subst_env σ t, from this.symm ▸ h3
@@ -381,22 +380,10 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
   )
 
 lemma env.contains_of_valid_env_term_instantiated {σ: env} {x: var} {t: term}:
-      x ∈ FV t → (σ ⊨ prop.instantiated_p t) → (x ∈ σ) :=
+      x ∈ FV t → (σ ⊨ t) → (x ∈ σ) :=
   assume x_free_in_t: x ∈ FV t,
-  assume h0: σ ⊨ prop.instantiated_p t,
-
-  have calls_p (prop.term t) = ∅, from set.eq_empty_of_forall_not_mem (
-    assume c: calltrigger,
-    assume : c ∈ calls_p (prop.term t),
-    show «false», from prop.has_call_p.term.inv this
-  ),
-  have (prop.term t).instantiated_p = (prop.term t).erased_p,
-  from instantiated_p_eq_erased_p_without_calls this,
-  have h1: σ ⊨ prop.erased_p t, from this ▸ h0,
-  have prop.erased_p (prop.term t) = vc.term t,
-  by unfold prop.erased_p,
-  have σ ⊨ vc.term t, from this.symm ▸ h1,
-  have h2: ⊨ vc.subst_env σ (vc.term t), from this,
+  assume h1: σ ⊨ vc.term t,
+  have h2: ⊨ vc.subst_env σ (vc.term t), from h1,
   have vc.subst_env σ (vc.term t) = vc.term (term.subst_env σ t),
   from vc.subst_env.term,
   have ⊨ vc.term (term.subst_env σ t), from this ▸ h2,
@@ -408,7 +395,29 @@ lemma env.contains_of_valid_env_term_instantiated {σ: env} {x: var} {t: term}:
     show «false», from h3 x this
   )
 
-lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
+lemma valid_env.subst_of_eq {σ: env} {x: var} {v: value}:
+      (σ ⊨ x ≡ v) → (σ x = v) :=
+  assume h1: σ ⊨ vc.term (x ≡ v),
+  have h2: ⊨ vc.subst_env σ (vc.term (x ≡ v)), from h1,
+  have vc.subst_env σ (vc.term (x ≡ v)) = vc.term (term.subst_env σ (x ≡ v)),
+  from vc.subst_env.term,
+  have h3: ⊨ vc.term (term.subst_env σ (x ≡ v)), from this ▸ h2,
+  have term.subst_env σ (x ≡ v) = (term.subst_env σ x ≡ term.subst_env σ v),
+  from term.subst_env.binop,
+  have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
+  have term.subst_env σ v = v, from term.subst_env.value,
+  have h5: ⊨ (term.subst_env σ x ≡ v), from this ▸ h4,
+  have x ∈ σ, from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) h1,
+  have ∃v', σ x = some v', from env.contains_apply_equiv.right.mpr this,
+  let ⟨v', h6⟩ := this in
+  have term.subst_env σ x = v', from (term.subst_env.var.right v').mp h6,
+  have ⊨ (v' ≡ v), from this ▸ h5,
+  have ⊨ value.true ≡ (v' ≡ v), from valid.eq.true.mp this,
+  have binop.apply binop.eq v' v = some value.true, from valid.binop.mpr this,
+  have v' = v, from binop.eq.inv this,
+  show σ x = some v, from h6.symm ▸ (some.inj.inv this)
+
+lemma valid_env.subst_of_eq_instantiated_p {σ: env} {x: var} {v: value}:
       (σ ⊨ prop.instantiated_p (x ≡ v)) → (σ x = v) :=
   assume h0: σ ⊨ prop.instantiated_p (x ≡ v),
   have calls_p (prop.term (x ≡ v)) = ∅, from set.eq_empty_of_forall_not_mem (
@@ -422,24 +431,23 @@ lemma valid_env.subst_of_eq_instantiated {σ: env} {x: var} {v: value}:
   have prop.erased_p (prop.term (x ≡ v)) = vc.term (x ≡ v),
   by unfold prop.erased_p,
   have σ ⊨ vc.term (x ≡ v), from this.symm ▸ h1,
-  have h2: ⊨ vc.subst_env σ (vc.term (x ≡ v)), from this,
-  have vc.subst_env σ (vc.term (x ≡ v)) = vc.term (term.subst_env σ (x ≡ v)),
-  from vc.subst_env.term,
-  have h3: ⊨ vc.term (term.subst_env σ (x ≡ v)), from this ▸ h2,
-  have term.subst_env σ (x ≡ v) = (term.subst_env σ x ≡ term.subst_env σ v),
-  from term.subst_env.binop,
-  have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
-  have term.subst_env σ v = v, from term.subst_env.value,
-  have h5: ⊨ (term.subst_env σ x ≡ v), from this ▸ h4,
-  have x ∈ σ, from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) h0,
-  have ∃v', σ x = some v', from env.contains_apply_equiv.right.mpr this,
-  let ⟨v', h6⟩ := this in
-  have term.subst_env σ x = v', from (term.subst_env.var.right v').mp h6,
-  have ⊨ (v' ≡ v), from this ▸ h5,
-  have ⊨ (v' ≡ v) ≡ value.true, from valid.eq.true.mp this,
-  have binop.apply binop.eq v' v = some value.true, from valid.binop.mpr this,
-  have v' = v, from binop.eq.inv this,
-  show σ x = some v, from h6.symm ▸ (some.inj.inv this)
+  show σ x = v, from valid_env.subst_of_eq this
+
+lemma valid_env.subst_of_eq_instantiated_n {σ: env} {x: var} {v: value}:
+      (σ ⊨ prop.instantiated_n (x ≡ v)) → (σ x = v) :=
+  assume h0: σ ⊨ prop.instantiated_n (x ≡ v),
+  have calls_n (prop.term (x ≡ v)) = ∅, from set.eq_empty_of_forall_not_mem (
+    assume c: calltrigger,
+    assume : c ∈ calls_n (prop.term (x ≡ v)),
+    show «false», from prop.has_call_n.term.inv this
+  ),
+  have (prop.term (x ≡ v)).instantiated_n = (prop.term (x ≡ v)).erased_n,
+  from instantiated_n_eq_erased_n_without_calls this,
+  have h1: σ ⊨ prop.erased_n (x ≡ v), from this ▸ h0,
+  have prop.erased_n (prop.term (x ≡ v)) = vc.term (x ≡ v),
+  by unfold prop.erased_n,
+  have σ ⊨ vc.term (x ≡ v), from this.symm ▸ h1,
+  show σ x = v, from valid_env.subst_of_eq this
 
 lemma history_valid {H: history}: ⟪calls_to_prop H⟫ :=
   assume σ: env,
@@ -645,7 +653,7 @@ lemma env_translation_instantiated_n_valid {P: prop} {σ: env}: (⊢ σ: P) → 
 
       have h2: ⊨ prop.instantiated_n (prop.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g)), from (
         have unop.apply unop.isFunc vf = value.true, by unfold unop.apply,
-        have ⊨ (term.unop unop.isFunc vf ≡ value.true), from valid.unop.mp this,
+        have ⊨ (value.true ≡ term.unop unop.isFunc vf), from valid.unop.mp this,
         have ⊨ term.unop unop.isFunc vf, from valid.eq.true.mpr this,
         have h3: ⊨ term.unop unop.isFunc (term.subst_env (σ₂[g↦vf]) g), from g_subst.symm ▸ this,
         have term.subst_env (σ₂[g↦vf]) (term.unop unop.isFunc g) = term.unop unop.isFunc (term.subst_env (σ₂[g↦vf]) g),
@@ -1439,3 +1447,21 @@ lemma dominates_p.and_intro_of_no_calls {P Q: prop} {σ: env}:
   from dominates_p.same_right (λ_, dominates_p.no_calls h1 h2 h3 h4),
   show dominates_p σ Q (P ⋀ Q),
   from dominates_p.trans h5 (dominates_p.trans h6 h7)
+
+lemma dominates_p.and_right_intro_of_no_calls {P Q: prop} {σ: env}:
+      ((σ ⊨ P.instantiated_p) → (closed_subst σ Q ∧ (σ ⊨ Q.instantiated_n) ∧ (calls_p Q = ∅) ∧ (calls_n Q = ∅))) →
+      dominates_p σ P (P ⋀ Q) :=
+  assume h1: ((σ ⊨ P.instantiated_p) → (closed_subst σ Q ∧ (σ ⊨ Q.instantiated_n) ∧ (calls_p Q = ∅) ∧ (calls_n Q = ∅))),
+  have h2: dominates_p σ P (P ⋀ P), from dominates_p.and_dup,
+  have h3: dominates_p σ (P ⋀ P) (P ⋀ value.true), from dominates_p.same_left (λ_, dominates_p.true),
+  have h4: dominates_p σ (P ⋀ value.true) (P ⋀ Q),
+  from dominates_p.same_left (
+    assume : σ ⊨ P.instantiated_p,
+    have h5: closed_subst σ Q, from (h1 this).left,
+    have h6: σ ⊨ Q.instantiated_n, from (h1 this).right.left,
+    have h7: calls_p Q = ∅, from (h1 this).right.right.left,
+    have h8: calls_n Q = ∅, from (h1 this).right.right.right,
+    dominates_p.no_calls h5 h6 h7 h8
+  ),
+  show dominates_p σ P (P ⋀ Q),
+  from dominates_p.trans h2 (dominates_p.trans h3 h4)

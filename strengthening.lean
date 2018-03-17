@@ -247,17 +247,17 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       have h2: (∀σ, dominates_p σ (P' ⋀ x) (P ⋀ x)), from (λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ)),
       have e₁_verified': P' ⋀ x ⊢ e₁ : Q₁, from ih₁ (P' ⋀ x) h1 h2,
 
-      have h1: FV (P' ⋀ term.unop unop.not x) = FV (P ⋀ term.unop unop.not x), from free_in_prop.same_right free_P'_P,
-      have h2: (∀σ, dominates_p σ (P' ⋀ term.unop unop.not x) (P ⋀ term.unop unop.not x)),
+      have h1: FV (P' ⋀ prop.not x) = FV (P ⋀ prop.not x), from free_in_prop.same_right free_P'_P,
+      have h2: (∀σ, dominates_p σ (P' ⋀ prop.not x) (P ⋀ prop.not x)),
       from (λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ)),
-      have e₂_verified': P' ⋀ term.unop unop.not x ⊢ e₂ : Q₂, from ih₂ (P' ⋀ term.unop unop.not x) h1 h2,
+      have e₂_verified': P' ⋀ prop.not x ⊢ e₂ : Q₂, from ih₂ (P' ⋀ prop.not x) h1 h2,
 
       have FV P' ⊆ FV P, from set.subset_of_eq free_P'_P,
       have vc_valid': ∀ (σ : env),
              σ ⊨ prop.instantiated_n (prop.implies P' (term.unop unop.isBool x)),
       from (λσ, strengthen_impl_with_dominating_instantiations (P'_dominates_p_P σ) this (vc_valid σ)),
 
-      show P' ⊢ exp.ite x e₁ e₂ : propctx.implies x Q₁ ⋀ propctx.implies (term.unop unop.not x) Q₂,
+      show P' ⊢ exp.ite x e₁ e₂ : propctx.implies x Q₁ ⋀ propctx.implies (prop.not x) Q₂,
       from exp.vcgen.ite x_free_in_P' e₁_verified' e₂_verified' vc_valid'
     },
     case exp.vcgen.return x P x_free_in_P { from

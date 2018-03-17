@@ -58,9 +58,9 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
 | ite {P: prop} {e₁ e₂: exp} {x: var} {Q₁ Q₂: propctx}:
     x ∈ FV P →
     (P ⋀ x ⊢ e₁ : Q₁) →
-    (P ⋀ term.unop unop.not x ⊢ e₂ : Q₂) →
+    (P ⋀ prop.not x ⊢ e₂ : Q₂) →
     ⟪ prop.implies P (term.unop unop.isBool x) ⟫ →
-    (P ⊢ exp.ite x e₁ e₂ : propctx.implies x Q₁ ⋀ propctx.implies (term.unop unop.not x) Q₂)
+    (P ⊢ exp.ite x e₁ e₂ : propctx.implies x Q₁ ⋀ propctx.implies (prop.not x) Q₂)
 
 | return {P: prop} {x: var}:
     x ∈ FV P →

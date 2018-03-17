@@ -576,17 +576,17 @@ lemma exp.post_free {P: prop} {e: exp} {Q: propctx} {x: var}:
     },
     case exp.vcgen.ite P e₁ e₂ y Q₁ Q₂ y_free_in_P _ _ vc_valid ih₁ ih₂ { from
       assume t: term,
-      assume x_free_in_Qt: x ∈ FV ((propctx.implies y Q₁ ⋀ propctx.implies (term.unop unop.not y) Q₂) t),
+      assume x_free_in_Qt: x ∈ FV ((propctx.implies y Q₁ ⋀ propctx.implies (prop.not y) Q₂) t),
       have x_not_in_y: free_in_prop x y → x ∈ FV P, from (
         assume : free_in_prop x y,
         have free_in_term x y, from free_in_prop.term.inv this,
         have x = y, from free_in_term.var.inv this,
         show x ∈ FV P, from this.symm ▸ y_free_in_P
       ),
-      have x_not_in_yn: free_in_prop x (term.unop unop.not y) → x ∈ FV P, from (
-        assume : free_in_prop x (term.unop unop.not y),
-        have free_in_term x (term.unop unop.not y), from free_in_prop.term.inv this,
-        have free_in_term x y, from free_in_term.unop.inv this,
+      have x_not_in_yn: free_in_prop x (prop.not y) → x ∈ FV P, from (
+        assume : free_in_prop x (prop.not y),
+        have free_in_prop x y, from free_in_prop.not.inv this,
+        have free_in_term x y, from free_in_prop.term.inv this,
         have x = y, from free_in_term.var.inv this,
         show x ∈ FV P, from this.symm ▸ y_free_in_P
       ),
@@ -615,24 +615,24 @@ lemma exp.post_free {P: prop} {e: exp} {Q: propctx} {x: var}:
           )
         )
       ) (
-        assume : x ∈ FV ((propctx.implies (term.unop unop.not y) Q₂) t),
+        assume : x ∈ FV ((propctx.implies (prop.not y) Q₂) t),
         or.elim (free_in_propctx.implies.inv this) (
-          assume : x ∈ FV ((prop.term (term.unop unop.not y)).to_propctx t),
-          have x ∈ FV (prop.term (term.unop unop.not y)), from free_in_propctx.prop.inv this,
+          assume : x ∈ FV ((prop.not y).to_propctx t),
+          have x ∈ FV (prop.not y), from free_in_propctx.prop.inv this,
           show x ∈ FV t ∨ x ∈ FV P, from or.inr (x_not_in_yn this)
         ) (
           assume : x ∈ FV (Q₂ t),
-          have x ∈ FV t ∨ x ∈ FV (P ⋀ (term.unop unop.not y)), from ih₂ t this,
+          have x ∈ FV t ∨ x ∈ FV (P ⋀ (prop.not y)), from ih₂ t this,
           or.elim this (
             assume : x ∈ FV t,
             show x ∈ FV t ∨ x ∈ FV P, from or.inl this
           ) (
-            assume : x ∈ FV (P ⋀ (term.unop unop.not y)),
+            assume : x ∈ FV (P ⋀ (prop.not y)),
             or.elim (free_in_prop.and.inv this) (
               assume : x ∈ FV P,
               show x ∈ FV t ∨ x ∈ FV P, from or.inr this
             ) (
-              assume : free_in_prop x (term.unop unop.not y),
+              assume : free_in_prop x (prop.not y),
               have x ∈ FV P, from x_not_in_yn this,
               show x ∈ FV t ∨ x ∈ FV P, from or.inr this
             )

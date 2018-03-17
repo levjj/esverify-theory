@@ -156,7 +156,7 @@ lemma exp.progress {R: spec} {H: history} {P: prop} {Q: propctx} {e: exp} {σ: e
       have h8: ⊨ vc.term (term.unop unop.isFunc (term.subst_env σ f)), from this ▸ h7,
       have term.subst_env σ f = vf, from (term.subst_env.var.right vf).mp env_f_is_vf,
       have ⊨ term.unop unop.isFunc vf, from this ▸ h8,
-      have ⊨ (term.unop unop.isFunc vf ≡ value.true), from valid.eq.true.mp this,
+      have ⊨ (value.true ≡ term.unop unop.isFunc vf), from valid.eq.true.mp this,
       have unop.apply unop.isFunc vf = some value.true, from valid.unop.mpr this,
       have ∃(g gx: var) (gR gS: spec) (ge: exp) (gH: history) (gσ: env), vf = value.func g gx gR gS ge gH gσ,
       from unop.isFunc.inv this,
@@ -194,7 +194,7 @@ lemma exp.progress {R: spec} {H: history} {P: prop} {Q: propctx} {e: exp} {σ: e
       have h4: ⊨ vc.term (term.unop unop.isBool (term.subst_env σ x)), from this ▸ h3,
       have term.subst_env σ x = v, from (term.subst_env.var.right v).mp env_has_x,
       have ⊨ term.unop unop.isBool v, from this ▸ h4,
-      have ⊨ (term.unop unop.isBool v ≡ value.true), from valid.eq.true.mp this,
+      have ⊨ (value.true ≡ term.unop unop.isBool v), from valid.eq.true.mp this,
       have unop.apply unop.isBool v = some value.true, from valid.unop.mpr this,
       have (v = value.true) ∨ (v = value.false), from unop.isBool.inv this,
       or.elim this (
