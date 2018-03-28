@@ -47,9 +47,6 @@ infixr `⋁`:30 := has_or.or
 -- use • as hole
 notation `•` := termctx.hole
 
--- history items
-notation H `·` `call` := history.call H
-
 -- simple coercions
 instance value_to_term : has_coe value term := ⟨term.value⟩
 instance var_to_term : has_coe var term := ⟨term.var⟩
@@ -73,8 +70,8 @@ notation `letapp` y `=`:1 f `[`:1 x `]`:1 `in` e := exp.app y f x e
 -- σ[x ↦ v]
 notation e `[` x `↦` v `]` := env.cons e x v
 
--- (H, σ, e) : stack
-instance : has_coe (spec × history × env × exp) stack := ⟨λe, stack.top e.1 e.2.1 e.2.2.1 e.2.2.2⟩
+-- (σ, e) : stack
+instance : has_coe (spec × env × exp) stack := ⟨λe, stack.top e.1 e.2.1 e.2.2⟩
 
 -- κ · [H, σ, let y = f [ x ] in e]
 notation st `·` `[` R `,` H `,` env `,` `letapp` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st R H env y f x e
@@ -82,11 +79,10 @@ notation st `·` `[` R `,` H `,` env `,` `letapp` y `=`:1 f `[` x `]` `in` e `]`
 -- to use values, expressions, terms, specs, histories and environments with recursion,
 -- we need to show that the recursion is decreasing, i.e. its parts are smaller than the whole
 
-lemma sizeof_value_func_R {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}:
-      R.sizeof < (value.func f x R S e H σ).sizeof :=
+lemma sizeof_value_func_R {f x: var} {R S: spec} {e: exp} {σ: env}:
+      R.sizeof < (value.func f x R S e σ).sizeof :=
   begin
     unfold value.sizeof,
-    rw[add_assoc],
     rw[add_assoc],
     rw[add_assoc],
     rw[add_assoc],
@@ -101,11 +97,10 @@ lemma sizeof_value_func_R {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}
     from zero_lt_one
   end
 
-lemma sizeof_value_func_S {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}:
-      S.sizeof < (value.func f x R S e H σ).sizeof :=
+lemma sizeof_value_func_S {f x: var} {R S: spec} {e: exp} {σ: env}:
+      S.sizeof < (value.func f x R S e σ).sizeof :=
   begin
     unfold value.sizeof,
-    rw[add_assoc],
     rw[add_assoc],
     rw[add_assoc],
     rw[add_comm],
@@ -121,11 +116,10 @@ lemma sizeof_value_func_S {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}
     from zero_lt_one
   end
 
-lemma sizeof_value_func_e {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}:
-      e.sizeof < (value.func f x R S e H σ).sizeof :=
+lemma sizeof_value_func_e {f x: var} {R S: spec} {e: exp} {σ: env}:
+      e.sizeof < (value.func f x R S e σ).sizeof :=
   begin
     unfold value.sizeof,
-    rw[add_assoc],
     rw[add_assoc],
     rw[add_comm],
     rw[add_assoc],
@@ -142,37 +136,13 @@ lemma sizeof_value_func_e {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}
     from zero_lt_one
   end
 
-lemma sizeof_value_func_H {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}:
-      H.sizeof < (value.func f x R S e H σ).sizeof :=
-  begin
-    unfold value.sizeof,
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_value_func_σ {f x: var} {R S: spec} {e: exp} {H: history} {σ: env}:
-      σ.sizeof < (value.func f x R S e H σ).sizeof :=
+lemma sizeof_value_func_σ {f x: var} {R S: spec} {e: exp} {σ: env}:
+      σ.sizeof < (value.func f x R S e σ).sizeof :=
   begin
     unfold value.sizeof,
     rw[add_comm],
     rw[add_assoc],
     apply lt_add_of_pos_right,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
     rw[add_comm],
     apply lt_add_of_le_of_pos nonneg_of_nat,
     rw[add_comm],
@@ -588,169 +558,11 @@ lemma sizeof_env_value {σ: env} {x: var} {v: value}:
     from zero_lt_one
   end
 
-lemma sizeof_history_rest {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      H₁.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_history_R {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      R.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_history_S {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      S.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_history_e {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      e.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_history_H {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      H₂.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_history_σ {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      σ.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_history_v {f x: var} {R S: spec} {e: exp} {H₁ H₂: history} {σ: env} {v: value}:
-      v.sizeof < (history.call H₁ f x R S e H₂ σ v).sizeof :=
-  begin
-    unfold history.sizeof,
-    rw[add_comm],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
-lemma sizeof_substack {s: stack} {R: spec} {H: history} {σ: env} {f x y: var} {e: exp}:
-      s.sizeof < (stack.cons s R H σ f x y e).sizeof :=
+lemma sizeof_substack {s: stack} {R: spec} {σ: env} {f x y: var} {e: exp}:
+      s.sizeof < (stack.cons s R σ f x y e).sizeof :=
   begin
     unfold stack.sizeof,
-    change sizeof s < 1 + sizeof s + sizeof R + sizeof H + sizeof σ + sizeof f + sizeof x + sizeof y + sizeof e,
-    rw[add_assoc],
+    change sizeof s < 1 + sizeof s + sizeof R + sizeof σ + sizeof f + sizeof x + sizeof y + sizeof e,
     rw[add_assoc],
     rw[add_assoc],
     rw[add_assoc],
@@ -798,8 +610,8 @@ def env.dom (σ: env): set var := λx, x ∈ σ
 @[reducible]
 def prop.func (f: term) (x: var) (P: prop) (Q: prop): prop := 
   term.unop unop.isFunc f ⋀
-  prop.forallc x f (prop.implies P (prop.pre f x) ⋀
-                    prop.implies (prop.post f x) Q)
+  prop.forallc x (prop.implies P (prop.pre f x) ⋀
+                  prop.implies (prop.post f x) Q)
 
 def spec.to_prop : spec → prop
 | (spec.term t)       := prop.term t
@@ -826,53 +638,64 @@ using_well_founded {
 
 instance spec_to_prop : has_coe spec prop := ⟨spec.to_prop⟩
 
--- prop size
+lemma sizeof_prop_not {P: prop}:
+      P.sizeof < P.not.sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    from zero_lt_one
+  end
 
-@[reducible]
-def prop.size: prop → ℕ := @prop.rec (λ_, ℕ)
-  (λ_, 0)
-  (λ_ n, n + 1)
-  (λ_ _ n m , n + m + 1)
-  (λ_ _ n m , n + m + 1)
-  (λ_ _, 0)
-  (λ_ _, 0)
-  (λ_ _ _, 0)
-  (λ_ _, 0)
-  (λ_ _, 0)
-  (λ_ _ _ n, n + 1)
-  (λ_ _ n, n + 1)
+lemma sizeof_prop_and₁ {P S: prop}:
+      P.sizeof < (prop.and P S).sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_assoc],
+    rw[add_comm],
+    rw[add_assoc],
+    apply lt_add_of_pos_right,
+    change 0 < sizeof S + 1,
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
 
-instance : has_sizeof prop := ⟨prop.size⟩
+lemma sizeof_prop_and₂ {P S: prop}:
+      S.sizeof < (prop.and P S).sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    change 0 < 1 + sizeof P,
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
 
--- vc size
+lemma sizeof_prop_or₁ {P S: prop}:
+      P.sizeof < (prop.or P S).sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_assoc],
+    rw[add_comm],
+    rw[add_assoc],
+    apply lt_add_of_pos_right,
+    change 0 < sizeof S + 1,
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
 
-@[reducible]
-def vc.size: vc → ℕ := @vc.rec (λ_, ℕ)
-  (λ_, 0)
-  (λ _ n, n + 1)
-  (λ_ _ n m , n + m + 1)
-  (λ_ _ n m , n + m + 1)
-  (λ_ _, 0)
-  (λ_ _, 0)
-  (λ_ _ _, 0)
-  (λ_ _, 0)
-  (λ_ _ n, n + 1)
-
-instance : has_sizeof vc := ⟨vc.size⟩
-
--- history size
-
-@[reducible]
-def historyfix: (history → ℕ) → (λ (_x : history), ℕ) history.empty :=
-  assume f: history → ℕ,
-  (λ (h : history), f h) history.empty 
-
-@[reducible]
-def history.size: history → ℕ := @history.rec (λ_, ℕ)
-  (historyfix (λ_, 0))
-  (λ _ _ _ _ _ _ _ _ _ n _, n + 1)
-
-instance : has_sizeof history := ⟨history.size⟩
+lemma sizeof_prop_or₂ {P S: prop}:
+      S.sizeof < (prop.or P S).sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    change 0 < 1 + sizeof P,
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
 
 -- term to termctx coercion
 
@@ -896,8 +719,8 @@ def prop.to_propctx : prop → propctx
 | (prop.pre₁ op t)     := propctx.pre₁ op t
 | (prop.pre₂ op t₁ t₂) := propctx.pre₂ op t₁ t₂
 | (prop.post t₁ t₂)    := propctx.post t₁ t₂
-| (prop.call t₁ t₂)    := propctx.call t₁ t₂
-| (prop.forallc x t P) := propctx.forallc x t P.to_propctx
+| (prop.call t)        := propctx.call t
+| (prop.forallc x P)   := propctx.forallc x P.to_propctx
 | (prop.exis x P)      := propctx.exis x P.to_propctx
 
 instance prop_to_propctx : has_coe prop propctx := ⟨prop.to_propctx⟩
@@ -905,29 +728,29 @@ instance prop_to_propctx : has_coe prop propctx := ⟨prop.to_propctx⟩
 -- termctx substituttion as function application
 
 def termctx.apply: termctx → term → term
-| •                           t := t
-| (termctx.value v)           _ := term.value v
-| (termctx.var x)             _ := term.var x
-| (termctx.unop op t₁)        t := term.unop op (t₁.apply t)
-| (termctx.binop op t₁ t₂)    t := term.binop op (t₁.apply t) (t₂.apply t)
-| (termctx.app t₁ t₂)         t := term.app (t₁.apply t) (t₂.apply t)
+| •                        t := t
+| (termctx.value v)        _ := term.value v
+| (termctx.var x)          _ := term.var x
+| (termctx.unop op t₁)     t := term.unop op (t₁.apply t)
+| (termctx.binop op t₁ t₂) t := term.binop op (t₁.apply t) (t₂.apply t)
+| (termctx.app t₁ t₂)      t := term.app (t₁.apply t) (t₂.apply t)
 
 instance : has_coe_to_fun termctx := ⟨λ _, term → term, termctx.apply⟩
 
 -- propctx substituttion as function application
 
 def propctx.apply: propctx → term → prop
-| (propctx.term t₁) t        := t₁ t
-| (propctx.not P) t          := prop.not (P.apply t)
-| (propctx.and P₁ P₂) t      := P₁.apply t ⋀ P₂.apply t
-| (propctx.or P₁ P₂) t       := P₁.apply t ⋁ P₂.apply t
-| (propctx.pre t₁ t₂) t      := prop.pre (t₁ t) (t₂ t)
-| (propctx.pre₁ op t₁) t     := prop.pre₁ op (t₁ t)
-| (propctx.pre₂ op t₁ t₂) t  := prop.pre₂ op (t₁ t) (t₂ t)
-| (propctx.post t₁ t₂) t     := prop.post (t₁ t) (t₂ t)
-| (propctx.call t₁ t₂) t     := prop.call (t₁ t) (t₂ t)
-| (propctx.forallc x t₁ P) t := prop.forallc x (t₁ t) (P.apply t)
-| (propctx.exis x P) t       := prop.exis x (P.apply t)
+| (propctx.term t₁) t       := t₁ t
+| (propctx.not P) t         := prop.not (P.apply t)
+| (propctx.and P₁ P₂) t     := P₁.apply t ⋀ P₂.apply t
+| (propctx.or P₁ P₂) t      := P₁.apply t ⋁ P₂.apply t
+| (propctx.pre t₁ t₂) t     := prop.pre (t₁ t) (t₂ t)
+| (propctx.pre₁ op t₁) t    := prop.pre₁ op (t₁ t)
+| (propctx.pre₂ op t₁ t₂) t := prop.pre₂ op (t₁ t) (t₂ t)
+| (propctx.post t₁ t₂) t    := prop.post (t₁ t) (t₂ t)
+| (propctx.call t₁) t       := prop.call (t₁ t)
+| (propctx.forallc x P) t   := prop.forallc x (P.apply t)
+| (propctx.exis x P) t      := prop.exis x (P.apply t)
 
 instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
 
@@ -1043,15 +866,13 @@ lemma unchanged_of_apply_propctx_without_hole {P: prop} {t: term}:
       unfold prop.to_propctx,
       unfold propctx.apply,
       congr,
-      from unchanged_of_apply_termctx_without_hole,
       from unchanged_of_apply_termctx_without_hole
     },
 
-    case prop.forallc y t P₁ ih {
+    case prop.forallc y P₁ ih {
       unfold prop.to_propctx,
       unfold propctx.apply,
       congr,
-      from unchanged_of_apply_termctx_without_hole,
       from ih
     },
 
@@ -1066,24 +887,8 @@ lemma unchanged_of_apply_propctx_without_hole {P: prop} {t: term}:
 -- stack precondition projection
 
 def stack.pre: stack → spec
-| (stack.top R _ _ _) := R
-| (stack.cons _ R _ _ _ _ _ _) := R
-
--- call history to prop coercion
-
-def calls_to_prop: history → prop
-| history.empty                        := value.true
-| (history.call rest f x R S e H σ vₓ) :=
-  have history.size rest < history.size (rest · call f x R S e H σ vₓ), from lt_of_add_one,
-  calls_to_prop rest ⋀ prop.call (value.func f x R S e H σ) vₓ
-
-instance call_to_prop: has_coe history prop := ⟨calls_to_prop⟩
-
--- instantiation is axiomatized in qi.lean
-
-constant prop.instantiated_n: prop → vc
-
-constant prop.instantiated_p: prop → vc
+| (stack.top R _ _) := R
+| (stack.cons _ R _ _ _ _ _) := R
 
 -- validity is axiomatized in logic.lean
 
@@ -1100,19 +905,17 @@ def wf_measure : has_well_founded
   (psum (Σ' (e₁ : exp), exp)
     (psum (Σ' (t₁ : term), term)
       (psum (Σ' (R : spec), spec)
-        (psum (Σ' (σ₁ : env), env)
-          (Σ' (H₁ : history), history))))))
+            (Σ' (σ₁ : env), env)))))
 := ⟨_, measure_wf $ λ s,
   match s with
   | psum.inl a := a.1.sizeof
   | psum.inr (psum.inl a) := a.1.sizeof
   | psum.inr (psum.inr (psum.inl a)) := a.1.sizeof
   | psum.inr (psum.inr (psum.inr (psum.inl a))) := a.1.sizeof
-  | psum.inr (psum.inr (psum.inr (psum.inr (psum.inl a)))) := a.1.sizeof
-  | psum.inr (psum.inr (psum.inr (psum.inr (psum.inr a)))) := a.1.sizeof
+  | psum.inr (psum.inr (psum.inr (psum.inr a))) := a.1.sizeof
   end⟩
 
-mutual def value.dec_eq, exp.dec_eq, term.dec_eq, spec.dec_eq, env.dec_eq, history.dec_eq
+mutual def value.dec_eq, exp.dec_eq, term.dec_eq, spec.dec_eq, env.dec_eq
 
 with value.dec_eq : ∀ (v₁ v₂: value), decidable (v₁ = v₂)
 | v₁ v₂ :=
@@ -1131,9 +934,9 @@ with value.dec_eq : ∀ (v₁ v₂: value), decidable (v₁ = v₂)
       have value.true ≠ value.num n, by contradiction,
       show decidable (value.true = value.num n), from is_false this
     ) (
-      assume f x R S e H σ, 
-      have value.true ≠ value.func f x R S e H σ, by contradiction,
-      show decidable (value.true = value.func f x R S e H σ), from is_false this
+      assume f x R S e σ, 
+      have value.true ≠ value.func f x R S e σ, by contradiction,
+      show decidable (value.true = value.func f x R S e σ), from is_false this
     )
   )
   (
@@ -1149,9 +952,9 @@ with value.dec_eq : ∀ (v₁ v₂: value), decidable (v₁ = v₂)
       have value.false ≠ value.num n, by contradiction,
       show decidable (value.false = value.num n), from is_false this
     ) (
-      assume f x R S e H σ, 
-      have value.false ≠ value.func f x R S e H σ, by contradiction,
-      show decidable (value.false = value.func f x R S e H σ), from is_false this
+      assume f x R S e σ, 
+      have value.false ≠ value.func f x R S e σ, by contradiction,
+      show decidable (value.false = value.func f x R S e σ), from is_false this
     )
    ) (
     assume n₁: ℤ,
@@ -1177,52 +980,49 @@ with value.dec_eq : ∀ (v₁ v₂: value), decidable (v₁ = v₂)
         show decidable (value.num n₁ = value.num n₂), from is_false this
       )
     ) (
-      assume f x R S e H σ, 
-      have value.num n₁ ≠ value.func f x R S e H σ, by contradiction,
-      show decidable (value.num n₁ = value.func f x R S e H σ), from is_false this
+      assume f x R S e σ, 
+      have value.num n₁ ≠ value.func f x R S e σ, by contradiction,
+      show decidable (value.num n₁ = value.func f x R S e σ), from is_false this
     )
   )
   (
-    assume f₁ x₁ R₁ S₁ e₁ H₁ σ₁, 
-    assume : z = value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁,
-    have v₁_is_func: v₁ = value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁, from eq.trans h this,
-    show decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = v₂), from
-    value.cases_on (λv₂, decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = v₂)) v₂ (
-      have value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ ≠ value.true, by contradiction,
-      show decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.true), from is_false this
+    assume f₁ x₁ R₁ S₁ e₁ σ₁, 
+    assume : z = value.func f₁ x₁ R₁ S₁ e₁ σ₁,
+    have v₁_is_func: v₁ = value.func f₁ x₁ R₁ S₁ e₁ σ₁, from eq.trans h this,
+    show decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = v₂), from
+    value.cases_on (λv₂, decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = v₂)) v₂ (
+      have value.func f₁ x₁ R₁ S₁ e₁ σ₁ ≠ value.true, by contradiction,
+      show decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.true), from is_false this
     ) (
-      have value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ ≠ value.false, by contradiction,
-      show decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.false), from is_false this
+      have value.func f₁ x₁ R₁ S₁ e₁ σ₁ ≠ value.false, by contradiction,
+      show decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.false), from is_false this
     ) (
       assume n: ℤ,
-      have value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ ≠ value.num n, by contradiction,
-      show decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.num n), from is_false this
+      have value.func f₁ x₁ R₁ S₁ e₁ σ₁ ≠ value.num n, by contradiction,
+      show decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.num n), from is_false this
     ) (
-      assume f₂ x₂ R₂ S₂ e₂ H₂ σ₂,
+      assume f₂ x₂ R₂ S₂ e₂ σ₂,
       have R₁.sizeof < v₁.sizeof, from v₁_is_func.symm ▸ sizeof_value_func_R,
       have decidable (R₁ = R₂), from spec.dec_eq R₁ R₂,
       have S₁.sizeof < v₁.sizeof, from v₁_is_func.symm ▸ sizeof_value_func_S,
       have decidable (S₁ = S₂), from spec.dec_eq S₁ S₂,
       have e₁.sizeof < v₁.sizeof, from v₁_is_func.symm ▸ sizeof_value_func_e,
       have decidable (e₁ = e₂), from exp.dec_eq e₁ e₂,
-      have H₁.sizeof < v₁.sizeof, from v₁_is_func.symm ▸ sizeof_value_func_H,
-      have decidable (H₁ = H₂), from history.dec_eq H₁ H₂,
       have σ₁.sizeof < v₁.sizeof, from v₁_is_func.symm ▸ sizeof_value_func_σ,
       have decidable (σ₁ = σ₂), from env.dec_eq σ₁ σ₂,
 
-      if h: (f₁ = f₂) ∧ (x₁ = x₂) ∧ (R₁ = R₂) ∧ (S₁ = S₂) ∧ (e₁ = e₂) ∧ (H₁ = H₂) ∧ (σ₁ = σ₂) then (
-        have value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ H₂ σ₂,
+      if h: (f₁ = f₂) ∧ (x₁ = x₂) ∧ (R₁ = R₂) ∧ (S₁ = S₂) ∧ (e₁ = e₂) ∧ (σ₁ = σ₂) then (
+        have value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ σ₂,
         from h.left ▸ h.right.left ▸ h.right.right.left ▸ h.right.right.right.left ▸
-             h.right.right.right.right.left ▸ h.right.right.right.right.right.left ▸
-             h.right.right.right.right.right.right ▸ rfl,
-        show decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ H₂ σ₂),
+             h.right.right.right.right.left ▸ h.right.right.right.right.right ▸ rfl,
+        show decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ σ₂),
         from is_true this
       ) else (
-        have value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ ≠ value.func f₂ x₂ R₂ S₂ e₂ H₂ σ₂, from (
-          assume : value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ H₂ σ₂,
+        have value.func f₁ x₁ R₁ S₁ e₁ σ₁ ≠ value.func f₂ x₂ R₂ S₂ e₂ σ₂, from (
+          assume : value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ σ₂,
           show «false», from h (value.func.inj this)
         ),
-        show decidable (value.func f₁ x₁ R₁ S₁ e₁ H₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ H₂ σ₂),
+        show decidable (value.func f₁ x₁ R₁ S₁ e₁ σ₁ = value.func f₂ x₂ R₂ S₂ e₂ σ₂),
         from is_false this
       )
     )
@@ -2185,67 +1985,6 @@ with env.dec_eq : ∀ (σ₁ σ₂: env), decidable (σ₁ = σ₂)
           show «false», from h (env.cons.inj this)
         ),
         show decidable (env.cons σ₁' x₁ v₁ = env.cons σ₂' x₂ v₂),
-        from is_false this
-      )
-    )
-  ) rfl
-
-with history.dec_eq : ∀ (H₁ H₂: history), decidable (H₁ = H₂)
-| H₁ H₂ :=
-  let z := H₁ in
-  have h: z = H₁, from rfl,
-  history.cases_on (λH₁, (z = H₁) → decidable (H₁ = H₂)) H₁ (
-    assume : z = history.empty,
-    have H₁_id: H₁ = history.empty, from eq.trans h this,
-    show decidable (history.empty = H₂),
-    from history.cases_on (λH₂, decidable (history.empty = H₂)) H₂ (
-      show decidable (history.empty = history.empty), from is_true rfl
-    ) (
-      assume H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂,
-      have history.empty ≠ history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂, by contradiction,
-      show decidable (history.empty = history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂), from is_false this
-    )
-  ) (
-    assume H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁,
-    assume : z = history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁,
-    have H₁_id: H₁ = history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁, from eq.trans h this,
-    show decidable (history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = H₂),
-    from history.cases_on (λH₂, decidable (history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = H₂)) H₂ (
-      have history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ ≠ history.empty, by contradiction,
-      show decidable (history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = history.empty), from is_false this
-    ) (
-      assume H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂,
-      have H₁'.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_rest,
-      have decidable (H₁' = H₂'), from history.dec_eq H₁' H₂',
-      have R₁.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_R,
-      have decidable (R₁ = R₂), from spec.dec_eq R₁ R₂,
-      have S₁.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_S,
-      have decidable (S₁ = S₂), from spec.dec_eq S₁ S₂,
-      have e₁.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_e,
-      have decidable (e₁ = e₂), from exp.dec_eq e₁ e₂,
-      have H₁''.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_H,
-      have decidable (H₁'' = H₂''), from history.dec_eq H₁'' H₂'',
-      have σ₁.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_σ,
-      have decidable (σ₁ = σ₂), from env.dec_eq σ₁ σ₂,
-      have v₁.sizeof < H₁.sizeof, from H₁_id.symm ▸ sizeof_history_v,
-      have decidable (v₁ = v₂), from value.dec_eq v₁ v₂,
-      if h: (H₁' = H₂') ∧ (f₁ = f₂) ∧ (x₁ = x₂) ∧ (R₁ = R₂) ∧ (S₁ = S₂) ∧ 
-            (e₁ = e₂) ∧ (H₁'' = H₂'') ∧ (σ₁ = σ₂) ∧ (v₁ = v₂)
-      then (
-        have history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂,
-        from h.left ▸ h.right.left ▸ h.right.right.left ▸ h.right.right.right.left ▸
-             h.right.right.right.right.left ▸ h.right.right.right.right.right.left ▸
-             h.right.right.right.right.right.right.left ▸
-             h.right.right.right.right.right.right.right.left ▸
-             h.right.right.right.right.right.right.right.right ▸ rfl,
-        show decidable (history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂),
-        from is_true this
-      ) else (
-        have history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ ≠ history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂, from (
-          assume : history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂,
-          show «false», from h (history.call.inj this)
-        ),
-        show decidable (history.call H₁' f₁ x₁ R₁ S₁ e₁ H₁'' σ₁ v₁ = history.call H₂' f₂ x₂ R₂ S₂ e₂ H₂'' σ₂ v₂),
         from is_false this
       )
     )

@@ -11,24 +11,22 @@ inductive free_in_term (x: var) : term → Prop
 | app₂ {t₁ t₂: term}               : free_in_term t₂ → free_in_term (term.app t₁ t₂)
 
 inductive free_in_prop (x: var) : prop → Prop
-| term {t: term}                        : free_in_term x t  → free_in_prop t
-| not {p: prop}                         : free_in_prop p    → free_in_prop (prop.not p)
-| and₁ {p₁ p₂: prop}                    : free_in_prop p₁   → free_in_prop (prop.and p₁ p₂)
-| and₂ {p₁ p₂: prop}                    : free_in_prop p₂   → free_in_prop (prop.and p₁ p₂)
-| or₁ {p₁ p₂: prop}                     : free_in_prop p₁   → free_in_prop (prop.or p₁ p₂)
-| or₂ {p₁ p₂: prop}                     : free_in_prop p₂   → free_in_prop (prop.or p₁ p₂)
-| pre₁ {t₁ t₂: term}                    : free_in_term x t₁ → free_in_prop (prop.pre t₁ t₂)
-| pre₂ {t₁ t₂: term}                    : free_in_term x t₂ → free_in_prop (prop.pre t₁ t₂)
-| preop {t: term} {op: unop}            : free_in_term x t  → free_in_prop (prop.pre₁ op t)
-| preop₁ {t₁ t₂: term} {op: binop}      : free_in_term x t₁ → free_in_prop (prop.pre₂ op t₁ t₂)
-| preop₂ {t₁ t₂: term} {op: binop}      : free_in_term x t₂ → free_in_prop (prop.pre₂ op t₁ t₂)
-| post₁ {t₁ t₂: term}                   : free_in_term x t₁ → free_in_prop (prop.post t₁ t₂)
-| post₂ {t₁ t₂: term}                   : free_in_term x t₂ → free_in_prop (prop.post t₁ t₂)
-| call₁ {t₁ t₂: term}                   : free_in_term x t₁ → free_in_prop (prop.call t₁ t₂)
-| call₂ {t₁ t₂: term}                   : free_in_term x t₂ → free_in_prop (prop.call t₁ t₂)
-| forallc₁ {y: var} {t: term} {p: prop} : (x ≠ y) → free_in_term x t → free_in_prop (prop.forallc y t p)
-| forallc₂ {y: var} {t: term} {p: prop} : (x ≠ y) → free_in_prop p → free_in_prop (prop.forallc y t p)
-| exis {y: var} {p: prop}               : (x ≠ y) → free_in_prop p → free_in_prop (prop.exis y p)
+| term {t: term}                   : free_in_term x t  → free_in_prop t
+| not {p: prop}                    : free_in_prop p    → free_in_prop (prop.not p)
+| and₁ {p₁ p₂: prop}               : free_in_prop p₁   → free_in_prop (prop.and p₁ p₂)
+| and₂ {p₁ p₂: prop}               : free_in_prop p₂   → free_in_prop (prop.and p₁ p₂)
+| or₁ {p₁ p₂: prop}                : free_in_prop p₁   → free_in_prop (prop.or p₁ p₂)
+| or₂ {p₁ p₂: prop}                : free_in_prop p₂   → free_in_prop (prop.or p₁ p₂)
+| pre₁ {t₁ t₂: term}               : free_in_term x t₁ → free_in_prop (prop.pre t₁ t₂)
+| pre₂ {t₁ t₂: term}               : free_in_term x t₂ → free_in_prop (prop.pre t₁ t₂)
+| preop {t: term} {op: unop}       : free_in_term x t  → free_in_prop (prop.pre₁ op t)
+| preop₁ {t₁ t₂: term} {op: binop} : free_in_term x t₁ → free_in_prop (prop.pre₂ op t₁ t₂)
+| preop₂ {t₁ t₂: term} {op: binop} : free_in_term x t₂ → free_in_prop (prop.pre₂ op t₁ t₂)
+| post₁ {t₁ t₂: term}              : free_in_term x t₁ → free_in_prop (prop.post t₁ t₂)
+| post₂ {t₁ t₂: term}              : free_in_term x t₂ → free_in_prop (prop.post t₁ t₂)
+| call {t: term}                   : free_in_term x t → free_in_prop (prop.call t)
+| forallc {y: var} {p: prop}       : (x ≠ y) → free_in_prop p → free_in_prop (prop.forallc y p)
+| exis {y: var} {p: prop}          : (x ≠ y) → free_in_prop p → free_in_prop (prop.exis y p)
 
 inductive free_in_vc (x: var) : vc → Prop
 | term {t: term}                        : free_in_term x t  → free_in_vc t
@@ -68,6 +66,26 @@ def FV {α: Type} [h: has_fv α] (a: α): set var := (has_fv.fv a).to_set
 
 @[reducible]
 def closed {α: Type} [h: has_fv α] (a: α): Prop := ∀x, x ∉ FV a
+
+def term.fresh_var : term → var
+| (term.value v)        := 0
+| (term.var x)          := x + 1
+| (term.unop op t)      := t.fresh_var
+| (term.binop op t₁ t₂) := max t₁.fresh_var t₂.fresh_var
+| (term.app t₁ t₂)      := max t₁.fresh_var t₂.fresh_var
+
+def prop.fresh_var : prop → var
+| (prop.term t)        := t.fresh_var
+| (prop.not P)         := P.fresh_var
+| (prop.and P₁ P₂)     := max P₁.fresh_var P₂.fresh_var
+| (prop.or P₁ P₂)      := max P₁.fresh_var P₂.fresh_var
+| (prop.pre t₁ t₂)     := max t₁.fresh_var t₂.fresh_var
+| (prop.pre₁ op t)     := t.fresh_var
+| (prop.pre₂ op t₁ t₂) := max t₁.fresh_var t₂.fresh_var
+| (prop.post t₁ t₂)    := max t₁.fresh_var t₂.fresh_var
+| (prop.call t)        := t.fresh_var
+| (prop.forallc x P)   := max (x + 1) P.fresh_var
+| (prop.exis x P)      := max (x + 1) P.fresh_var
 
 -- helper lemmas
 
@@ -180,36 +198,29 @@ lemma free_in_prop.post.inv {t₁ t₂: term} {x: var}:
     case free_in_prop.post₂ free_in_t₂ { from or.inr free_in_t₂ } 
   end
 
-lemma free_in_prop.call.inv {t₁ t₂: term} {x: var}:
-      free_in_prop x (prop.call t₁ t₂) → free_in_term x t₁ ∨ free_in_term x t₂ :=
-  assume x_free_in_call: free_in_prop x (prop.call t₁ t₂),
+lemma free_in_prop.call.inv {t: term} {x: var}:
+      free_in_prop x (prop.call t) → free_in_term x t :=
+  assume x_free_in_call: free_in_prop x (prop.call t),
   begin
     cases x_free_in_call,
-    case free_in_prop.call₁ free_in_t₁ { from or.inl free_in_t₁ },
-    case free_in_prop.call₂ free_in_t₂ { from or.inr free_in_t₂ } 
+    case free_in_prop.call free_in_t { from free_in_t }
   end
 
-lemma free_in_prop.forallc.inv {P: prop} {t: term} {x fx: var}:
-      free_in_prop x (prop.forallc fx t P) → (x ≠ fx) ∧ (free_in_term x t ∨ free_in_prop x P) :=
-  assume x_free_in_forallc: free_in_prop x (prop.forallc fx t P),
+lemma free_in_prop.forallc.inv {P: prop} {x fx: var}:
+      free_in_prop x (prop.forallc fx P) → (x ≠ fx) ∧ free_in_prop x P :=
+  assume x_free_in_forallc: free_in_prop x (prop.forallc fx P),
   begin
     cases x_free_in_forallc,
-    case free_in_prop.forallc₁ x_neq_fx free_in_t {
-      from ⟨x_neq_fx, or.inl free_in_t⟩ 
-    },
-    case free_in_prop.forallc₂ x_neq_fx free_in_P {
-      from ⟨x_neq_fx, or.inr free_in_P⟩ 
+    case free_in_prop.forallc x_neq_fx free_in_P {
+      from ⟨x_neq_fx, free_in_P⟩ 
     }
   end
 
-lemma free_in_prop.forallc.same.inv {P: prop} {t: term} {x: var}: ¬ free_in_prop x (prop.forallc x t P) :=
-  assume x_free: free_in_prop x (prop.forallc x t P),
+lemma free_in_prop.forallc.same.inv {P: prop} {x: var}: ¬ free_in_prop x (prop.forallc x P) :=
+  assume x_free: free_in_prop x (prop.forallc x P),
   begin
     cases x_free,
-    case free_in_prop.forallc₁ x_neq_y free_in_P {
-      contradiction
-    },
-    case free_in_prop.forallc₂ x_neq_y free_in_P {
+    case free_in_prop.forallc x_neq_y free_in_P {
       contradiction
     }
   end
@@ -243,8 +254,9 @@ lemma free_in_prop.func.inv {P₁ P₂: prop} {t: term} {x y: var}:
       free_in_prop x (prop.func t y P₁ P₂) → free_in_term x t ∨ (x ≠ y ∧ (free_in_prop x P₁ ∨ free_in_prop x P₂)) :=
   assume : free_in_prop x (prop.func t y P₁ P₂),
   have free_in_prop x (term.unop unop.isFunc t ⋀
-                      (prop.forallc y t (prop.implies P₁ (prop.pre t y)
-                                      ⋀ prop.implies (prop.post t y) P₂))), from this,
+                      (prop.forallc y (prop.implies P₁ (prop.pre t y) ⋀
+                                       prop.implies (prop.post t y) P₂))),
+  from this,
   begin
     cases this,
     case free_in_prop.and₁ x_free_in_unopfunc {
@@ -259,11 +271,7 @@ lemma free_in_prop.func.inv {P₁ P₂: prop} {t: term} {x y: var}:
     },
     case free_in_prop.and₂ x_free_in_forallc {
       cases x_free_in_forallc,
-      case free_in_prop.forallc₁ x_neq_y x_free_in_t {
-        left,
-        from x_free_in_t
-      },
-      case free_in_prop.forallc₂ x_neq_y x_free_in_forallp {
+      case free_in_prop.forallc x_neq_y x_free_in_forallp {
         cases x_free_in_forallp,
         case free_in_prop.and₁ x_free_Rpre {
           cases x_free_Rpre,
@@ -411,56 +419,6 @@ lemma free_in_vc.univ.same.inv {P: vc} {x: var}: ¬ free_in_vc x (vc.univ x P) :
     case free_in_vc.univ x_neq_y free_in_P {
       contradiction
     }
-  end
-
-lemma call_history_closed (H: history): closed (calls_to_prop H) :=
-  begin
-    intro x,
-    induction H with H₁ f y R S e H₂ σ v ih₁ ih₂,
-
-    show ¬free_in_prop x (calls_to_prop history.empty), from (
-      assume x_free: free_in_prop x (calls_to_prop history.empty),
-      have calls_to_prop history.empty = value.true, from rfl,
-      have x_free_in_true: free_in_prop x value.true, from this ▸ x_free,
-      show «false», by begin
-        cases x_free_in_true,
-        case free_in_prop.term x_free_in_term {
-          cases x_free_in_term
-        }
-      end
-    ),
-
-    show ¬free_in_prop x (calls_to_prop (H₁ · call f y R S e H₂ σ v)), from (
-      assume x_free: free_in_prop x (calls_to_prop (H₁ · call f y R S e H₂ σ v)),
-      have calls_to_prop (H₁ · call f y R S e H₂ σ v) =
-        (calls_to_prop H₁ ⋀ prop.call (value.func f y R S e H₂ σ) v), by unfold calls_to_prop,
-      have x_free_in_prop: free_in_prop x (calls_to_prop H₁ ⋀
-        prop.call (value.func f y R S e H₂ σ) v), from this ▸ x_free,
-      have x_not_free_in_v: ¬ free_in_term x v, from (
-        assume x_free_in_v: free_in_term x v,
-        show «false», by cases x_free_in_v
-      ),
-      have x_not_free_in_f: ¬ free_in_term x (value.func f y R S e H₂ σ), from (
-        assume x_free_in_f: free_in_term x (value.func f y R S e H₂ σ),
-        show «false», by cases x_free_in_f
-      ),
-      have
-        free_in_prop x (calls_to_prop H₁) ∨
-        free_in_prop x (prop.call (value.func f y R S e H₂ σ) v),
-      from (free_in_prop.and.inv x_free_in_prop),
-      or.elim this ih₁ (
-        assume x_free_in_call: free_in_prop x (prop.call (value.func f y R S e H₂ σ) v),
-        show «false», by begin
-          cases x_free_in_call,
-          case free_in_prop.call₁ x_free_in_f {
-            show «false», from x_not_free_in_f x_free_in_f
-          },
-          case free_in_prop.call₂ x_free_in_v {
-            show «false», from x_not_free_in_v x_free_in_v
-          }
-        end
-      )
-    )
   end
 
 lemma env.contains.inv {σ: env} {x y: var} {v: value}: x ∈ (σ[y↦v]) → (x = y ∨ x ∈ σ) :=
@@ -857,40 +815,26 @@ lemma free_in_propctx.prop.inv {x: var} {P: prop} {t': term}:
         show x ∈ FV (prop.post t₁ t₂), from free_in_prop.post₂ this
       )
     )},
-    case prop.call t₁ t₂ { from (
-      have prop.to_propctx (prop.call t₁ t₂) = propctx.call t₁ t₂, by unfold prop.to_propctx,
-      have h: x ∈ FV ((propctx.call t₁ t₂) t'), from this ▸ x_free_in_P,
-      have propctx.apply (propctx.call t₁.to_termctx t₂.to_termctx) t' = prop.call (t₁.to_termctx t') (t₂.to_termctx t'),
+    case prop.call t { from (
+      have prop.to_propctx (prop.call t) = propctx.call t, by unfold prop.to_propctx,
+      have h: x ∈ FV ((propctx.call t) t'), from this ▸ x_free_in_P,
+      have propctx.apply (propctx.call t.to_termctx) t' = prop.call (t.to_termctx t'),
       by unfold propctx.apply,
-      have x ∈ FV (prop.call (t₁.to_termctx t') (t₂.to_termctx t')), from this.symm ▸ h,
-      have x ∈ FV (t₁.to_termctx t') ∨ x ∈ FV (t₂.to_termctx t'), from free_in_prop.call.inv this,
-      or.elim this (
-        assume : x ∈ FV (t₁.to_termctx t'),
-        have x ∈ FV t₁, from free_in_termctx.term.inv this,
-        show x ∈ FV (prop.call t₁ t₂), from free_in_prop.call₁ this
-      ) (
-        assume : x ∈ FV (t₂.to_termctx t'),
-        have x ∈ FV t₂, from free_in_termctx.term.inv this,
-        show x ∈ FV (prop.call t₁ t₂), from free_in_prop.call₂ this
-      )
+      have x ∈ FV (prop.call (t.to_termctx t')), from this.symm ▸ h,
+      have x ∈ FV (t.to_termctx t'), from free_in_prop.call.inv this,
+      have x ∈ FV t, from free_in_termctx.term.inv this,
+      show x ∈ FV (prop.call t), from free_in_prop.call this
     )},
-    case prop.forallc y t P₁ ih { from (
-      have prop.to_propctx (prop.forallc y t P₁) = propctx.forallc y t P₁.to_propctx, by unfold prop.to_propctx,
-      have h: x ∈ FV ((propctx.forallc y t.to_termctx P₁.to_propctx) t'), from this ▸ x_free_in_P,
-      have propctx.apply (propctx.forallc y t.to_termctx P₁.to_propctx) t'
-         = prop.forallc y (t.to_termctx t') (P₁.to_propctx.apply t'), by unfold propctx.apply,
-      have x ∈ FV (prop.forallc y (t.to_termctx t') (P₁.to_propctx.apply t')), from this.symm ▸ h,
+    case prop.forallc y P₁ ih { from (
+      have prop.to_propctx (prop.forallc y P₁) = propctx.forallc y P₁.to_propctx, by unfold prop.to_propctx,
+      have h: x ∈ FV ((propctx.forallc y P₁.to_propctx) t'), from this ▸ x_free_in_P,
+      have propctx.apply (propctx.forallc y P₁.to_propctx) t'
+         = prop.forallc y (P₁.to_propctx.apply t'), by unfold propctx.apply,
+      have x ∈ FV (prop.forallc y (P₁.to_propctx.apply t')), from this.symm ▸ h,
       have x_neq_y: x ≠ y, from (free_in_prop.forallc.inv this).left,
-      have x ∈ FV (t.to_termctx t') ∨ x ∈ FV (P₁.to_propctx.apply t'), from (free_in_prop.forallc.inv this).right,
-      or.elim this (
-        assume : x ∈ FV (t.to_termctx t'),
-        have x ∈ FV t, from free_in_termctx.term.inv this,
-        show x ∈ FV (prop.forallc y t P₁), from free_in_prop.forallc₁ x_neq_y this
-      ) (
-        assume : x ∈ FV (P₁.to_propctx.apply t'),
-        have x ∈ FV P₁, from ih this,
-        show x ∈ FV (prop.forallc y t P₁), from free_in_prop.forallc₂ x_neq_y this
-      )
+      have x ∈ FV (P₁.to_propctx.apply t'), from (free_in_prop.forallc.inv this).right,
+      have x ∈ FV P₁, from ih this,
+      show x ∈ FV (prop.forallc y P₁), from free_in_prop.forallc x_neq_y this
     )},
     case prop.exis y P₁ ih { from (
       have prop.to_propctx (prop.exis y P₁) = (propctx.exis y P₁.to_propctx), by unfold prop.to_propctx,

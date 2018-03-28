@@ -22,14 +22,14 @@ inductive binop
 | eq    : binop
 | lt    : binop
 
-mutual inductive value, exp, term, spec, env, history
+mutual inductive value, exp, term, spec, env
 
 -- v ∈ Values := true | false | n | <func f(x) R S {e}, H, σ>
 with value: Type
 | true  : value
 | false : value
 | num   : ℤ → value
-| func  : var → var → spec → spec → exp → history → env → value
+| func  : var → var → spec → spec → exp → env → value
 
 -- e ∈ Expressions := ...
 with exp: Type
@@ -64,15 +64,10 @@ with env: Type
 | empty : env
 | cons  : env → var → value → env
 
--- H ∈ CallHistories := • | H · call(<func f(x) R S e, H, σ>, v)
-with history: Type
-| empty : history
-| call : history → var → var → spec → spec → exp → history → env → value → history
-
 -- s ∈ Stacks := (R, H, σ, e) | s · (R, H, σ, let y = f(x) in e)
 inductive stack
-| top  : spec → history → env → exp → stack
-| cons : stack → spec → history → env → var → var → var → exp → stack
+| top  : spec → env → exp → stack
+| cons : stack → spec → env → var → var → var → exp → stack
 
 -- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
 --                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P
@@ -85,8 +80,8 @@ inductive prop
 | pre₁    : unop → term → prop
 | pre₂    : binop → term → term → prop
 | post    : term → term → prop
-| call    : term → term → prop
-| forallc : var → term → prop → prop
+| call    : term → prop
+| forallc : var → prop → prop
 | exis    : var → prop → prop
 
 -- A[•] ∈ TermContexts := • | v | x | ⊗ A[•] | A[•] ⊕ A[•] | A[•] ( A[•] )
@@ -110,15 +105,15 @@ inductive propctx
 | pre₁    : unop → termctx → propctx
 | pre₂    : binop → termctx → termctx → propctx
 | post    : termctx → termctx → propctx
-| call    : termctx → termctx → propctx
-| forallc : var → termctx → propctx → propctx
+| call    : termctx → propctx
+| forallc : var → propctx → propctx
 | exis    : var → propctx → propctx
 
--- call(f, x) ∈ CallTriggers
-structure calltrigger := (f: term) (x: term)
+-- call(x) ∈ CallTriggers
+structure calltrigger := (x: term)
 
--- (∀x {call(f, x)} ⇒ P) ∈ CallQuantifiers
-structure callquantifier := (f: term) (x: var) (P: prop)
+-- (∀x {call(x)} ⇒ P) ∈ CallQuantifiers
+structure callquantifier := (x: var) (P: prop)
 
 -- P,Q ∈ VerificationCondition := ...
 inductive vc: Type
