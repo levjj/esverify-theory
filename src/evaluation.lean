@@ -1,3 +1,4 @@
+/-
 import .syntax .notations
 
 def unop.apply: unop → value → option value
@@ -553,3 +554,5 @@ lemma binop_result_not_function {vx vy vz: value} {op: binop}:
       unfold binop.apply at h1,
       contradiction    }
   end
+
+-/

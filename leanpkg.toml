@@ -1,0 +1,8 @@
+[package]
+name = "esverify-theory"
+version = "0.1"
+lean_version = "3.3.0"
+path = "src"
+
+[dependencies]
+mathlib = {git = "https://github.com/leanprover/mathlib", rev = "6a2607ef3af2b0a5083c03c2b6e3f10a44184fe4"}

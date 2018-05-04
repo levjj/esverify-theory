@@ -1,3 +1,4 @@
+/-
 import .syntax .notations .logic .evaluation .vcgen .bindings .strengthening
 
 lemma no_calls_in_env_translation {P: prop} {σ: env}: (⊢ σ : P) → (calls_p P = ∅) :=
@@ -4720,3 +4721,5 @@ theorem preservation {s: stack} {Q: propctx}:
       }
     }
   end
+
+-/

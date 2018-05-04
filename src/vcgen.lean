@@ -1,3 +1,4 @@
+/-
 import .syntax .notations .evaluation .freevars .substitution .qi
 
 reserve infix `⊢`:10
@@ -482,3 +483,5 @@ lemma stack.vcgen.inj {s: stack} {Q₁: propctx}: (⊢ₛ s : Q₁) → ∀Q₂,
   end,
   show ∀Q₂, (⊢ₛ s : Q₂) → (Q₁ = Q₂),
   from λQ₂ h1, (this s Q₂) rfl h1
+
+-/

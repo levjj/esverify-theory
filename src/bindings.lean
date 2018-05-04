@@ -1,3 +1,4 @@
+/-
 import data.set
 
 import .syntax .notations .freevars .substitution .vcgen
@@ -1628,3 +1629,5 @@ lemma env.remove_unimportant_equivalence {σ₁ σ₂: env} {x: var}:
     assume : σ₂.without x y = v,
     show σ₁ y = σ₂.without x y, from eq.trans h4 this.symm
   )
+
+-/

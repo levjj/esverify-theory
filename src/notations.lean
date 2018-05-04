@@ -697,6 +697,28 @@ lemma sizeof_prop_or₂ {P S: prop}:
     from zero_lt_one
   end
 
+lemma sizeof_prop_exis {P: prop} {x: var}:
+      P.sizeof < (prop.exis x P).sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
+lemma sizeof_prop_forall {P: prop} {x: var}:
+      P.sizeof < (prop.forallc x P).sizeof :=
+  begin
+    unfold prop.sizeof,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
 -- term to termctx coercion
 
 def term.to_termctx : term → termctx

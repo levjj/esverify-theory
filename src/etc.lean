@@ -34,6 +34,33 @@ lemma lt_of_x_s_y {x s y: ℕ}: s < x + (s + (y + 1)) :=
     from zero_lt_one
   end
 
+lemma nat.succ.inj.inv {n m: ℕ}: n = m → (nat.succ n = nat.succ m) :=
+  assume : n = m,
+  by simp [this]
+
+lemma eq_add_right_of_eq {n m k: ℕ}: n = m → n + k = m + k :=
+  begin
+    assume h,
+    induction k,
+    simp,
+    from h,
+
+    change (n + (a + 1) = m + (a + 1)),
+    rw[←add_assoc n a 1],
+    rw[←add_assoc m a 1],
+    change (nat.succ (n + a) = nat.succ (m + a)),
+    apply nat.succ.inj.inv,
+    from ih_1
+  end
+
+lemma eq_add_left_of_eq {n m k: ℕ}: n = m → k + n = k + m :=
+  begin
+    assume h,
+    rw[←add_comm n k],
+    rw[←add_comm m k],
+    from eq_add_right_of_eq h
+  end
+
 -- auxiliary lemmas for option
 
 lemma some.inj.inv {α: Type} {a b: α}: a = b → (some a = some b) :=

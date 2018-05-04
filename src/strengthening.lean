@@ -1,3 +1,4 @@
+/-
 import .syntax .notations .logic .evaluation .vcgen .bindings
 
 lemma strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
@@ -270,3 +271,5 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       show P' ⊢ exp.return x : (x ≣ •), from exp.vcgen.return x_free_in_P'
     }
   end
+
+-/

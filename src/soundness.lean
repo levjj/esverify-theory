@@ -1,3 +1,4 @@
+/-
 import data.set
 
 import .syntax .notations .logic .evaluation .vcgen .progress .preservation
@@ -108,3 +109,5 @@ theorem soundness_source_programs {e: exp} {s: stack} {Q: propctx}:
   have ⊢ₛ (spec.term value.true, history.empty, env.empty, e),
   from stack.vcgen.top env.vcgen.empty this,
   show is_value s ∨ ∃s', s ⟶ s', from soundness steps_to_s this
+
+-/

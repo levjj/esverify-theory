@@ -1,3 +1,4 @@
+/-
 import .syntax .notations .evaluation .substitution .qi .vcgen .bindings
 
 -- simple axioms for logical reasoning
@@ -1465,3 +1466,5 @@ lemma dominates_p.and_right_intro_of_no_calls {P Q: prop} {σ: env}:
   ),
   show dominates_p σ P (P ⋀ Q),
   from dominates_p.trans h2 (dominates_p.trans h3 h4)
+
+-/
