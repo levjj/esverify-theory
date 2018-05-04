@@ -107,6 +107,29 @@ def prop.rename (x y: var): prop → prop
 | (prop.forallc z P)   := prop.forallc z (if x = z then P else P.rename)
 | (prop.exis z P)      := prop.exis z (if x = z then P else P.rename)
 
+-- subst term
+
+def term.substt (x: var) (t: term): term → term
+| (term.value v')       := v'
+| (term.var y)          := if x = y then t else y
+| (term.unop op t)      := term.unop op t.substt
+| (term.binop op t₁ t₂) := term.binop op t₁.substt t₂.substt
+| (term.app t₁ t₂)      := term.app t₁.substt t₂.substt
+
+def prop.substt (x: var) (t: term): prop → prop
+| (prop.term t₁)       := term.substt x t t₁
+| (prop.not P)         := P.substt.not
+| (prop.and P Q)       := P.substt ⋀ Q.substt
+| (prop.or P Q)        := P.substt ⋁ Q.substt
+| (prop.pre t₁ t₂)     := prop.pre (term.substt x t t₁) (term.substt x t t₂)
+| (prop.pre₁ op t₁)    := prop.pre₁ op (term.substt x t t₁)
+| (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.substt x t t₁) (term.substt x t t₂)
+| (prop.call t₁)       := prop.call (term.substt x t t₁)
+| (prop.post t₁ t₂)    := prop.post (term.substt x t t₁) (term.substt x t t₂)
+| (prop.forallc y P)   := prop.forallc y (if x = y then P else P.substt)
+| (prop.exis y P)      := prop.exis y (if x = y then P else P.substt)
+
+
 -- lemmas
 
 lemma env.contains_without.inv {σ: env} {x y: var}:
