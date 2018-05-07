@@ -1,5 +1,5 @@
 /-
-import .syntax .notations .logic .evaluation .vcgen .bindings .strengthening
+import .definitions2
 
 lemma no_calls_in_env_translation {P: prop} {σ: env}: (⊢ σ : P) → (calls_p P = ∅) :=
   assume env_verified: ⊢ σ : P,

@@ -1,697 +1,9 @@
 -- quantifier instantiation
 
-import .syntax .notations .freevars .substitution
-
-def prop.num_quantifiers: prop → ℕ
-| (prop.term t)        := 0
-| (prop.not P)         := P.num_quantifiers
-| (prop.and P₁ P₂)     := P₁.num_quantifiers + P₂.num_quantifiers
-| (prop.or P₁ P₂)      := P₁.num_quantifiers + P₂.num_quantifiers
-| (prop.pre t₁ t₂)     := 0
-| (prop.pre₁ op t)     := 0
-| (prop.pre₂ op t₁ t₂) := 0
-| (prop.post t₁ t₂)    := 0
-| (prop.call t)        := 0
-| (prop.forallc x P)   := 1 + P.num_quantifiers
-| (prop.exis x P)      := 1 + P.num_quantifiers
-
-mutual def prop.lift_p, prop.lift_n
-
-with prop.lift_p: prop → var → option prop
-| (prop.term t) y        := none
-| (prop.not P) y         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                            prop.not <$> P.lift_n y
-| (prop.and P₁ P₂) y     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                            have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                            match P₁.lift_p y with
-                            | some P₁' := some (P₁' ⋀ P₂)
-                            | none := (λP₂', P₁ ⋀ P₂') <$> P₂.lift_p y
-                            end
-| (prop.or P₁ P₂) y      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                            have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                            match P₁.lift_p y with
-                            | some P₁' := some (P₁' ⋁ P₂)
-                            | none := (λP₂', P₁ ⋁ P₂') <$> P₂.lift_p y
-                            end
-| (prop.pre t₁ t₂) y     := none
-| (prop.pre₁ op t) y     := none
-| (prop.pre₂ op t₁ t₂) y := none
-| (prop.post t₁ t₂) y    := none
-| (prop.call t) y        := none
-| (prop.forallc x P) y   := some (prop.implies (prop.call y) (P.rename x y)) 
-| (prop.exis x P) y      := none
-
-with prop.lift_n: prop → var → option prop
-| (prop.term t) y        := none
-| (prop.not P) y         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                            prop.not <$> P.lift_p y
-| (prop.and P₁ P₂) y     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                            have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                            match P₁.lift_n y with
-                            | some P₁' := some (P₁' ⋀ P₂)
-                            | none := (λP₂', P₁ ⋀ P₂') <$> P₂.lift_n y
-                            end
-| (prop.or P₁ P₂) y      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                            have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                            match P₁.lift_n y with
-                            | some P₁' := some (P₁' ⋁ P₂)
-                            | none := (λP₂', P₁ ⋁ P₂') <$> P₂.lift_n y
-                            end
-| (prop.pre t₁ t₂) y     := none
-| (prop.pre₁ op t) y     := none
-| (prop.pre₂ op t₁ t₂) y := none
-| (prop.post t₁ t₂) y    := none
-| (prop.call t) y        := none
-| (prop.forallc x P) y   := none
-| (prop.exis x P) y      := some (P.rename x y)
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s,
-  match s with
-  | psum.inl a := a.1.sizeof
-  | psum.inr a := a.1.sizeof
-  end⟩],
-  dec_tac := tactic.assumption
-}
-
-lemma same_num_quantifiers_after_rename {P: prop} {x y: var}:
-      P.num_quantifiers = (P.rename x y).num_quantifiers :=
-  begin
-    induction P,
-    case prop.term t {
-      unfold prop.rename,
-      change (
-        prop.num_quantifiers (prop.term t) =
-        prop.num_quantifiers (prop.term (term.rename x y t))
-      ),
-      unfold prop.num_quantifiers
-    },
-    case prop.not P₁ ih {
-      unfold prop.rename,
-      unfold prop.num_quantifiers,
-      from ih
-    },
-    case prop.and P₁ P₂ P₁_ih P₂_ih {
-      unfold prop.rename,
-      change (
-        prop.num_quantifiers (prop.and P₁ P₂) =
-        prop.num_quantifiers (prop.and (prop.rename x y P₁) (prop.rename x y P₂))
-      ),
-      unfold prop.num_quantifiers,
-      rw[P₁_ih],
-      rw[P₂_ih]
-    },
-    case prop.or P₁ P₂ P₁_ih P₂_ih {
-      unfold prop.rename,
-      change (
-        prop.num_quantifiers (prop.or P₁ P₂) =
-        prop.num_quantifiers (prop.or (prop.rename x y P₁) (prop.rename x y P₂))
-      ),
-      unfold prop.num_quantifiers,
-      rw[P₁_ih],
-      rw[P₂_ih]
-    },
-    case prop.pre t₁ t₂ {
-      unfold prop.rename,
-      unfold prop.num_quantifiers
-    },
-    case prop.pre₁ op t {
-      unfold prop.rename,
-      unfold prop.num_quantifiers
-    },
-    case prop.pre₂ op t₁ t₂ {
-      unfold prop.rename,
-      unfold prop.num_quantifiers
-    },
-    case prop.call t {
-      unfold prop.rename,
-      unfold prop.num_quantifiers
-    },
-    case prop.post t₁ t₂ {
-      unfold prop.rename,
-      unfold prop.num_quantifiers
-    },
-    case prop.forallc y P₁ P₁_ih {
-      unfold prop.rename,
-      by_cases (x = y) with h,
-      
-      simp[h],
-
-      simp[h],
-      unfold prop.num_quantifiers,
-      apply eq_add_left_of_eq,
-      from P₁_ih
-    },
-    case prop.exis y P' P'_ih {
-      unfold prop.rename,
-      by_cases (x = y) with h,
-      
-      simp[h],
-
-      simp[h],
-      unfold prop.num_quantifiers,
-      apply eq_add_left_of_eq,
-      from P'_ih
-    }
-  end
-
-lemma lifted_prop_smaller {P: prop} {x: var}:
-      ∀P', ((P.lift_p x = some P') → (P'.num_quantifiers < P.num_quantifiers)) ∧
-           ((P.lift_n x = some P') → (P'.num_quantifiers < P.num_quantifiers)) :=
-  begin
-    induction P,
-    case prop.term t {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.not P₁ ih {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      cases h2: prop.lift_n P₁ x,
-
-      simp[h2] at h1,
-      cases h1,
-
-      have h3, from (ih a).right h2,
-      simp[h2] at h1,
-      cases h1,
-      unfold prop.num_quantifiers,
-      from h3,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      cases h2: prop.lift_p P₁ x,
-
-      simp[h2] at h1,
-      cases h1,
-
-      have h3, from (ih a).left h2,
-      simp[h2] at h1,
-      cases h1,
-      unfold prop.num_quantifiers,
-      from h3
-    },
-    case prop.and P₁ P₂ P₁_ih P₂_ih {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      cases h2: prop.lift_p P₁ x,
-
-      simp[h2] at h1,
-      cases h3: prop.lift_p P₂ x,
-      simp[h3] at h1,
-      cases h1,
-
-      simp[h3] at h1,
-      cases h1,
-      have h3, from (P₂_ih a).left h3,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_left,
-      from h3,
-
-      simp[h2] at h1,
-      cases h1,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_right,
-      from (P₁_ih a).left h2,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      cases h2: prop.lift_n P₁ x,
-
-      simp[h2] at h1,
-      cases h3: prop.lift_n P₂ x,
-      simp[h3] at h1,
-      cases h1,
-
-      simp[h3] at h1,
-      cases h1,
-      have h3, from (P₂_ih a).right h3,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_left,
-      from h3,
-
-      simp[h2] at h1,
-      cases h1,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_right,
-      from (P₁_ih a).right h2
-    },
-    case prop.or P₁ P₂ P₁_ih P₂_ih {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      cases h2: prop.lift_p P₁ x,
-
-      simp[h2] at h1,
-      cases h3: prop.lift_p P₂ x,
-      simp[h3] at h1,
-      cases h1,
-
-      simp[h3] at h1,
-      cases h1,
-      have h3, from (P₂_ih a).left h3,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_left,
-      from h3,
-
-      simp[h2] at h1,
-      cases h1,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_right,
-      from (P₁_ih a).left h2,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      cases h2: prop.lift_n P₁ x,
-
-      simp[h2] at h1,
-      cases h3: prop.lift_n P₂ x,
-      simp[h3] at h1,
-      cases h1,
-
-      simp[h3] at h1,
-      cases h1,
-      have h3, from (P₂_ih a).right h3,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_left,
-      from h3,
-
-      simp[h2] at h1,
-      cases h1,
-      unfold prop.num_quantifiers,
-      apply nat.add_lt_add_right,
-      from (P₁_ih a).right h2
-    },
-    case prop.pre t₁ t₂ {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.pre₁ op t {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.pre₂ op t₁ t₂ {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.call t {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.post t₁ t₂ {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.forallc y P₁ P₁_ih {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      have h2, from option.some.inj h1,
-      simp[h2.symm],
-      unfold prop.num_quantifiers,
-      have h3: (prop.num_quantifiers P₁ = prop.num_quantifiers (prop.rename y x P₁)),
-      from same_num_quantifiers_after_rename,
-      rw[←h3],
-      simp,
-      from lt_of_add_one,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      contradiction
-    },
-    case prop.exis y P₁ P₁_ih {
-      assume P',
-      split,
-
-      assume h1,
-      unfold prop.lift_p at h1,
-      contradiction,
-
-      assume h1,
-      unfold prop.lift_n at h1,
-      have h2, from option.some.inj h1,
-      simp[h2.symm],
-      unfold prop.num_quantifiers,
-      have h3: (prop.num_quantifiers P₁ = prop.num_quantifiers (prop.rename y x P₁)),
-      from same_num_quantifiers_after_rename,
-      rw[←h3],
-      simp,
-      from lt_of_add_one
-    }
-  end
-
-def prop.lift_all: prop → prop
-| P :=
-  let r := P.lift_p P.fresh_var in
-  let z := r in
-  have h: z = r, from rfl,
-  @option.cases_on prop (λr, (z = r) → prop) r (
-    assume : z = none,
-    P
-  ) (
-    assume P': prop,
-    assume : z = (some P'),
-    have r_id: r = (some P'), from eq.trans h this,
-    have P'.num_quantifiers < P.num_quantifiers,
-    from (lifted_prop_smaller P').left r_id,
-    prop.lift_all P'
-  ) rfl
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s, s.num_quantifiers ⟩],
-  dec_tac := tactic.assumption
-}
-
-def erased_measure : has_well_founded
-      (psum prop prop)
-:= ⟨_, measure_wf $ λ s,
-  match s with
-  | psum.inl a := a.sizeof
-  | psum.inr a := a.sizeof
-  end⟩
-
-mutual def prop.erased_p, prop.erased_n
-
-with prop.erased_p: prop → vc
-| (prop.term t)        := vc.term t
-| (prop.not P)         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                          vc.not P.erased_n
-| (prop.and P₁ P₂)     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                          have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                          P₁.erased_p ⋀ P₂.erased_p
-| (prop.or P₁ P₂)      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                          have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                          P₁.erased_p ⋁ P₂.erased_p
-| (prop.pre t₁ t₂)     := vc.pre t₁ t₂
-| (prop.pre₁ op t)     := vc.pre₁ op t
-| (prop.pre₂ op t₁ t₂) := vc.pre₂ op t₁ t₂
-| (prop.post t₁ t₂)    := vc.post t₁ t₂
-| (prop.call _)        := vc.term value.true
-| (prop.forallc x P)   := vc.term value.true
-| (prop.exis x P)      := have P.sizeof < (prop.exis x P).sizeof, from sizeof_prop_exis,
-                          vc.not (vc.univ x (vc.not P.erased_p))
-
-with prop.erased_n: prop → vc
-| (prop.term t)        := vc.term t
-| (prop.not P)         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                          vc.not P.erased_p
-| (prop.and P₁ P₂)     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                          have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                          P₁.erased_n ⋀ P₂.erased_n
-| (prop.or P₁ P₂)      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                          have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                          P₁.erased_n ⋁ P₂.erased_n
-| (prop.pre t₁ t₂)     := vc.pre t₁ t₂
-| (prop.pre₁ op t)     := vc.pre₁ op t
-| (prop.pre₂ op t₁ t₂) := vc.pre₂ op t₁ t₂
-| (prop.post t₁ t₂)    := vc.post t₁ t₂
-| (prop.call _)        := vc.term value.true
-| (prop.forallc x P)   := have P.sizeof < (prop.forallc x P).sizeof, from sizeof_prop_forall,
-                          vc.univ x P.erased_n
-| (prop.exis x P)      := have P.sizeof < (prop.exis x P).sizeof, from sizeof_prop_exis,
-                          vc.not (vc.univ x (vc.not P.erased_n))
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact erased_measure],
-  dec_tac := tactic.assumption
-}
-
-def instantiate_with_measure : has_well_founded
-      (psum (Σ' (p : prop), calltrigger)
-            (Σ' (p : prop), calltrigger))
-:= ⟨_, measure_wf $ λ s,
-  match s with
-  | psum.inl a := a.1.sizeof
-  | psum.inr a := a.1.sizeof
-  end⟩
-
-mutual def prop.instantiate_with_p, prop.instantiate_with_n
-
-with prop.instantiate_with_p: prop → calltrigger → prop
-| (prop.term t) _        := prop.term t
-| (prop.not P) t         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                            prop.not (P.instantiate_with_n t)
-| (prop.and P₁ P₂) t     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                            have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                            P₁.instantiate_with_p t ⋀ P₂.instantiate_with_p t
-| (prop.or P₁ P₂) t      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                            have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                            P₁.instantiate_with_p t ⋁ P₂.instantiate_with_p t
-| (prop.pre t₁ t₂) _     := prop.pre t₁ t₂
-| (prop.pre₁ op t) _     := prop.pre₁ op t
-| (prop.pre₂ op t₁ t₂) _ := prop.pre₂ op t₁ t₂
-| (prop.post t₁ t₂) _    := prop.post t₁ t₂
-| (prop.call t) _        := prop.call t
-| (prop.forallc x P) t   := prop.forallc x P ⋀ P.substt x t.x -- instantiate
-| (prop.exis x P) t      := prop.exis x P
-
-with prop.instantiate_with_n: prop → calltrigger → prop
-| (prop.term t) _        := prop.term t
-| (prop.not P) t         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                            prop.not (P.instantiate_with_p t)
-| (prop.and P₁ P₂) t     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                            have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                            P₁.instantiate_with_n t ⋀ P₂.instantiate_with_n t
-| (prop.or P₁ P₂) t      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                            have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                            P₁.instantiate_with_n t ⋁ P₂.instantiate_with_n t
-| (prop.pre t₁ t₂) _     := prop.pre t₁ t₂
-| (prop.pre₁ op t) _     := prop.pre₁ op t
-| (prop.pre₂ op t₁ t₂) _ := prop.pre₂ op t₁ t₂
-| (prop.post t₁ t₂) _    := prop.post t₁ t₂
-| (prop.call t) _        := prop.call t
-| (prop.forallc x P) t   := prop.forallc x P
-| (prop.exis x P) t      := prop.exis x P
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact instantiate_with_measure],
-  dec_tac := tactic.assumption
-}
-
-def find_calls_measure : has_well_founded
-      (psum prop prop)
-:= ⟨_, measure_wf $ λ s,
-  match s with
-  | psum.inl a := a.sizeof
-  | psum.inr a := a.sizeof
-  end⟩
-
-mutual def prop.find_calls_p, prop.find_calls_n
-
-with prop.find_calls_p: prop → list calltrigger
-| (prop.term t)        := []
-| (prop.not P)         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                          P.find_calls_n
-| (prop.and P₁ P₂)     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                          have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                          P₁.find_calls_p ++ P₂.find_calls_p
-| (prop.or P₁ P₂)      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                          have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                          P₁.find_calls_p ++ P₂.find_calls_p
-| (prop.pre t₁ t₂)     := []
-| (prop.pre₁ op t)     := []
-| (prop.pre₂ op t₁ t₂) := []
-| (prop.post t₁ t₂)    := []
-| (prop.call t)        := [ ⟨ t ⟩ ]
-| (prop.forallc x P)   := []
-| (prop.exis x P)      := []
-
-with prop.find_calls_n: prop → list calltrigger
-| (prop.term t)        := []
-| (prop.not P)         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                          P.find_calls_p
-| (prop.and P₁ P₂)     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                          have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                          P₁.find_calls_n ++ P₂.find_calls_n
-| (prop.or P₁ P₂)      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                          have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                          P₁.find_calls_n ++ P₂.find_calls_n
-| (prop.pre t₁ t₂)     := []
-| (prop.pre₁ op t)     := []
-| (prop.pre₂ op t₁ t₂) := []
-| (prop.post t₁ t₂)    := []
-| (prop.call t)        := []
-| (prop.forallc x P)   := []
-| (prop.exis x P)      := []
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact find_calls_measure],
-  dec_tac := tactic.assumption
-}
-
-def prop.instantiate_with_all: prop → list calltrigger → prop
-| P list.nil        := P
-| P (list.cons t r) := (P.instantiate_with_n t).instantiate_with_all r
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s, s.2.sizeof⟩]
-}
-
-def prop.instantiate_rep: prop → ℕ → vc
-| P 0            := P.lift_all.erased_n
-| P (nat.succ n) := have n < n + 1, from lt_of_add_one,
-                    (P.lift_all.instantiate_with_all (P.lift_all.find_calls_n)).instantiate_rep n
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s, s.2⟩]
-}
-
-def prop.max_nesting_level: prop → ℕ
-| (prop.term t)        := 0
-| (prop.not P)         := have P.sizeof < P.not.sizeof, from sizeof_prop_not,
-                          P.max_nesting_level
-| (prop.and P₁ P₂)     := have P₁.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₁,
-                          have P₂.sizeof < (P₁ ⋀ P₂).sizeof, from sizeof_prop_and₂,
-                          max P₁.max_nesting_level P₂.max_nesting_level
-| (prop.or P₁ P₂)      := have P₁.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₁,
-                          have P₂.sizeof < (P₁ ⋁ P₂).sizeof, from sizeof_prop_or₂,
-                          max P₁.max_nesting_level P₂.max_nesting_level
-| (prop.pre t₁ t₂)     := 0
-| (prop.pre₁ op t)     := 0
-| (prop.pre₂ op t₁ t₂) := 0
-| (prop.post t₁ t₂)    := 0
-| (prop.call t)        := 0
-| (prop.forallc x P)   := have P.sizeof < (prop.forallc x P).sizeof, from sizeof_prop_forall,
-                          nat.succ P.max_nesting_level
-| (prop.exis x P)      := 0
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s, s.sizeof⟩],
-  dec_tac := tactic.assumption
-}
-
-def prop.instantiated_n (P: prop): vc := P.instantiate_rep P.max_nesting_level
-
--- top-level calls and quantifiers in positive and negative positions
-mutual inductive prop.has_call_p, prop.has_call_n
-
-with prop.has_call_p: calltrigger → prop → Prop
-| calltrigger {x: term}                                 : prop.has_call_p ⟨x⟩ (prop.call x)
-| not {P: prop} {c: calltrigger}                        : prop.has_call_n c P  → prop.has_call_p c P.not
-| and₁ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_p c P₁ → prop.has_call_p c (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_p c P₂ → prop.has_call_p c (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_p c P₁ → prop.has_call_p c (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_p c P₂ → prop.has_call_p c (P₁ ⋁ P₂)
-
-with prop.has_call_n: calltrigger → prop → Prop
-| not {P: prop} {c: calltrigger}                        : prop.has_call_p c P  → prop.has_call_n c P.not
-| and₁ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_n c P₁ → prop.has_call_n c (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_n c P₂ → prop.has_call_n c (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_n c P₁ → prop.has_call_n c (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_n c P₂ → prop.has_call_n c (P₁ ⋁ P₂)
-
-def calls_p (P: prop): set calltrigger := λc, prop.has_call_p c P
-def calls_n (P: prop): set calltrigger := λc, prop.has_call_n c P
-
-mutual inductive prop.has_quantifier_p, prop.has_quantifier_n
-
-with prop.has_quantifier_p: callquantifier → prop → Prop
-| callquantifier {x: var} {P: prop}           : prop.has_quantifier_p ⟨x, P⟩ (prop.forallc x P)
-| not {P: prop} {q: callquantifier}           : prop.has_quantifier_n q P  → prop.has_quantifier_p q P.not
-| and₁ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_p q P₁ → prop.has_quantifier_p q (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_p q P₂ → prop.has_quantifier_p q (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_p q P₁ → prop.has_quantifier_p q (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_p q P₂ → prop.has_quantifier_p q (P₁ ⋁ P₂)
-
-with prop.has_quantifier_n: callquantifier → prop → Prop
-| not {P: prop} {q: callquantifier}           : prop.has_quantifier_p q P  → prop.has_quantifier_n q P.not
-| and₁ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋁ P₂)
--- universal quantifiers below existential quantifiers only occur in positive positions,
--- so can be skolemized instead of instantiated
-
-def quantifiers_p (P: prop): set callquantifier := λc, has_quantifier_p c P
-def quantifiers_n (P: prop): set callquantifier := λc, has_quantifier_n c P
-
- -- propositions without call triggers or quantifiers do not participate in instantiations
-def no_instantiations(P: prop): Prop := (calls_p P = ∅) ∧ (calls_n P = ∅) ∧
-                                        (quantifiers_p P = ∅) ∧ (quantifiers_n P = ∅)
-
-def calltrigger.subst (σ: env) (c: calltrigger): calltrigger := ⟨term.subst_env σ c.x⟩
-
-@[reducible]
-def calls_p_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_p P
-
-@[reducible]
-def calls_n_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_n P
-
-def prop.to_vc: prop → vc
-| (prop.term t)        := vc.term t
-| (prop.not P)         := vc.not P.to_vc
-| (prop.and P₁ P₂)     := P₁.to_vc ⋀ P₂.to_vc
-| (prop.or P₁ P₂)      := P₁.to_vc ⋁ P₂.to_vc
-| (prop.pre t₁ t₂)     := vc.pre t₁ t₂
-| (prop.pre₁ op t)     := vc.pre₁ op t
-| (prop.pre₂ op t₁ t₂) := vc.pre₂ op t₁ t₂
-| (prop.post t₁ t₂)    := vc.post t₁ t₂
-| (prop.call _)        := vc.term value.true
-| (prop.forallc x P)   := vc.univ x P.to_vc
-| (prop.exis x P)      := have P.sizeof < (prop.exis x P).sizeof, from sizeof_prop_exis,
-                          vc.not (vc.univ x (vc.not P.erased_p))
-
-
--- lemmas
+import .definitions2 .freevars
 
 lemma prop.has_call_p.term.inv {c: calltrigger} {t: term}: c ∉ calls_p t :=
-  assume t_has_call: has_call_p c t,
+  assume t_has_call: prop.has_call_p c t,
   show «false», by cases t_has_call
 
 lemma prop.has_call_p.not.inv {c: calltrigger} {P: prop}: c ∈ calls_p P.not → c ∈ calls_n P :=
@@ -752,7 +64,7 @@ lemma prop.has_call_p.exis.inv {c: calltrigger} {x: var} {P: prop}: c ∉ calls_
   end
 
 lemma prop.has_call_n.term.inv {c: calltrigger} {t: term}: c ∉ calls_n t :=
-  assume t_has_call_n: has_call_n c t,
+  assume t_has_call_n: prop.has_call_n c t,
   show «false», by cases t_has_call_n
 
 lemma prop.has_call_n.not.inv {c: calltrigger} {P: prop}: c ∈ calls_n P.not → c ∈ calls_p P :=
@@ -2013,6 +1325,32 @@ lemma prop.has_call_of_subst_env_has_call {P: prop} {σ: env}:
     from ih.right c' h3,
   end
 
+    -- induction P,
+    -- case prop.term t {
+    -- },
+    -- case prop.not P₁ ih {
+    -- },
+    -- case prop.and P₁ P₂ P₁_ih P₂_ih {
+    -- },
+    -- case prop.or P₁ P₂ P₁_ih P₂_ih {
+    -- },
+    -- case prop.pre t₁ t₂ {
+    -- },
+    -- case prop.pre₁ op t {
+    -- },
+    -- case prop.pre₂ op t₁ t₂ {
+    -- },
+    -- case prop.call t {
+    -- },
+    -- case prop.post t₁ t₂ {
+    -- },
+    -- case prop.forallc y P₁ P₁_ih {
+    -- },
+    -- case prop.exis y P₁ P₁_ih {
+    -- }
+
+
+
 lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
        (c ∈ calls_p P ↔ c ∈ P.find_calls_p) ∧ (c ∈ calls_n P ↔ c ∈ P.find_calls_n) :=
   begin
@@ -2100,17 +1438,17 @@ lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
       from P₂_ih.left.mp h2,
 
       assume h1,
-      change has_call_p c (prop.and P₁ P₂),
+      change prop.has_call_p c (prop.and P₁ P₂),
 
       unfold prop.find_calls_p at h1,
       have h2, from list.mem_append.mp h1,
       cases h2,
       have h3, from P₁_ih.left.mpr a,
-      have h4: has_call_p c P₁, from h3,
+      have h4: prop.has_call_p c P₁, from h3,
       from prop.has_call_p.and₁ h4,
 
       have h3, from P₂_ih.left.mpr a,
-      have h4: has_call_p c P₂, from h3,
+      have h4: prop.has_call_p c P₂, from h3,
       from prop.has_call_p.and₂ h4,
 
       split,
@@ -2131,17 +1469,17 @@ lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
       from P₂_ih.right.mp h2,
 
       assume h1,
-      change has_call_n c (prop.and P₁ P₂),
+      change prop.has_call_n c (prop.and P₁ P₂),
 
       unfold prop.find_calls_n at h1,
       have h2, from list.mem_append.mp h1,
       cases h2,
       have h3, from P₁_ih.right.mpr a,
-      have h4: has_call_n c P₁, from h3,
+      have h4: prop.has_call_n c P₁, from h3,
       from prop.has_call_n.and₁ h4,
 
       have h3, from P₂_ih.right.mpr a,
-      have h4: has_call_n c P₂, from h3,
+      have h4: prop.has_call_n c P₂, from h3,
       from prop.has_call_n.and₂ h4
     },
     case prop.or P₁ P₂ P₁_ih P₂_ih {
@@ -2165,17 +1503,17 @@ lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
       from P₂_ih.left.mp h2,
 
       assume h1,
-      change has_call_p c (prop.or P₁ P₂),
+      change prop.has_call_p c (prop.or P₁ P₂),
 
       unfold prop.find_calls_p at h1,
       have h2, from list.mem_append.mp h1,
       cases h2,
       have h3, from P₁_ih.left.mpr a,
-      have h4: has_call_p c P₁, from h3,
+      have h4: prop.has_call_p c P₁, from h3,
       from prop.has_call_p.or₁ h4,
 
       have h3, from P₂_ih.left.mpr a,
-      have h4: has_call_p c P₂, from h3,
+      have h4: prop.has_call_p c P₂, from h3,
       from prop.has_call_p.or₂ h4,
 
       split,
@@ -2196,17 +1534,17 @@ lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
       from P₂_ih.right.mp h2,
 
       assume h1,
-      change has_call_n c (prop.or P₁ P₂),
+      change prop.has_call_n c (prop.or P₁ P₂),
 
       unfold prop.find_calls_n at h1,
       have h2, from list.mem_append.mp h1,
       cases h2,
       have h3, from P₁_ih.right.mpr a,
-      have h4: has_call_n c P₁, from h3,
+      have h4: prop.has_call_n c P₁, from h3,
       from prop.has_call_n.or₁ h4,
 
       have h3, from P₂_ih.right.mpr a,
-      have h4: has_call_n c P₂, from h3,
+      have h4: prop.has_call_n c P₂, from h3,
       from prop.has_call_n.or₂ h4
     },
     case prop.pre t₁ t₂ {
@@ -2363,6 +1701,52 @@ lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
     }
   end
 
+lemma to_vc_valid_of_erased_n_valid {σ: env} {P: prop}:
+      ((σ ⊨ P.erased_n) → σ ⊨ P.to_vc) ∧ ((σ ⊨ P.to_vc) → σ ⊨ P.erased_p) :=
+  begin
+    induction P,
+    case prop.term t {
+      split,
+
+      unfold prop.erased_n,
+      unfold prop.to_vc,
+      from id,
+
+      unfold prop.erased_p,
+      unfold prop.to_vc,
+      from id
+    },
+    case prop.not P₁ ih {
+      admit
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      admit
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      admit
+    },
+    case prop.pre t₁ t₂ {
+      admit
+    },
+    case prop.pre₁ op t {
+      admit
+    },
+    case prop.pre₂ op t₁ t₂ {
+      admit
+    },
+    case prop.call t {
+      admit
+    },
+    case prop.post t₁ t₂ {
+      admit
+    },
+    case prop.forallc y P₁ P₁_ih {
+      admit
+    },
+    case prop.exis y P₁ P₁_ih {
+      admit
+    }
+  end
 
 --  inst_n(P)   ⇒   inst_p(P)
 --         ⇘    ⇗  

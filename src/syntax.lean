@@ -24,7 +24,7 @@ inductive binop
 
 mutual inductive value, exp, term, spec, env
 
--- v ∈ Values := true | false | n | <func f(x) R S {e}, H, σ>
+-- v ∈ Values := true | false | n | <func f(x) R S {e}, σ>
 with value: Type
 | true  : value
 | false : value
@@ -64,7 +64,7 @@ with env: Type
 | empty : env
 | cons  : env → var → value → env
 
--- s ∈ Stacks := (R, H, σ, e) | s · (R, H, σ, let y = f(x) in e)
+-- s ∈ Stacks := (R, σ, e) | s · (R, σ, let y = f(x) in e)
 inductive stack
 | top  : spec → env → exp → stack
 | cons : stack → spec → env → var → var → var → exp → stack

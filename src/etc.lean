@@ -1,3 +1,5 @@
+-- auxiliary lemmas unrelated to verifier
+
 import data.set
 
 -- auxiliary lemmas for nat

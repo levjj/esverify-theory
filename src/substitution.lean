@@ -1,136 +1,195 @@
-import .syntax .notations .freevars
+-- lemmas about substitution
 
--- substitution
+import .definitions1 .freevars
 
-def term.subst (x: var) (v: value): term → term
-| (term.value v')       := v'
-| (term.var y)          := if x = y then v else y
-| (term.unop op t)      := term.unop op t.subst
-| (term.binop op t₁ t₂) := term.binop op t₁.subst t₂.subst
-| (term.app t₁ t₂)      := term.app t₁.subst t₂.subst
+lemma env.contains.inv {σ: env} {x y: var} {v: value}: x ∈ (σ[y↦v]) → (x = y ∨ x ∈ σ) :=
+  assume x_in: x ∈ (σ[y↦v]),
+  show x = y ∨ x ∈ σ, by { cases x_in, left, refl, right, from a }
 
-def term.subst_env: env → term → term
-| env.empty t := t
-| (σ[x↦v]) t :=
-    have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
-    term.subst x v (term.subst_env σ t)
+lemma env.contains.same.inv {σ: env} {x y: var} {v: value}: x ∉ (σ[y↦v]) → ¬ (x = y ∨ x ∈ σ) :=
+  assume x_not_in: x ∉ (σ[y↦v]),
+  assume : (x = y ∨ x ∈ σ),
+  this.elim (
+    assume x_is_y: x = y,
+    have x ∈ (σ[x↦v]), from env.contains.same,
+    have x ∈ (σ[y↦v]), from @eq.subst var (λa, x ∈ (σ[a↦v])) x y x_is_y this,
+    show «false», from x_not_in this
+  ) (
+    assume : x ∈ σ,
+    have x ∈ (σ[y↦v]), from env.contains.rest this,
+    show «false», from x_not_in this
+  )
 
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
-  dec_tac := tactic.assumption
-}
+lemma env.contains_apply_equiv {σ: env} {x: var}:
+  ((σ x = none) ↔ (x ∉ σ)) ∧ ((∃v, σ x = some v) ↔ (x ∈ σ)) :=
+begin
+  induction σ with σ' y v' ih,
+  show ((env.empty x = none) ↔ (x ∉ env.empty)) ∧ ((∃v, env.empty x = some v) ↔ (x ∈ env.empty)), by begin
+    split,
+    show (env.empty x = none) ↔ (x ∉ env.empty), by begin
+      split,
+      show (env.empty x = none) → (x ∉ env.empty), by begin
+        assume : (env.empty x = none),
+        by_contradiction h,
+        cases h
+      end,
+      show (x ∉ env.empty) → (env.empty x = none), by begin
+        assume : (x ∉ env.empty),
+        have : (env.apply env.empty x = none), by unfold env.apply,
+        show (env.empty x = none), from this
+      end
+    end,
+    show (∃v, env.empty x = some v) ↔ (x ∈ env.empty), by begin
+      split,
+      show (∃v, env.empty x = some v) → (x ∈ env.empty), from (
+        assume : (∃v, env.empty x = some v),
+        let (⟨v, h0⟩) := this in
+        have h1: env.apply env.empty x = some v, from h0,
+        have h2: env.apply env.empty x = none, by unfold env.apply,
+        have some v = none, from eq.trans h1.symm h2,
+        show (x ∈ env.empty), by contradiction
+      ),
+      show (x ∈ env.empty) → (∃v,env.empty x = some v), by begin
+        assume h: x ∈ env.empty,
+        cases h
+      end
+    end
+  end,
+  show (((σ'[y↦v']) x = none) ↔ (x ∉ (σ'[y↦v']))) ∧ ((∃v, (σ'[y↦v']) x = some v) ↔ (x ∈ (σ'[y↦v']))), by begin
+    split,
+    show (((σ'[y↦v']) x = none) ↔ (x ∉ (σ'[y↦v']))), by begin
+      split,
+      show (((σ'[y↦v']) x = none) → (x ∉ (σ'[y↦v']))), by begin
+        assume h: ((σ'[y↦v']) x = none),
+        have h2: (env.apply (σ'[y↦v']) x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
+        by unfold env.apply,
+        have h3: ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = none),
+        from eq.trans h2.symm h,
+        have h4: (σ'.apply x = none), by begin
+          by_cases (y = x ∧ option.is_none (σ'.apply x)),
+          show (σ'.apply x = none), by begin
+            have : ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = ↑v'),
+            by simp[h],
+            have : (none = ↑v'), from eq.trans h3.symm this,
+            contradiction
+          end,
+          show (σ'.apply x = none), by begin
+            have : ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x),
+            by simp[h],
+            show (σ'.apply x = none), from eq.trans this.symm h3
+          end
+        end,
+        have : x ∉ σ', from ih.left.mp h4,
+        have h5: ¬ (x = y), by begin
+          by_contradiction,
+          have h6: (option.is_none (σ'.apply x) = tt), from option.is_none.inv.mp h4,
+          have : (y = x ∧ option.is_none (σ'.apply x)), from ⟨a.symm, h6⟩,
+          have : ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = ↑v'),
+          by simp[this],
+          have : (none = ↑v'), from eq.trans h3.symm this,
+          contradiction
+        end,
+        by_contradiction a,
+        cases a,
+        case env.contains.same x_is_x {
+          contradiction
+        },
+        case env.contains.rest x_is_x {
+          contradiction
+        }
+      end,
+      show (x ∉ (σ'[y↦v'])) → (((σ'[y↦v']) x = none)), by begin
+        assume : (x ∉ (σ'[y↦v'])),
+        have h7: ¬ (x = y ∨ x ∈ σ'), from env.contains.same.inv this,
+        have : x ≠ y, from (not_or_distrib.mp h7).left,
+        have h8: y ≠ x, from ne.symm this,
+        have h9: x ∉ σ', from (not_or_distrib.mp h7).right,
+        have h10: (σ'.apply x = none), from ih.left.mpr h9,
+        have h11: (env.apply (σ'[y↦v']) x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
+        by unfold env.apply,
+        have h12: ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x),
+        by simp[h8],
+        show ((σ'[y↦v']) x = none), from eq.trans (eq.trans h11 h12) h10
+      end
+    end,
+    show ((∃v, (σ'[y↦v']) x = some v) ↔ (x ∈ (σ'[y↦v']))), by begin
+      split,
+      show ((∃v, (σ'[y↦v']) x = some v) → (x ∈ (σ'[y↦v']))), from (
+        assume : (∃v, (σ'[y↦v']) x = some v),
+        let ⟨v, h13⟩ := this in begin
+        have h14: (env.apply (σ'[y↦v']) x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
+        by unfold env.apply,
+        by_cases (y = x ∧ option.is_none (σ'.apply x)) with h15,
+        show (x ∈ (σ'[y↦v'])), by begin
+          have x_is_y: (y = x), from h15.left,
+          have : (x ∈ (σ'[x↦v'])), from env.contains.same,
+          show x ∈ (σ'[y↦v']), from @eq.subst var (λa, x ∈ (σ'[a↦v'])) x y x_is_y.symm this
+        end,
+        show (x ∈ (σ'[y↦v'])), by begin
+          have : ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x),
+          by simp[h15],
+          have : (σ'.apply x = v), from eq.trans (eq.trans this.symm h14.symm) h13,
+          have : x ∈ σ', from ih.right.mp (exists.intro v this),
+          show x ∈ (σ'[y↦v']), from env.contains.rest this
+        end
+      end),
+      show (x ∈ (σ'[y↦v'])) → (∃v, (σ'[y↦v']) x = some v), by begin
+        assume h16: (x ∈ (σ'[y↦v'])),
+        have h17: (env.apply (σ'[y↦v']) x = (if y = x ∧ option.is_none (σ'.apply x) then v' else σ'.apply x)),
+        by unfold env.apply,
+        cases h16,
+        case env.contains.same {
+          by_cases (x = x ∧ option.is_none (σ'.apply x)),
+          show (∃v, (σ'[x↦v']) x = some v), by begin
+            have : ((if x = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = v'),
+            by { simp[h] },
+            show (∃v, (σ'[x↦v']) x = some v), from exists.intro v' (eq.trans h17 this)
+          end,
+          show (∃v, (σ'[x↦v']) x = some v), by begin
+            have h19: ¬option.is_none (σ'.apply x), by begin
+              by_contradiction h18,
+              have : (x = x ∧ option.is_none (σ'.apply x)), from ⟨rfl, h18⟩,
+              exact h this
+            end,
+            have : ((option.is_some (σ'.apply x)):Prop), from option.some_iff_not_none.mpr h19,
+            have : ∃v, (σ'.apply x) = some v, from option.is_some_iff_exists.mp this,
+            cases this with v h20,
+            have : ((if x = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x),
+            by { simp[h], simp[h19] },
+            show (∃v, (σ'[x↦v']) x = some v), from exists.intro v (eq.trans (eq.trans h17 this) h20)
+          end
+        },
+        case env.contains.rest h27 {
+          have : (∃v, σ'.apply x = some v), from ih.right.mpr h27,
+          cases this with v h28,
+          have : ¬ (option.is_none (σ'.apply x)),
+          from option.some_iff_not_none.mp (option.is_some_iff_exists.mpr (exists.intro v h28)),
+          have : ((if y = x ∧ option.is_none (σ'.apply x) then ↑v' else σ'.apply x) = σ'.apply x),
+          by simp[this],
+          show (∃v, (σ'[y↦v']) x = some v), from exists.intro v (eq.trans (eq.trans h17 this) h28)
+        }
+      end
+    end
+  end
+end
 
-def prop.subst (x: var) (v: value): prop → prop
-| (prop.term t)        := term.subst x v t
-| (prop.not P)         := P.subst.not
-| (prop.and P Q)       := P.subst ⋀ Q.subst
-| (prop.or P Q)        := P.subst ⋁ Q.subst
-| (prop.pre t₁ t₂)     := prop.pre (term.subst x v t₁) (term.subst x v t₂)
-| (prop.pre₁ op t)     := prop.pre₁ op (term.subst x v t)
-| (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.subst x v t₁) (term.subst x v t₂)
-| (prop.call t)        := prop.call (term.subst x v t)
-| (prop.post t₁ t₂)    := prop.post (term.subst x v t₁) (term.subst x v t₂)
-| (prop.forallc y P)   := prop.forallc y (if x = y then P else P.subst)
-| (prop.exis y P)      := prop.exis y (if x = y then P else P.subst)
-
-def prop.subst_env: env → prop → prop
-| env.empty P := P
-| (σ[x↦v]) P :=
-    have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
-    prop.subst x v (prop.subst_env σ P)
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
-  dec_tac := tactic.assumption
-}
-
-def vc.subst (x: var) (v: value): vc → vc
-| (vc.term t)        := term.subst x v t
-| (vc.not P)         := vc.not P.subst
-| (vc.and P Q)       := P.subst ⋀ Q.subst
-| (vc.or P Q)        := P.subst ⋁ Q.subst
-| (vc.pre t₁ t₂)     := vc.pre (term.subst x v t₁) (term.subst x v t₂)
-| (vc.pre₁ op t)     := vc.pre₁ op (term.subst x v t)
-| (vc.pre₂ op t₁ t₂) := vc.pre₂ op (term.subst x v t₁) (term.subst x v t₂)
-| (vc.post t₁ t₂)    := vc.post (term.subst x v t₁) (term.subst x v t₂)
-| (vc.univ y P)      := vc.univ y (if x = y then P else P.subst)
-
-def vc.subst_env: env → vc → vc
-| env.empty P := P
-| (σ[x↦v]) P :=
-    have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
-    vc.subst x v (vc.subst_env σ P)
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
-  dec_tac := tactic.assumption
-}
-
-def env.without: env → var → env
-| env.empty y := env.empty
-| (σ[x↦v]) y := have σ.sizeof < (σ[x ↦ v]).sizeof, from sizeof_env_rest,
-                if x = y then env.without σ y else ((env.without σ y)[x↦v])
-
-using_well_founded {
-  rel_tac := λ _ _, `[exact ⟨_, measure_wf (λ e, e.1.sizeof)⟩],
-  dec_tac := tactic.assumption
-}
-
--- notation
-
-@[reducible]
-def closed_subst {α: Type} [h: has_fv α] (σ: env) (a: α): Prop := FV a ⊆ σ.dom
-
-notation σ `⊨` p: 20 := valid (vc.subst_env σ p)
-
-notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated_n P)
-
--- renaming
-
-def term.rename (x y: var): term → term
-| (term.value v')       := v'
-| (term.var z)          := if x = z then y else z
-| (term.unop op t)      := term.unop op t.rename
-| (term.binop op t₁ t₂) := term.binop op t₁.rename t₂.rename
-| (term.app t₁ t₂)      := term.app t₁.rename t₂.rename
-
-def prop.rename (x y: var): prop → prop
-| (prop.term t)        := term.rename x y t
-| (prop.not P)         := P.rename.not
-| (prop.and P Q)       := P.rename ⋀ Q.rename
-| (prop.or P Q)        := P.rename ⋁ Q.rename
-| (prop.pre t₁ t₂)     := prop.pre (term.rename x y t₁) (term.rename x y t₂)
-| (prop.pre₁ op t)     := prop.pre₁ op (term.rename x y t)
-| (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.rename x y t₁) (term.rename x y t₂)
-| (prop.call t)        := prop.call (term.rename x y t)
-| (prop.post t₁ t₂)    := prop.post (term.rename x y t₁) (term.rename x y t₂)
-| (prop.forallc z P)   := prop.forallc z (if x = z then P else P.rename)
-| (prop.exis z P)      := prop.exis z (if x = z then P else P.rename)
-
--- subst term
-
-def term.substt (x: var) (t: term): term → term
-| (term.value v')       := v'
-| (term.var y)          := if x = y then t else y
-| (term.unop op t)      := term.unop op t.substt
-| (term.binop op t₁ t₂) := term.binop op t₁.substt t₂.substt
-| (term.app t₁ t₂)      := term.app t₁.substt t₂.substt
-
-def prop.substt (x: var) (t: term): prop → prop
-| (prop.term t₁)       := term.substt x t t₁
-| (prop.not P)         := P.substt.not
-| (prop.and P Q)       := P.substt ⋀ Q.substt
-| (prop.or P Q)        := P.substt ⋁ Q.substt
-| (prop.pre t₁ t₂)     := prop.pre (term.substt x t t₁) (term.substt x t t₂)
-| (prop.pre₁ op t₁)    := prop.pre₁ op (term.substt x t t₁)
-| (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.substt x t t₁) (term.substt x t t₂)
-| (prop.call t₁)       := prop.call (term.substt x t t₁)
-| (prop.post t₁ t₂)    := prop.post (term.substt x t t₁) (term.substt x t t₂)
-| (prop.forallc y P)   := prop.forallc y (if x = y then P else P.substt)
-| (prop.exis y P)      := prop.exis y (if x = y then P else P.substt)
-
-
--- lemmas
+instance {σ: env} {x: var} : decidable (env.contains σ x) :=
+  let r := env.apply σ x in
+  have h: r = env.apply σ x, from rfl,
+  @option.rec_on value (λa, (r = a) → decidable (env.contains σ x)) r
+  (
+    assume : r = none,
+    have env.apply σ x = none, from eq.trans h this,
+    have ¬ (x ∈ σ), from env.contains_apply_equiv.left.mp this,
+    is_false this
+  ) (
+    assume v: value,
+    assume : r = some v,
+    have env.apply σ x = some v, from eq.trans h this,
+    have ∃v, env.apply σ x = some v, from exists.intro v this,
+    have x ∈ σ, from env.contains_apply_equiv.right.mp this,
+    is_true this
+  ) rfl
 
 lemma env.contains_without.inv {σ: env} {x y: var}:
       (x ∈ σ.without y) → (x ≠ y) ∧ x ∈ σ :=

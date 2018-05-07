@@ -1,7 +1,8 @@
-/-
-import data.set
+-- auxiliary lemmas about environments and variable bindings
 
-import .syntax .notations .freevars .substitution .vcgen
+import .definitions2
+
+/-
 
 lemma free_of_contains {P: prop} {σ: env} {x: var}: (⊢ σ : P) → x ∈ σ → x ∈ FV P :=
   assume env_verified: ⊢ σ : P,
@@ -50,7 +51,7 @@ lemma free_of_contains {P: prop} {σ: env} {x: var}: (⊢ σ : P) → x ∈ σ �
         show x ∈ FV (Q ⋀ y ≡ value.num n), from free_in_prop.and₁ this
       )
     },
-    case env.vcgen.func f σ₂ σ₁ g gx R S e H Q₁ Q₂ Q₃ _ _ _ _ _ _ _ fv_R fv_S e_verified _ ih₁ ih₂ { from
+    case env.vcgen.func f σ₂ σ₁ g gx R S e Q₁ Q₂ Q₃ _ _ _ _ _ _ _ fv_R fv_S e_verified _ ih₁ ih₂ { from
       or.elim (env.contains.inv x_contained) (
         assume : x = f,
         have free_in_term x f, from this ▸ free_in_term.var x,

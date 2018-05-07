@@ -1,7 +1,5 @@
 /-
-import data.set
-
-import .syntax .notations .logic .evaluation .vcgen .progress .preservation
+import .definitions2 .progress .preservation
 
 lemma trivial_freevars: FV (prop.term value.true ⋀ prop.term value.true) = FV (prop.term value.true) :=
   have h1: FV (prop.term value.true ⋀ prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (

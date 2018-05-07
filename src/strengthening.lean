@@ -1,5 +1,5 @@
 /-
-import .syntax .notations .logic .evaluation .vcgen .bindings
+import .definitions2
 
 lemma strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
   dominates_p σ P P' → (σ ⊨ (P ⋀ Q).instantiated_p) → σ ⊨ (P' ⋀ Q).instantiated_p :=

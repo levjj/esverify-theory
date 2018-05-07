@@ -1,147 +1,6 @@
+import .definitions2 .freevars .substitution
+
 /-
-import .syntax .notations .evaluation .freevars .substitution .qi
-
-reserve infix `⊢`:10
-
-inductive exp.vcgen : prop → exp → propctx → Prop
-notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
-
-| tru {P: prop} {x: var} {e: exp} {Q: propctx}:
-    x ∉ FV P →
-    (P ⋀ x ≡ value.true ⊢ e : Q) →
-    (P ⊢ lett x = true in e : propctx.exis x (x ≡ value.true ⋀ Q))
-
-| fals {P: prop} {x: var} {e: exp} {Q: propctx}:
-    x ∉ FV P →
-    (P ⋀ x ≡ value.false ⊢ e : Q) →
-    (P ⊢ letf x = false in e : propctx.exis x (x ≡ value.false ⋀ Q))
-
-| num {P: prop} {x: var} {n: ℕ} {e: exp} {Q: propctx}:
-    x ∉ FV P →
-    (P ⋀ x ≡ value.num n ⊢ e : Q) →
-    (P ⊢ letn x = n in e : propctx.exis x (x ≡ value.num n ⋀ Q))
-
-| func {P: prop} {f x: var} {R S: spec} {e₁ e₂: exp} {Q₁ Q₂: propctx}:
-    f ∉ FV P →
-    x ∉ FV P →
-    f ≠ x →
-    x ∈ FV R.to_prop.instantiated_p →
-    FV R.to_prop ⊆ FV P ∪ { f, x } →
-    FV S.to_prop ⊆ FV P ∪ { f, x } →
-    (P ⋀ spec.func f x R S ⋀ R ⊢ e₁ : Q₁) →
-    (P ⋀ prop.func f x R (Q₁ (term.app f x) ⋀ S) ⊢ e₂ : Q₂) →
-    ⟪prop.implies (P ⋀ spec.func f x R S ⋀ R ⋀ Q₁ (term.app f x)) S⟫ →
-    (P ⊢ letf f[x] req R ens S {e₁} in e₂ : propctx.exis f (prop.func f x R (Q₁ (term.app f x) ⋀ S) ⋀ Q₂))
-
-| unop {P: prop} {op: unop} {e: exp} {x y: var} {Q: propctx}:
-    x ∈ FV P →
-    y ∉ FV P →
-    (P ⋀ y ≡ term.unop op x ⊢ e : Q) →
-    ⟪ prop.implies P (prop.pre₁ op x) ⟫ →
-    (P ⊢ letop y = op [x] in e : propctx.exis y (y ≡ term.unop op x ⋀ Q))
-
-| binop {P: prop} {op: binop} {e: exp} {x y z: var} {Q: propctx}:
-    x ∈ FV P →
-    y ∈ FV P →
-    z ∉ FV P →
-    (P ⋀ z ≡ term.binop op x y ⊢ e : Q) →
-    ⟪ prop.implies P (prop.pre₂ op x y) ⟫ →
-    (P ⊢ letop2 z = op [x, y] in e : propctx.exis z (z ≡ term.binop op x y ⋀ Q))
-
-| app {P: prop} {e: exp} {y f x: var} {Q: propctx}:
-    f ∈ FV P →
-    x ∈ FV P →
-    y ∉ FV P →
-    (P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e : Q) →
-    ⟪ prop.implies (P ⋀ prop.call f x) (term.unop unop.isFunc f ⋀ prop.pre f x) ⟫ →
-    (P ⊢ letapp y = f [x] in e : propctx.exis y (prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⋀ Q))
-
-| ite {P: prop} {e₁ e₂: exp} {x: var} {Q₁ Q₂: propctx}:
-    x ∈ FV P →
-    (P ⋀ x ⊢ e₁ : Q₁) →
-    (P ⋀ prop.not x ⊢ e₂ : Q₂) →
-    ⟪ prop.implies P (term.unop unop.isBool x) ⟫ →
-    (P ⊢ exp.ite x e₁ e₂ : propctx.implies x Q₁ ⋀ propctx.implies (prop.not x) Q₂)
-
-| return {P: prop} {x: var}:
-    x ∈ FV P →
-    (P ⊢ exp.return x : x ≣ •)
-
-notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
-
-inductive env.vcgen : env → prop → Prop
-notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
-
-| empty:
-    ⊢ env.empty : value.true
-
-| tru {σ: env} {x: var} {Q: prop}:
-    x ∉ σ →
-    (⊢ σ : Q) →
-    (⊢ (σ[x ↦ value.true]) : Q ⋀ x ≡ value.true)
-
-| fls {σ: env} {x: var} {Q: prop}:
-    x ∉ σ →
-    (⊢ σ : Q) →
-    (⊢ (σ[x ↦ value.false]) : Q ⋀ x ≡ value.false)
-
-| num {n: ℤ} {σ: env} {x: var} {Q: prop}:
-    x ∉ σ →
-    (⊢ σ : Q) →
-    (⊢ (σ[x ↦ value.num n]) : Q ⋀ x ≡ value.num n)
-
-| func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {H: history} {Q₁ Q₂: prop} {Q₃: propctx}:
-    f ∉ σ₁ →
-    g ∉ σ₂ →
-    x ∉ σ₂ →
-    g ≠ x →
-    (⊢ σ₁ : Q₁) →
-    (⊢ σ₂ : Q₂) →
-    x ∈ FV R.to_prop.instantiated_p →
-    FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
-    FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
-    (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) →
-    ⟪prop.implies (H ⋀ Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S⟫ →
-    (⊢ (σ₁[f ↦ value.func g x R S e H σ₂]) :
-      (Q₁
-       ⋀ f ≡ value.func g x R S e H σ₂
-       ⋀ prop.subst_env (σ₂[g↦value.func g x R S e H σ₂]) (prop.func g x R (Q₃ (term.app g x) ⋀ S))))
-
-notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
-
-inductive stack.vcgen : stack → propctx → Prop
-notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
-
-| top {R: spec} {H: history} {P: prop} {σ: env} {e: exp} {Q: propctx}:
-    (⊢ σ : P) →
-    FV R.to_prop ⊆ FV P →
-    (σ ⊨ R.to_prop.instantiated_n) →
-    (R ⋀ H ⋀ P ⊢ e : Q) →
-    (⊢ₛ (R, H, σ, e) : H ⋀ P ⋀ Q)
-
-| cons {H₁ H₂: history} {P₁ P₂ P₃: prop} {s: stack} {σ₁ σ₂: env}
-       {f fx g x y: var} {R₁ R₂ S₂: spec} {e₁ e₂: exp} {v: value} {Q₁ Q₂ Q₂': propctx}:
-    (⊢ₛ s : Q₂') →
-    y ∉ σ₁ →
-    (⊢ σ₁ : P₁) →
-    (⊢ σ₂ : P₂ ) →
-    (⊢ (σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v]) : P₃) →
-    FV R₁.to_prop ⊆ FV P₁ →
-    (σ₁ ⊨ R₁.to_prop.instantiated_n) →
-    (σ₁ g = value.func f fx R₂ S₂ e₂ H₂ σ₂) →
-    (σ₁ x = v) →
-    (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
-    (H₂ ⋀ P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
-    (∀σ' t, dominates_n σ' (Q₂' t) (H₂ ⋀ P₃ ⋀ (Q₂ t))) →
-    (∀v: value, FV (↑H₂ ⋀ P₃ ⋀ (Q₂ v)) ⊆ FV (Q₂' v)) →
-    ⟪ prop.implies (R₁ ⋀ H₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
-    ((R₂, H₂, σ₂[f↦value.func f fx R₂ S₂ e₂ H₂ σ₂][fx↦v], e₂) ⟶* s) →
-    (⊢ₛ (s · [R₁, H₁, σ₁, letapp y = g[x] in e₁]) : H₁ ⋀ P₁ ⋀
-          propctx.exis y (prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₁))
-
-notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
-
--- lemmas
 
 lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x : Q) → x ∈ FV P :=
   assume return_verified: P ⊢ exp.return x : Q,
@@ -152,10 +11,10 @@ lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x 
     }
   end
 
-lemma stack.vcgen.top.inv {R: spec} {H: history} {σ: env} {e: exp} {Q: propctx}:
-  (⊢ₛ (R, H, σ, e) : Q) →
-  ∃P Q₂, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated_n) ∧ (R ⋀ H ⋀ P ⊢ e: Q₂) :=
-  assume top_verified: ⊢ₛ (R, H, σ, e) : Q,
+lemma stack.vcgen.top.inv {R: spec} {σ: env} {e: exp} {Q: propctx}:
+  (⊢ₛ (R, σ, e) : Q) →
+  ∃P Q₂, (⊢ σ: P) ∧ (FV R.to_prop ⊆ FV P) ∧ (σ ⊨ R.to_prop.instantiated_n) ∧ (R ⋀ P ⊢ e: Q₂) :=
+  assume top_verified: ⊢ₛ (R, σ, e) : Q,
   begin
     cases top_verified,
     case stack.vcgen.top P Q env_verified fv_R R_valid e_verified {

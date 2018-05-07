@@ -1,5 +1,5 @@
 /-
-import .syntax .notations .logic .evaluation .vcgen .bindings
+import .definitions2
 
 @[reducible]
 def is_value(s: stack): Prop :=
