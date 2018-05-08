@@ -3068,3 +3068,30 @@ lemma vc.closed_subst.implies.inv {P Q: vc} {σ: env}:
   have P_closed_subst: closed_subst σ P, from vc.closed_subst.not.inv P_not_closed_subst,
   have Q_closed_subst: closed_subst σ Q, from (vc.closed_subst.or.inv P_not_or_Q_closed_subst).right,
   ⟨P_closed_subst, Q_closed_subst⟩
+
+lemma to_vc_closed_from_prop_closed {P: prop} {σ: env}: closed_subst σ P → closed_subst σ P.to_vc :=
+  assume h1: closed_subst σ P,
+  show closed_subst σ P.to_vc, from (
+    assume x: var,
+    assume : x ∈ FV P.to_vc,
+    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_to_vc,
+    show x ∈ σ.dom, from h1 this
+  )
+
+lemma erased_p_closed_from_prop_closed {P: prop} {σ: env}: closed_subst σ P → closed_subst σ P.erased_p :=
+  assume h1: closed_subst σ P,
+  show closed_subst σ P.erased_p, from (
+    assume x: var,
+    assume : x ∈ FV P.erased_p,
+    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_erased_n.left,
+    show x ∈ σ.dom, from h1 this
+  )
+
+lemma erased_n_closed_from_prop_closed {P: prop} {σ: env}: closed_subst σ P → closed_subst σ P.erased_n :=
+  assume h1: closed_subst σ P,
+  show closed_subst σ P.erased_n, from (
+    assume x: var,
+    assume : x ∈ FV P.erased_n,
+    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_erased_n.right,
+    show x ∈ σ.dom, from h1 this
+  )

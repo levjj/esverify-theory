@@ -1,7 +1,6 @@
 -- lemmas about validity of logical propositions
 
-/-
-import .definitions2
+import .definitions2 .freevars .substitution .evaluation
 
 lemma valid.false.elim {P: vc}: closed P → (⊨ vc.implies value.false P) :=
   assume P_closed: closed P,
@@ -265,7 +264,7 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
     show σ ⊨ P₃, from valid_env.mp h2 this
   )
 
-lemma env.contains_of_valid_env_term_instantiated {σ: env} {x: var} {t: term}:
+lemma env.contains_of_valid_env_term {σ: env} {x: var} {t: term}:
       x ∈ FV t → (σ ⊨ t) → (x ∈ σ) :=
   assume x_free_in_t: x ∈ FV t,
   assume h1: σ ⊨ vc.term t,
@@ -293,7 +292,7 @@ lemma valid_env.subst_of_eq {σ: env} {x: var} {v: value}:
   have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
   have term.subst_env σ v = v, from term.subst_env.value,
   have h5: ⊨ (term.subst_env σ x ≡ v), from this ▸ h4,
-  have x ∈ σ, from env.contains_of_valid_env_term_instantiated (free_in_term.binop₁ (free_in_term.var x)) h1,
+  have x ∈ σ, from env.contains_of_valid_env_term (free_in_term.binop₁ (free_in_term.var x)) h1,
   have ∃v', σ x = some v', from env.contains_apply_equiv.right.mpr this,
   let ⟨v', h6⟩ := this in
   have term.subst_env σ x = v', from (term.subst_env.var.right v').mp h6,
@@ -302,6 +301,8 @@ lemma valid_env.subst_of_eq {σ: env} {x: var} {v: value}:
   have binop.apply binop.eq v' v = some value.true, from valid.binop.mpr this,
   have v' = v, from binop.eq.inv this,
   show σ x = some v, from h6.symm ▸ (some.inj.inv this)
+
+/-
 
 lemma valid_env.subst_of_eq_instantiated_p {σ: env} {x: var} {v: value}:
       (σ ⊨ prop.instantiated_p (x ≡ v)) → (σ x = v) :=

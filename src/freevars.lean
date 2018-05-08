@@ -1,6 +1,6 @@
 -- lemmas about free variables and environments
 
-import .definitions1
+import .definitions2
 
 lemma free_in_term.value.inv {x: var} {v: value}: ¬ free_in_term x v :=
   assume x_free_in_v: free_in_term x v,
@@ -999,3 +999,323 @@ lemma vc.closed.implies.inv {P Q: vc}: closed (vc.implies P Q) → closed P ∧ 
   have P_closed: closed P, from vc.closed.not.inv P_not_closed,
   have Q_closed: closed Q, from (vc.closed.or.inv P_not_or_Q_closed).right,
   ⟨P_closed, Q_closed⟩
+
+lemma free_in_prop_of_free_in_to_vc {P: prop}: FV P.to_vc ⊆ FV P :=
+  begin
+    assume x: var,
+    assume x_free: x ∈ FV P.to_vc,
+    induction P,
+    case prop.term t {
+      unfold prop.to_vc at x_free,
+      apply free_in_prop.term,
+      from free_in_vc.term.inv x_free
+    },
+    case prop.not P₁ ih {
+      unfold prop.to_vc at x_free,
+      apply free_in_prop.not,
+      have h1, from free_in_vc.not.inv x_free,
+      from ih h1
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.to_vc at x_free,
+      cases (free_in_vc.and.inv x_free),
+
+      apply free_in_prop.and₁,
+      from P₁_ih a,
+
+      apply free_in_prop.and₂,
+      from P₂_ih a
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.to_vc at x_free,
+      cases (free_in_vc.or.inv x_free),
+
+      apply free_in_prop.or₁,
+      from P₁_ih a,
+
+      apply free_in_prop.or₂,
+      from P₂_ih a
+    },
+    case prop.pre t₁ t₂ {
+      unfold prop.to_vc at x_free,
+      cases (free_in_vc.pre.inv x_free),
+
+      apply free_in_prop.pre₁,
+      from a,
+
+      apply free_in_prop.pre₂,
+      from a
+    },
+    case prop.pre₁ op t {
+      unfold prop.to_vc at x_free,
+      apply free_in_prop.preop,
+      from free_in_vc.pre₁.inv x_free
+    },
+    case prop.pre₂ op t₁ t₂ {
+      unfold prop.to_vc at x_free,
+      cases (free_in_vc.pre₂.inv x_free),
+
+      apply free_in_prop.preop₁,
+      from a,
+
+      apply free_in_prop.preop₂,
+      from a
+    },
+    case prop.call t {
+      unfold prop.to_vc at x_free,
+      have h2, from free_in_vc.term.inv x_free,
+      show x ∈ FV (prop.call t), from absurd h2 free_in_term.value.inv
+    },
+    case prop.post t₁ t₂ {
+      unfold prop.to_vc at x_free,
+      cases (free_in_vc.post.inv x_free),
+
+      apply free_in_prop.post₁,
+      from a,
+
+      apply free_in_prop.post₂,
+      from a
+    },
+    case prop.forallc y P₁ P₁_ih {
+      unfold prop.to_vc at x_free,
+      have h1, from free_in_vc.univ.inv x_free,
+      apply free_in_prop.forallc,
+      from h1.left,
+      from P₁_ih h1.right
+    },
+    case prop.exis y P₁ P₁_ih {
+      unfold prop.to_vc at x_free,
+      have h1, from free_in_vc.not.inv x_free,
+      have h2, from free_in_vc.univ.inv h1,
+      apply free_in_prop.exis,
+      from h2.left,
+      have h3, from free_in_vc.not.inv h2.right,
+      from P₁_ih h3
+    }
+  end
+
+lemma free_in_prop_of_free_in_erased_n {P: prop}:
+      FV P.erased_p ⊆ FV P ∧ FV P.erased_n ⊆ FV P :=
+  begin
+    induction P,
+
+    case prop.term t {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.term t).erased_p,
+      unfold prop.erased_p at x_free,
+      apply free_in_prop.term,
+      from free_in_vc.term.inv x_free,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.term t).erased_n,
+      unfold prop.erased_n at x_free,
+      apply free_in_prop.term,
+      from free_in_vc.term.inv x_free
+    },
+    case prop.not P₁ ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV P₁.not.erased_p,
+      unfold prop.erased_p at x_free,
+      apply free_in_prop.not,
+      have h1, from free_in_vc.not.inv x_free,
+      from ih.right h1,
+
+      assume x: var,
+      assume x_free: x ∈ FV P₁.not.erased_n,
+      unfold prop.erased_n at x_free,
+      apply free_in_prop.not,
+      have h1, from free_in_vc.not.inv x_free,
+      from ih.left h1
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋀ P₂).erased_p,
+      unfold prop.erased_p at x_free,
+      cases (free_in_vc.and.inv x_free),
+      apply free_in_prop.and₁,
+      from P₁_ih.left a,
+      apply free_in_prop.and₂,
+      from P₂_ih.left a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋀ P₂).erased_n,
+      unfold prop.erased_n at x_free,
+      cases (free_in_vc.and.inv x_free),
+      apply free_in_prop.and₁,
+      from P₁_ih.right a,
+      apply free_in_prop.and₂,
+      from P₂_ih.right a
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋁ P₂).erased_p,
+      unfold prop.erased_p at x_free,
+      cases (free_in_vc.or.inv x_free),
+      apply free_in_prop.or₁,
+      from P₁_ih.left a,
+      apply free_in_prop.or₂,
+      from P₂_ih.left a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋁ P₂).erased_n,
+      unfold prop.erased_n at x_free,
+      cases (free_in_vc.or.inv x_free),
+      apply free_in_prop.or₁,
+      from P₁_ih.right a,
+      apply free_in_prop.or₂,
+      from P₂_ih.right a
+    },
+    case prop.pre t₁ t₂ {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.pre t₁ t₂).erased_p,
+      unfold prop.erased_p at x_free,
+      cases (free_in_vc.pre.inv x_free),
+
+      apply free_in_prop.pre₁,
+      from a,
+
+      apply free_in_prop.pre₂,
+      from a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.pre t₁ t₂).erased_n,
+      unfold prop.erased_n at x_free,
+      cases (free_in_vc.pre.inv x_free),
+
+      apply free_in_prop.pre₁,
+      from a,
+
+      apply free_in_prop.pre₂,
+      from a
+    },
+    case prop.pre₁ op t {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.pre₁ op t).erased_p,
+      unfold prop.erased_p at x_free,
+      apply free_in_prop.preop,
+      from free_in_vc.pre₁.inv x_free,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.pre₁ op t).erased_n,
+      unfold prop.erased_n at x_free,
+      apply free_in_prop.preop,
+      from free_in_vc.pre₁.inv x_free
+    },
+    case prop.pre₂ op t₁ t₂ {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.pre₂ op t₁ t₂).erased_p,
+      unfold prop.erased_p at x_free,
+      cases (free_in_vc.pre₂.inv x_free),
+
+      apply free_in_prop.preop₁,
+      from a,
+
+      apply free_in_prop.preop₂,
+      from a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.pre₂ op t₁ t₂).erased_n,
+      unfold prop.erased_n at x_free,
+      cases (free_in_vc.pre₂.inv x_free),
+
+      apply free_in_prop.preop₁,
+      from a,
+
+      apply free_in_prop.preop₂,
+      from a
+    },
+    case prop.call t {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.call t).erased_p,
+      unfold prop.erased_p at x_free,
+      have h2, from free_in_vc.term.inv x_free,
+      show x ∈ FV (prop.call t), from absurd h2 free_in_term.value.inv,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.call t).erased_n,
+      unfold prop.erased_n at x_free,
+      have h2, from free_in_vc.term.inv x_free,
+      show x ∈ FV (prop.call t), from absurd h2 free_in_term.value.inv
+    },
+    case prop.post t₁ t₂ {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.post t₁ t₂).erased_p,
+      unfold prop.erased_p at x_free,
+      cases (free_in_vc.post.inv x_free),
+
+      apply free_in_prop.post₁,
+      from a,
+
+      apply free_in_prop.post₂,
+      from a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.post t₁ t₂).erased_n,
+      unfold prop.erased_n at x_free,
+      cases (free_in_vc.post.inv x_free),
+
+      apply free_in_prop.post₁,
+      from a,
+
+      apply free_in_prop.post₂,
+      from a
+    },
+    case prop.forallc y P₁ P₁_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.forallc y P₁).erased_p,
+      unfold prop.erased_p at x_free,
+      have h2, from free_in_vc.term.inv x_free,
+      show x ∈ FV (prop.forallc y P₁), from absurd h2 free_in_term.value.inv,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.forallc y P₁).erased_n,
+      unfold prop.erased_n at x_free,
+      have h1, from free_in_vc.univ.inv x_free,
+      apply free_in_prop.forallc,
+      from h1.left,
+      from P₁_ih.right h1.right
+    },
+    case prop.exis y P₁ P₁_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.exis y P₁).erased_p,
+      unfold prop.erased_p at x_free,
+      have h1, from free_in_vc.not.inv x_free,
+      have h2, from free_in_vc.univ.inv h1,
+      apply free_in_prop.exis,
+      from h2.left,
+      have h3, from free_in_vc.not.inv h2.right,
+      from P₁_ih.left h3,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.exis y P₁).erased_n,
+      unfold prop.erased_n at x_free,
+      have h1, from free_in_vc.not.inv x_free,
+      have h2, from free_in_vc.univ.inv h1,
+      apply free_in_prop.exis,
+      from h2.left,
+      have h3, from free_in_vc.not.inv h2.right,
+      from P₁_ih.right h3
+    }
+  end

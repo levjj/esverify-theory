@@ -380,8 +380,8 @@ notation s `⟶*` s':100 := trans_step s s'
 
 constant valid : vc → Prop
 notation `⊨` p: 20 := valid p
-notation σ `⊨` p: 20 := valid (vc.subst_env σ p)
-notation `⟪` P `⟫`: 100 := ∀ (σ: env), σ ⊨ (prop.instantiated_n P)
+notation σ `⊨` p: 20 := ⊨ (vc.subst_env σ p)
+notation `⟪` P `⟫`: 100 := ∀ (σ: env), closed_subst σ P → σ ⊨ (prop.instantiated_n P)
 
 -- simple axioms for logical reasoning
 
