@@ -1,6 +1,6 @@
 -- lemmas about validity of logical propositions
 
-import .definitions2 .freevars .substitution .evaluation
+import .definitions2 .freevars .substitution .evaluation .bindings
 
 lemma valid.false.elim {P: vc}: closed P → (⊨ vc.implies value.false P) :=
   assume P_closed: closed P,
@@ -263,6 +263,58 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
     have σ ⊨ P₂, from valid_env.mp h1 this,
     show σ ⊨ P₃, from valid_env.mp h2 this
   )
+
+lemma valid_env.univ.mp {σ: env} {x: var} {P: vc}: (∀v, σ ⊨ vc.subst x v P) → σ ⊨ vc.univ x P :=
+  assume h1: ∀v, σ ⊨ vc.subst x v P,
+  have h2: ⊨ vc.univ x (vc.subst_env (σ.without x) P), from valid.univ.mp (
+    assume v: value,
+    have h3: ⊨ vc.subst_env σ (vc.subst x v P), from h1 v,
+    have FV P ⊆ σ.dom ∪ { x, }, from (
+      assume y: var,
+      assume h4: y ∈ FV P,
+      if h5: x = y then (
+        show y ∈ σ.dom ∪ { x, }, from set.mem_union_right σ.dom ((set.mem_singleton_iff y x).mpr h5.symm)
+      ) else (
+        have x ≠ y, from h5,
+        have h6: y ∈ FV (vc.subst x v P), from vc.free_of_diff_subst h4 this.symm,
+        have closed_subst σ (vc.subst x v P), from valid_env.closed (h1 v),
+        have y ∈ σ.dom, from this h6,
+        show y ∈ σ.dom ∪ { x, }, from set.mem_union_left {x, } this
+      )
+    ),
+    have vc.subst_env σ (vc.subst x v P) = vc.subst x v (vc.subst_env (σ.without x) P),
+    from vc.subst_env.reorder this,
+    show ⊨ vc.subst x v (vc.subst_env (σ.without x) P), from this ▸ h3
+  ),
+  have vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env (σ.without x) P),
+  from vc.subst_env.univ,
+  have ⊨ vc.subst_env σ (vc.univ x P), from this.symm ▸ h2,
+  show σ ⊨ vc.univ x P, from this
+
+lemma valid_env.univ.mpr {σ: env} {x: var} {P: vc}: (σ ⊨ vc.univ x P) → ∀v, σ ⊨ vc.subst x v P :=
+  assume h1: σ ⊨ vc.univ x P,
+  assume v: value,
+  have vc.subst_env σ (vc.univ x P) = vc.univ x (vc.subst_env (σ.without x) P),
+  from vc.subst_env.univ,
+  have ⊨ vc.univ x (vc.subst_env (σ.without x) P), from this ▸ h1,
+  have h2: ⊨ vc.subst x v (vc.subst_env (σ.without x) P), from valid.univ.mpr this v,
+  have FV P ⊆ σ.dom ∪ { x, }, from (
+    assume y: var,
+    assume h4: y ∈ FV P,
+    if h5: x = y then (
+      show y ∈ σ.dom ∪ { x, }, from set.mem_union_right σ.dom ((set.mem_singleton_iff y x).mpr h5.symm)
+    ) else (
+      have x ≠ y, from h5,
+      have h6: y ∈ FV (vc.univ x P), from free_in_vc.univ this.symm h4,
+      have closed_subst σ (vc.univ x P), from valid_env.closed h1,
+      have y ∈ σ.dom, from this h6,
+      show y ∈ σ.dom ∪ { x, }, from set.mem_union_left {x, } this
+    )
+  ),
+  have vc.subst_env σ (vc.subst x v P) = vc.subst x v (vc.subst_env (σ.without x) P),
+  from vc.subst_env.reorder this,
+  have ⊨ vc.subst_env σ (vc.subst x v P), from this.symm ▸ h2,
+  show σ ⊨ vc.subst x v P, from this
 
 lemma env.contains_of_valid_env_term {σ: env} {x: var} {t: term}:
       x ∈ FV t → (σ ⊨ t) → (x ∈ σ) :=

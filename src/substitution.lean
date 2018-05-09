@@ -399,6 +399,26 @@ lemma env.without_equiv {σ: env} {x y: var} {v: value}:
     from h18
   end
 
+lemma env.not_contains_without {σ: env} {x: var}: x ∉ σ.without x :=
+  assume : x ∈ σ.without x,
+  have (x ≠ x) ∧ x ∈ σ, from env.contains_without.inv this,
+  show «false», from this.left (eq.refl x)
+
+lemma env.without_equiv_with {σ: env} {x: var}: ∀y, y ∈ σ.without x → (σ.without x y = σ y) :=
+  assume y: var,
+  assume h1: y ∈ σ.without x,
+  have y ≠ x ∧ y ∈ σ, from env.contains_without.inv h1,
+  have ∃v: value, σ y = v, from env.contains_apply_equiv.right.mpr this.right,
+  let ⟨v, σ_y_is_v⟩ := this in
+  have y ∉ σ.without x ∨ (σ.without x y = v), from env.without_equiv (or.inr σ_y_is_v),
+  or.elim this (
+    assume : y ∉ σ.without x,
+    show σ.without x y = σ y, from absurd h1 this
+  ) (
+    assume : σ.without x y = v,
+    show σ.without x y = σ y, from eq.trans this σ_y_is_v.symm
+  )
+
 lemma unchanged_of_subst_nonfree_term {t: term} {x: var} {v: value}:
     x ∉ FV t → (term.subst x v t = t) :=
   assume x_not_free: ¬ free_in_term x t,
@@ -2965,6 +2985,16 @@ lemma prop.closed_subst.implies.inv {P Q: prop} {σ: env}:
   have Q_closed_subst: closed_subst σ Q, from (prop.closed_subst.or.inv P_not_or_Q_closed_subst).right,
   ⟨P_closed_subst, Q_closed_subst⟩
 
+lemma prop.closed_subst.subst {P: prop} {σ: env} {x: var} {v: value}:
+      closed_subst σ P → closed_subst σ (prop.subst x v P) :=
+  assume P_closed_subst: closed_subst σ P,
+  show closed_subst σ (prop.subst x v P), from (
+    assume y: var,
+    assume : y ∈ FV (prop.subst x v P),
+    have y ∈ FV P, from (free_of_subst_prop this).right,
+    show y ∈ σ.dom, from P_closed_subst this
+  )
+
 lemma vc.closed_subst.term {t: term} {σ: env}: closed_subst σ t → closed_subst σ (vc.term t) :=
   assume t_closed: closed_subst σ t,
   show closed_subst σ (vc.term t), from (
@@ -3083,7 +3113,7 @@ lemma erased_p_closed_from_prop_closed {P: prop} {σ: env}: closed_subst σ P �
   show closed_subst σ P.erased_p, from (
     assume x: var,
     assume : x ∈ FV P.erased_p,
-    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_erased_n.left,
+    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_erased.left,
     show x ∈ σ.dom, from h1 this
   )
 
@@ -3092,6 +3122,17 @@ lemma erased_n_closed_from_prop_closed {P: prop} {σ: env}: closed_subst σ P �
   show closed_subst σ P.erased_n, from (
     assume x: var,
     assume : x ∈ FV P.erased_n,
-    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_erased_n.right,
+    have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_erased.right,
     show x ∈ σ.dom, from h1 this
+  )
+
+lemma subst_closed_of_forall_closed {P: prop} {σ: env} {x: var} {v: value}:
+      closed_subst σ (prop.forallc x P) → closed_subst σ (prop.subst x v P) :=
+  assume h1: closed_subst σ (prop.forallc x P),
+  show closed_subst σ (prop.subst x v P), from (
+    assume y: var,
+    assume : y ∈ FV (prop.subst x v P),
+    have y ≠ x ∧ y ∈ FV P, from free_of_subst_prop this,
+    have y ∈ FV (prop.forallc x P), from free_in_prop.forallc this.left this.right,
+    show y ∈ σ, from h1 this
   )

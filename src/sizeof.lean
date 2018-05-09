@@ -1,3 +1,5 @@
+-- lemmas about sizes of syntactic elements used for termination
+
 import .syntax .etc
 
 -- to use values, expressions, terms, specs, histories and environments with recursion,

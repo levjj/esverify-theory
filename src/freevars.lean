@@ -1094,7 +1094,7 @@ lemma free_in_prop_of_free_in_to_vc {P: prop}: FV P.to_vc ⊆ FV P :=
     }
   end
 
-lemma free_in_prop_of_free_in_erased_n {P: prop}:
+lemma free_in_prop_of_free_in_erased {P: prop}:
       FV P.erased_p ⊆ FV P ∧ FV P.erased_n ⊆ FV P :=
   begin
     induction P,

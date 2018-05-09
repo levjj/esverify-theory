@@ -1,6 +1,5 @@
-import .definitions2 .freevars .substitution
-
 /-
+import .definitions2 .freevars .substitution
 
 lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x : Q) → x ∈ FV P :=
   assume return_verified: P ⊢ exp.return x : Q,

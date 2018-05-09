@@ -1,3 +1,5 @@
+-- auxilliary definitions and lemmas used for termination of QI
+
 import .definitions1
 
 def prop.num_quantifiers: prop → ℕ
@@ -361,3 +363,165 @@ def find_calls_measure : has_well_founded
   | psum.inl a := a.sizeof
   | psum.inr a := a.sizeof
   end⟩
+
+def prop.simplesize: prop → ℕ
+| (prop.term t)        := 0
+| (prop.not P)         := 1 + P.simplesize
+| (prop.and P₁ P₂)     := 1 + P₁.simplesize + P₂.simplesize
+| (prop.or P₁ P₂)      := 1 + P₁.simplesize + P₂.simplesize
+| (prop.pre t₁ t₂)     := 0
+| (prop.pre₁ op t)     := 0
+| (prop.pre₂ op t₁ t₂) := 0
+| (prop.call t)        := 0
+| (prop.post t₁ t₂)    := 0
+| (prop.forallc x P)   := 1 + P.simplesize
+| (prop.exis x P)      := 1 + P.simplesize
+
+lemma same_simplesize_after_subst {P: prop} {x: var} {v: value}:
+      P.simplesize = (prop.subst x v P).simplesize :=
+  begin
+    induction P,
+    case prop.term t {
+      unfold prop.subst,
+      unfold prop.simplesize,
+      change (0 = prop.simplesize (prop.term (term.subst x v t))),
+      unfold prop.simplesize
+    },
+    case prop.not P₁ ih {
+      unfold prop.subst,
+      unfold prop.simplesize,
+      rw[ih]
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.subst,
+      unfold prop.simplesize,
+      change (prop.simplesize (prop.and P₁ P₂) = prop.simplesize (prop.and (prop.subst x v P₁) (prop.subst x v P₂))),
+      unfold prop.simplesize,
+      rw[P₁_ih],
+      rw[P₂_ih]
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.subst,
+      unfold prop.simplesize,
+      change (prop.simplesize (prop.or P₁ P₂) = prop.simplesize (prop.or (prop.subst x v P₁) (prop.subst x v P₂))),
+      unfold prop.simplesize,
+      rw[P₁_ih],
+      rw[P₂_ih]
+    },
+    case prop.pre t₁ t₂ {
+      unfold prop.subst,
+      unfold prop.simplesize
+    },
+    case prop.pre₁ op t {
+      unfold prop.subst,
+      unfold prop.simplesize
+    },
+    case prop.pre₂ op t₁ t₂ {
+      unfold prop.subst,
+      unfold prop.simplesize
+    },
+    case prop.call t {
+      unfold prop.subst,
+      unfold prop.simplesize
+    },
+    case prop.post t₁ t₂ {
+      unfold prop.subst,
+      unfold prop.simplesize
+    },
+    case prop.forallc z P' P'_ih {
+      unfold prop.subst,
+      unfold prop.simplesize,
+      apply eq_add_left_of_eq,
+      by_cases (x = z) with h1,
+      simp[h1],
+      simp[h1],
+      from P'_ih
+    },
+    case prop.exis z P' P'_ih {
+      unfold prop.subst,
+      unfold prop.simplesize,
+      apply eq_add_left_of_eq,
+      by_cases (x = z) with h1,
+      simp[h1],
+      simp[h1],
+      from P'_ih
+    }
+  end
+
+lemma simplesize_prop_not {P: prop}:
+      P.simplesize < P.not.simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    from zero_lt_one
+  end
+
+lemma simplesize_prop_and₁ {P S: prop}:
+      P.simplesize < (prop.and P S).simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_assoc],
+    rw[add_comm],
+    rw[add_assoc],
+    apply lt_add_of_pos_right,
+    change 0 < prop.simplesize S + 1,
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
+lemma simplesize_prop_and₂ {P S: prop}:
+      S.simplesize < (prop.and P S).simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    change 0 < 1 + prop.simplesize P,
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
+lemma simplesize_prop_or₁ {P S: prop}:
+      P.simplesize < (prop.or P S).simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_assoc],
+    rw[add_comm],
+    rw[add_assoc],
+    apply lt_add_of_pos_right,
+    change 0 < prop.simplesize S + 1,
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
+lemma simplesize_prop_or₂ {P S: prop}:
+      S.simplesize < (prop.or P S).simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    change 0 < 1 + prop.simplesize P,
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
+lemma simplesize_prop_exis {P: prop} {x: var}:
+      P.simplesize < (prop.exis x P).simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    from zero_lt_one
+  end
+
+lemma simplesize_prop_forall {P: prop} {x: var}:
+      P.simplesize < (prop.forallc x P).simplesize :=
+  begin
+    unfold prop.simplesize,
+    rw[add_comm],
+    apply lt_add_of_pos_right,
+    from zero_lt_one
+  end
+ 
