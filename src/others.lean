@@ -131,3 +131,76 @@ lemma unchanged_of_apply_propctx_without_hole {P: prop} {t: term}:
       from ih
     }
   end
+
+lemma vc.term.inj.inv {t₁ t₂: term}: (t₁ = t₂) → (vc.term t₁ = vc.term t₂) :=
+  begin
+    assume h1,
+    congr,
+    from h1
+  end
+
+lemma vc.not.inj.inv {P Q: vc}: (P = Q) → (vc.not P = vc.not Q) :=
+  begin
+    assume h1,
+    congr,
+    from h1
+  end
+
+lemma vc.and.inj.inv {P₁ P₂ P₃ P₄: vc}: (P₁ = P₂) → (P₃ = P₄) → (vc.and P₁ P₃ = vc.and P₂ P₄) :=
+  begin
+    assume h1,
+    assume h2,
+    congr,
+    from h1,
+    from h2
+  end
+
+lemma vc.or.inj.inv {P₁ P₂ P₃ P₄: vc}: (P₁ = P₂) → (P₃ = P₄) → (vc.or P₁ P₃ = vc.or P₂ P₄) :=
+  begin
+    assume h1,
+    assume h2,
+    congr,
+    from h1,
+    from h2
+  end
+
+lemma vc.pre.inj.inv {t₁ t₂ t₃ t₄: term}: (t₁ = t₂) → (t₃ = t₄) → (vc.pre t₁ t₃ = vc.pre t₂ t₄) :=
+  begin
+    assume h1,
+    assume h2,
+    congr,
+    from h1,
+    from h2
+  end
+
+lemma vc.pre₁.inj.inv {t₁ t₂: term} {op: unop}: (t₁ = t₂) → (vc.pre₁ op t₁ = vc.pre₁ op t₂) :=
+  begin
+    assume h1,
+    congr,
+    from h1
+  end
+
+lemma vc.pre₂.inj.inv {t₁ t₂ t₃ t₄: term} {op: binop}: (t₁ = t₂) → (t₃ = t₄) → (vc.pre₂ op t₁ t₃ = vc.pre₂ op t₂ t₄) :=
+  begin
+    assume h1,
+    assume h2,
+    congr,
+    from h1,
+    from h2
+  end
+
+lemma vc.post.inj.inv {t₁ t₂ t₃ t₄: term}: (t₁ = t₂) → (t₃ = t₄) → (vc.post t₁ t₃ = vc.post t₂ t₄) :=
+  begin
+    assume h1,
+    assume h2,
+    congr,
+    from h1,
+    from h2
+  end
+
+lemma vc.univ.inj.inv {P Q: vc} {x: var}: (P = Q) → (vc.univ x P = vc.univ x Q) :=
+  begin
+    assume h1,
+    congr,
+    from h1
+  end

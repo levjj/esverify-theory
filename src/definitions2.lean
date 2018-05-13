@@ -182,8 +182,8 @@ using_well_founded {
 
 -- performs n rounds of instantiations. each round also involves a repeated lifting.
 -- once all rounds are complete, remaining quantifiers and triggers in negative positions will be erased
-def prop.instantiate_rep: prop → ℕ → vc
-| P 0            := P.lift_all.erased_n
+def prop.instantiate_rep: prop → ℕ → prop
+| P 0            := P.lift_all
 | P (nat.succ n) := have n < n + 1, from lt_of_add_one,
                     (P.lift_all.instantiate_with_all (P.lift_all.find_calls_n)).instantiate_rep n
 using_well_founded {
@@ -217,61 +217,7 @@ using_well_founded {
 
 -- the main instantiation algorithm performs n rounds of instantiations
 -- where n is the maximum quantifier nesting level and returns the erased proposition
-def prop.instantiated_n (P: prop): vc := P.instantiate_rep P.max_nesting_level
-
--- top-level calls and quantifiers in positive and negative positions
-mutual inductive prop.has_call_p, prop.has_call_n
-
-with prop.has_call_p: calltrigger → prop → Prop
-| calltrigger {x: term}                                 : prop.has_call_p ⟨x⟩ (prop.call x)
-| not {P: prop} {c: calltrigger}                        : prop.has_call_n c P  → prop.has_call_p c P.not
-| and₁ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_p c P₁ → prop.has_call_p c (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_p c P₂ → prop.has_call_p c (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_p c P₁ → prop.has_call_p c (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_p c P₂ → prop.has_call_p c (P₁ ⋁ P₂)
-
-with prop.has_call_n: calltrigger → prop → Prop
-| not {P: prop} {c: calltrigger}                        : prop.has_call_p c P  → prop.has_call_n c P.not
-| and₁ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_n c P₁ → prop.has_call_n c (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {c: calltrigger}                   : prop.has_call_n c P₂ → prop.has_call_n c (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_n c P₁ → prop.has_call_n c (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {c: calltrigger}                    : prop.has_call_n c P₂ → prop.has_call_n c (P₁ ⋁ P₂)
-
--- sets of calls
-def calls_p (P: prop): set calltrigger := λc, prop.has_call_p c P
-def calls_n (P: prop): set calltrigger := λc, prop.has_call_n c P
-
-mutual inductive prop.has_quantifier_p, prop.has_quantifier_n
-
-with prop.has_quantifier_p: callquantifier → prop → Prop
-| callquantifier {x: var} {P: prop}           : prop.has_quantifier_p ⟨x, P⟩ (prop.forallc x P)
-| not {P: prop} {q: callquantifier}           : prop.has_quantifier_n q P  → prop.has_quantifier_p q P.not
-| and₁ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_p q P₁ → prop.has_quantifier_p q (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_p q P₂ → prop.has_quantifier_p q (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_p q P₁ → prop.has_quantifier_p q (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_p q P₂ → prop.has_quantifier_p q (P₁ ⋁ P₂)
-
-with prop.has_quantifier_n: callquantifier → prop → Prop
-| not {P: prop} {q: callquantifier}           : prop.has_quantifier_p q P  → prop.has_quantifier_n q P.not
-| and₁ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋀ P₂)
-| and₂ {P₁ P₂: prop} {q: callquantifier}      : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋀ P₂)
-| or₁ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₁ → prop.has_quantifier_n q (P₁ ⋁ P₂)
-| or₂ {P₁ P₂: prop} {q: callquantifier}       : prop.has_quantifier_n q P₂ → prop.has_quantifier_n q (P₁ ⋁ P₂)
--- universal quantifiers below existential quantifiers only occur in positive positions,
--- so can be skolemized instead of instantiated
-
--- sets of quantifiers
-def quantifiers_p (P: prop): set callquantifier := λc, has_quantifier_p c P
-def quantifiers_n (P: prop): set callquantifier := λc, has_quantifier_n c P
-
- -- propositions without call triggers or quantifiers do not participate in instantiations
-def no_instantiations(P: prop): Prop := (calls_p P = ∅) ∧ (calls_n P = ∅) ∧
-                                        (quantifiers_p P = ∅) ∧ (quantifiers_n P = ∅)
-
--- set of calltriggers after substitution
-def calltrigger.subst (σ: env) (c: calltrigger): calltrigger := ⟨term.subst_env σ c.x⟩
-def calls_p_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_p P
-def calls_n_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_n P
+def prop.instantiated_n (P: prop): prop := P.instantiate_rep P.max_nesting_level
 
 --  #############################
 --  ### OPERATIONAL SEMANTICS ###
@@ -381,7 +327,7 @@ notation s `⟶*` s':100 := trans_step s s'
 constant valid : vc → Prop
 notation `⊨` p: 20 := valid p
 notation σ `⊨` p: 20 := ⊨ (vc.subst_env σ p)
-notation `⟪` P `⟫`: 100 := ∀ (σ: env), closed_subst σ P → σ ⊨ (prop.instantiated_n P)
+notation `⟪` P `⟫`: 100 := ∀ (σ: env), closed_subst σ P.instantiated_n → σ ⊨ P.instantiated_n.erased_n
 
 -- simple axioms for logical reasoning
 
@@ -428,10 +374,17 @@ axiom valid.eq.true {t: term}:
   ↔
   ⊨ value.true ≡ t
 
-axiom valid.univ {x: var} {P: vc}:
+-- universal quantifier valid if true for all values
+axiom valid.univ.mp {x: var} {P: vc}:
   (∀v, ⊨ vc.subst x v P)
-  ↔
+  →
   ⊨ vc.univ x P
+
+-- universal quantifier can be instantiated with any term
+axiom valid.univ.mpr {x: var} {P: vc} {σ: env}:
+  (⊨ vc.univ x P)
+  →
+  (∀t, closed_subst σ t → ⊨ vc.substte x t P σ)
 
 -- unary and binary operators are decidable, so equalities with operators are decidable
 axiom valid.unop {op: unop} {vₓ v: value}:
@@ -576,40 +529,6 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
        ⋀ prop.subst_env (σ₂[g↦value.func g x R S e σ₂]) (prop.func g x R (Q₃ (term.app g x) ⋀ S))))
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
-
--- runtime verification of stacks
-
-inductive stack.vcgen : stack → propctx → Prop
-notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
-
-| top {R: spec} {P: prop} {σ: env} {e: exp} {Q: propctx}:
-    (⊢ σ : P) →
-    FV R.to_prop ⊆ FV P →
-    (σ ⊨ R.to_prop.instantiated_n) →
-    (R ⋀ P ⊢ e : Q) →
-    (⊢ₛ (R, σ, e) : P ⋀ Q)
-
-| cons {P₁ P₂ P₃: prop} {s: stack} {σ₁ σ₂: env}
-       {f fx g x y: var} {R₁ R₂ S₂: spec} {e₁ e₂: exp} {v: value} {Q₁ Q₂ Q₂': propctx}:
-    (⊢ₛ s : Q₂') →
-    y ∉ σ₁ →
-    (⊢ σ₁ : P₁) →
-    (⊢ σ₂ : P₂ ) →
-    (⊢ (σ₂[f↦value.func f fx R₂ S₂ e₂ σ₂][fx↦v]) : P₃) →
-    FV R₁.to_prop ⊆ FV P₁ →
-    (σ₁ ⊨ R₁.to_prop.instantiated_n) →
-    (σ₁ g = value.func f fx R₂ S₂ e₂ σ₂) →
-    (σ₁ x = v) →
-    (R₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
-    (P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
-    (∀σ' t, (σ' ⊨ (Q₂' t).instantiated_n) → σ' ⊨ (P₃ ⋀ (Q₂ t)).instantiated_n) →
-    (∀v: value, FV (P₃ ⋀ (Q₂ v)) ⊆ FV (Q₂' v)) →
-    ⟪ prop.implies (R₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
-    ((R₂, σ₂[f↦value.func f fx R₂ S₂ e₂ σ₂][fx↦v], e₂) ⟶* s) →
-    (⊢ₛ (s · [R₁, σ₁, letapp y = g[x] in e₁]) : P₁ ⋀
-          propctx.exis y (prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₁))
-
-notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
 
 
 --  #################################################################

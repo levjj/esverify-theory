@@ -413,7 +413,7 @@ def prop.rename (x y: var): prop → prop
 def term.substt (x: var) (t: term): term → term
 | (term.value v')       := v'
 | (term.var y)          := if x = y then t else y
-| (term.unop op t)      := term.unop op t.substt
+| (term.unop op t₁)      := term.unop op t₁.substt
 | (term.binop op t₁ t₂) := term.binop op t₁.substt t₂.substt
 | (term.app t₁ t₂)      := term.app t₁.substt t₂.substt
 
@@ -429,6 +429,29 @@ def prop.substt (x: var) (t: term): prop → prop
 | (prop.post t₁ t₂)    := prop.post (term.substt x t t₁) (term.substt x t t₂)
 | (prop.forallc y P)   := prop.forallc y (if x = y then P else P.substt)
 | (prop.exis y P)      := prop.exis y (if x = y then P else P.substt)
+
+def vc.substt (x: var) (t: term): vc → vc
+| (vc.term t₁)       := term.substt x t t₁
+| (vc.not P)         := P.substt.not
+| (vc.and P Q)       := P.substt ⋀ Q.substt
+| (vc.or P Q)        := P.substt ⋁ Q.substt
+| (vc.pre t₁ t₂)     := vc.pre (term.substt x t t₁) (term.substt x t t₂)
+| (vc.pre₁ op t₁)    := vc.pre₁ op (term.substt x t t₁)
+| (vc.pre₂ op t₁ t₂) := vc.pre₂ op (term.substt x t t₁) (term.substt x t t₂)
+| (vc.post t₁ t₂)    := vc.post (term.substt x t t₁) (term.substt x t t₂)
+| (vc.univ y P)      := vc.univ y (if x = y then P else P.substt)
+
+-- substitution with a substituted term
+def vc.substte (x: var) (t: term): vc → env → vc
+| (vc.term t₁) σ       := term.substt x (term.subst_env σ t) t₁
+| (vc.not P) σ         := (P.substte σ).not
+| (vc.and P Q) σ       := P.substte σ ⋀ Q.substte σ
+| (vc.or P Q) σ        := P.substte σ ⋁ Q.substte σ
+| (vc.pre t₁ t₂) σ     := vc.pre (term.substt x (term.subst_env σ t) t₁) (term.substt x (term.subst_env σ t) t₂)
+| (vc.pre₁ op t₁) σ    := vc.pre₁ op (term.substt x (term.subst_env σ t) t₁)
+| (vc.pre₂ op t₁ t₂) σ := vc.pre₂ op (term.substt x (term.subst_env σ t) t₁) (term.substt x (term.subst_env σ t) t₂)
+| (vc.post t₁ t₂) σ    := vc.post (term.substt x (term.subst_env σ t) t₁) (term.substt x (term.subst_env σ t) t₂)
+| (vc.univ y P) σ      := vc.univ y (if x = y then P else P.substte (σ.without y))
 
 --  ################################
 --  ### QUANTIFIER INSTANTIATION ###

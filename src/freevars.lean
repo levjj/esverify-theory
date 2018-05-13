@@ -1319,3 +1319,324 @@ lemma free_in_prop_of_free_in_erased {P: prop}:
       from P₁_ih.right h3
     }
   end
+
+lemma free_in_instantiate_to_vc_of_free_in_to_vc {P: prop} {t: calltrigger}:
+      FV P.to_vc ⊆ FV (P.instantiate_with_p t).to_vc ∧
+      FV P.to_vc ⊆ FV (P.instantiate_with_n t).to_vc :=
+  begin
+    induction P,
+
+    case prop.term t {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.term t))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.term t)))
+    },
+    case prop.not P₁ ih {
+      split,
+
+      unfold prop.instantiate_with_p,
+      unfold prop.to_vc,
+
+      assume x: var,
+      assume x_free: x ∈ FV (vc.not (prop.to_vc P₁)),
+      apply free_in_vc.not,
+      have h1, from free_in_vc.not.inv x_free,
+      change (x ∈ FV (prop.to_vc (prop.instantiate_with_n P₁ t))),
+      from set.mem_of_mem_of_subset h1 ih.right,
+
+      unfold prop.instantiate_with_n,
+      unfold prop.to_vc,
+
+      assume x: var,
+      assume x_free: x ∈ FV (vc.not (prop.to_vc P₁)),
+      apply free_in_vc.not,
+      have h1, from free_in_vc.not.inv x_free,
+      change (x ∈ FV (prop.to_vc (prop.instantiate_with_p P₁ t))),
+      from set.mem_of_mem_of_subset h1 ih.left
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋀ P₂).to_vc,
+      unfold prop.to_vc at x_free,
+      unfold prop.instantiate_with_p,
+      change (x ∈ FV (prop.to_vc (prop.and (prop.instantiate_with_p P₁ t) (prop.instantiate_with_p P₂ t)))),
+      unfold prop.to_vc,
+      cases (free_in_vc.and.inv x_free),
+      apply free_in_vc.and₁,
+      from P₁_ih.left a,
+      apply free_in_vc.and₂,
+      from P₂_ih.left a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋀ P₂).to_vc,
+      unfold prop.to_vc at x_free,
+      unfold prop.instantiate_with_n,
+      change (x ∈ FV (prop.to_vc (prop.and (prop.instantiate_with_n P₁ t) (prop.instantiate_with_n P₂ t)))),
+      unfold prop.to_vc,
+      cases (free_in_vc.and.inv x_free),
+      apply free_in_vc.and₁,
+      from P₁_ih.right a,
+      apply free_in_vc.and₂,
+      from P₂_ih.right a
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋁ P₂).to_vc,
+      unfold prop.to_vc at x_free,
+      unfold prop.instantiate_with_p,
+      change (x ∈ FV (prop.to_vc (prop.or (prop.instantiate_with_p P₁ t) (prop.instantiate_with_p P₂ t)))),
+      unfold prop.to_vc,
+      cases (free_in_vc.or.inv x_free),
+      apply free_in_vc.or₁,
+      from P₁_ih.left a,
+      apply free_in_vc.or₂,
+      from P₂_ih.left a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋁ P₂).to_vc,
+      unfold prop.to_vc at x_free,
+      unfold prop.instantiate_with_n,
+      change (x ∈ FV (prop.to_vc (prop.or (prop.instantiate_with_n P₁ t) (prop.instantiate_with_n P₂ t)))),
+      unfold prop.to_vc,
+      cases (free_in_vc.or.inv x_free),
+      apply free_in_vc.or₁,
+      from P₁_ih.right a,
+      apply free_in_vc.or₂,
+      from P₂_ih.right a
+    },
+    case prop.pre t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.pre t₁ t₂))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.pre t₁ t₂)))
+    },
+    case prop.pre₁ op t {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.pre₁ op t))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.pre₁ op t)))
+    },
+    case prop.pre₂ op t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.pre₂ op t₁ t₂))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.pre₂ op t₁ t₂)))
+    },
+    case prop.call t {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.call t))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.call t)))
+    },
+    case prop.post t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.post t₁ t₂))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.post t₁ t₂)))
+    },
+    case prop.forallc y P₁ P₁_ih {
+      split,
+
+      unfold prop.instantiate_with_p,
+      assume x: var,
+      assume x_free: x ∈ FV (prop.to_vc (prop.forallc y P₁)),
+      change x ∈ FV (prop.to_vc (prop.and (prop.forallc y P₁) (prop.substt y (t.x) P₁))),
+      unfold1 prop.to_vc,
+      apply free_in_vc.and₁,
+      from x_free,
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.forallc y P₁)))
+    },
+    case prop.exis y P₁ P₁_ih {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.to_vc (prop.exis y P₁))),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.to_vc (prop.exis y P₁)))
+    }
+  end
+
+lemma free_in_instantiate_with_of_free_in_prop {P: prop} {t: calltrigger}:
+      FV P ⊆ FV (P.instantiate_with_p t) ∧
+      FV P ⊆ FV (P.instantiate_with_n t) :=
+  begin
+    induction P,
+
+    case prop.term t {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.term t)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.term t))
+    },
+    case prop.not P₁ ih {
+      split,
+
+      unfold prop.instantiate_with_p,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.not P₁),
+      apply free_in_prop.not,
+      have h1, from free_in_prop.not.inv x_free,
+      change (x ∈ FV (prop.instantiate_with_n P₁ t)),
+      from set.mem_of_mem_of_subset h1 ih.right,
+
+      unfold prop.instantiate_with_n,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.not P₁),
+      apply free_in_prop.not,
+      have h1, from free_in_prop.not.inv x_free,
+      change (x ∈ FV (prop.instantiate_with_p P₁ t)),
+      from set.mem_of_mem_of_subset h1 ih.left
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋀ P₂),
+      unfold prop.instantiate_with_p,
+      cases (free_in_prop.and.inv x_free),
+      apply free_in_prop.and₁,
+      from P₁_ih.left a,
+      apply free_in_prop.and₂,
+      from P₂_ih.left a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋀ P₂),
+      unfold prop.instantiate_with_n,
+      cases (free_in_prop.and.inv x_free),
+      apply free_in_prop.and₁,
+      from P₁_ih.right a,
+      apply free_in_prop.and₂,
+      from P₂_ih.right a
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋁ P₂),
+      unfold prop.instantiate_with_p,
+      cases (free_in_prop.or.inv x_free),
+      apply free_in_prop.or₁,
+      from P₁_ih.left a,
+      apply free_in_prop.or₂,
+      from P₂_ih.left a,
+
+      assume x: var,
+      assume x_free: x ∈ FV (P₁ ⋁ P₂),
+      unfold prop.instantiate_with_n,
+      cases (free_in_prop.or.inv x_free),
+      apply free_in_prop.or₁,
+      from P₁_ih.right a,
+      apply free_in_prop.or₂,
+      from P₂_ih.right a
+    },
+    case prop.pre t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.pre t₁ t₂)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.pre t₁ t₂))
+    },
+    case prop.pre₁ op t {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.pre₁ op t)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.pre₁ op t))
+    },
+    case prop.pre₂ op t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.pre₂ op t₁ t₂)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.pre₂ op t₁ t₂))
+    },
+    case prop.call t {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.call t)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.call t))
+    },
+    case prop.post t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.post t₁ t₂)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.post t₁ t₂))
+    },
+    case prop.forallc y P₁ P₁_ih {
+      split,
+
+      unfold prop.instantiate_with_p,
+
+      assume x: var,
+      assume x_free: x ∈ FV (prop.forallc y P₁),
+      apply free_in_prop.and₁,
+      from x_free,
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.forallc y P₁))
+    },
+    case prop.exis y P₁ P₁_ih {
+      split,
+
+      unfold prop.instantiate_with_p,
+      from set.subset.refl (FV (prop.exis y P₁)),
+
+      unfold prop.instantiate_with_n,
+      from set.subset.refl (FV (prop.exis y P₁))
+    }
+  end
+
+-- lemma free_in_instantiate_rep_of_free_in_prop {P: prop} {n: ℕ}:
+--       FV P ⊆ FV (P.instantiate_rep n) :=
+--   begin
+--     induction n,
+
+--     case nat.zero {
+--       unfold prop.instantiate_rep,
+
+--     }
+
+--   end

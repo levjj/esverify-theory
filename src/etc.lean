@@ -139,7 +139,7 @@ lemma option.is_none.inv {α: Type} {a: option α}: (a = none) ↔ option.is_non
   end
 
 lemma option.is_none.ninv {α: Type} {a: option α}: (a ≠ none) ↔ ¬ option.is_none a :=
-  by begin
+  begin
     split,
     intro h,
     cases a,
@@ -176,6 +176,28 @@ lemma option.is_some_iff_exists {α: Type} {a: option α}: option.is_some a ↔ 
     change tt = tt,
     refl
   end
+
+def option.is_none_prop {α: Type} (a: option α): Prop := option.is_none a
+
+instance {α: Type} {a: option α} : decidable (option.is_none_prop a) :=
+  let r := a in
+  have h: r = a, from rfl,
+  @option.rec_on α (λv, (r = v) → decidable (option.is_none_prop a)) r
+  (
+    assume : r = none,
+    have a = none, from eq.trans h this,
+    have option.is_none a, from option.is_none.inv.mp this,
+    have option.is_none_prop a, from this,
+    is_true this
+  ) (
+    assume v: α,
+    assume : r = some v,
+    have a = some v, from eq.trans h this,
+    have ∃v, a = some v, from exists.intro v this,
+    have option.is_some a, from option.is_some_iff_exists.mpr this,
+    have ¬ option.is_none a, from option.some_iff_not_none.mp this,
+    is_false this
+  ) rfl
 
 -- auxiliary lemmas for sets
 
@@ -276,3 +298,46 @@ lemma set.subset_of_eq {α: Type} {a b: set α}: (a = b) → (a ⊆ b) :=
   assume x: α,
   assume : x ∈ a,
   show x ∈ b, from a_eq_b ▸ this
+
+lemma set.not_mem_or_mem_of_not_mem_diff {α: Type} {a: α} {b c: set α}: a ∉ b \ c → (a ∉ b ∨ a ∈ c) :=
+  begin
+    assume h1,
+    rw[set.diff_eq] at h1,
+    rw[←set.compl_compl b] at h1,
+    rw[←set.compl_union] at h1,
+    rw[←set.mem_compl_eq] at h1,
+    rw[set.compl_compl] at h1,
+    have h2, from set.mem_or_mem_of_mem_union h1,
+    rw[set.mem_compl_eq] at h2,
+    from h2
+  end
+
+lemma set.diff_self {α: Type} {a: set α}: a - a = ∅ :=
+  begin
+    apply set.eq_of_subset_of_subset,
+
+    assume x: α,
+    assume h1: x ∈ a - a,
+    have h2, from set.mem_of_mem_diff h1,
+    have h3, from set.not_mem_of_mem_diff h1,
+    contradiction,
+
+    assume x: α,
+    assume h1: x ∈ ∅,
+    have h2: x ∉ ∅, from set.forall_not_mem_of_eq_empty rfl x,
+    contradiction
+  end
+
+-- lemmas about if then else
+
+lemma ite.if_true {a: Prop} {b: Type} {c d: b} [decidable a]: a → (ite a c d = c) :=
+  begin
+    assume ha,
+    simp[ha]
+  end
+
+lemma ite.if_false {a: Prop} {b: Type} {c d: b} [decidable a]: ¬a → (ite a c d = d) :=
+  begin
+    assume ha,
+    simp[ha]
+  end

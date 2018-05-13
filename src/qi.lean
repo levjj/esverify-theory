@@ -1,6 +1,6 @@
 -- quantifier instantiation
 
-import .definitions2 .freevars .logic
+import .definitions3 .freevars .substitution .logic
 
 lemma prop.has_call_p.term.inv {c: calltrigger} {t: term}: c ∉ calls_p t :=
   assume t_has_call: prop.has_call_p c t,
@@ -1979,10 +1979,10 @@ lemma subst_distrib_erased {P: prop} {x: var} {v: value}:
 end
 
 lemma to_vc_valid_of_erased_n_valid:
-      ∀(P: prop), ∀σ, closed_subst σ P → ((σ ⊨ P.erased_n) → σ ⊨ P.to_vc) ∧ ((σ ⊨ P.to_vc) → σ ⊨ P.erased_p)
+      -- ∀(P: prop), ∀σ, closed_subst σ P → ((σ ⊨ P.erased_n) → σ ⊨ P.to_vc) ∧ ((σ ⊨ P.to_vc) → σ ⊨ P.erased_p)
+      ∀(P: prop), ∀σ, ((σ ⊨ P.erased_n) → σ ⊨ P.to_vc) ∧ ((σ ⊨ P.to_vc) → σ ⊨ P.erased_p)
 | (prop.term t) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -1997,35 +1997,29 @@ lemma to_vc_valid_of_erased_n_valid:
   have rec_wf: P₁.simplesize < (prop.not P₁).simplesize, from simplesize_prop_not,
   begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
     unfold prop.to_vc,
     assume h1,
-    have h2: closed_subst σ P₁, from prop.closed_subst.not.inv P_closed,
-    have h3, from mt (to_vc_valid_of_erased_n_valid P₁ σ h2).right,
-    have h4, from valid_env.not.mpr h1,
-    have h5: closed_subst σ P₁.to_vc, from to_vc_closed_from_prop_closed h2,
-    have h6, from h3 h4,
-    from valid_env.not.mp h5 h6,
+    have h2, from mt (to_vc_valid_of_erased_n_valid P₁ σ).right,
+    have h3, from valid_env.not.mpr h1,
+    have h4, from h2 h3,
+    from valid_env.not.mp h4,
 
     unfold prop.erased_p,
     unfold prop.to_vc,
     assume h1,
-    have h2: closed_subst σ P₁, from prop.closed_subst.not.inv P_closed,
-    have h3, from mt (to_vc_valid_of_erased_n_valid P₁ σ h2).left,
-    have h4, from valid_env.not.mpr h1,
-    have h5: closed_subst σ P₁.erased_n, from erased_n_closed_from_prop_closed h2,
-    have h6, from h3 h4,
-    from valid_env.not.mp h5 h6
+    have h2, from mt (to_vc_valid_of_erased_n_valid P₁ σ).left,
+    have h3, from valid_env.not.mpr h1,
+    have h4, from h2 h3,
+    from valid_env.not.mp h4
   end
 | (prop.and P₁ P₂) :=
   have rec_1: P₁.simplesize < (prop.and P₁ P₂).simplesize, from simplesize_prop_and₁,
   have rec_2: P₂.simplesize < (prop.and P₁ P₂).simplesize, from simplesize_prop_and₂,
   begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2034,15 +2028,13 @@ lemma to_vc_valid_of_erased_n_valid:
 
     apply valid_env.and,
     show σ⊨prop.to_vc P₁, by begin
-      have h2: closed_subst σ P₁, from (prop.closed_subst.and.inv P_closed).left,
-      have h3, from (valid_env.and.elim h1).left,
-      from (to_vc_valid_of_erased_n_valid P₁ σ h2).left h3
+      have h2, from (valid_env.and.elim h1).left,
+      from (to_vc_valid_of_erased_n_valid P₁ σ).left h2
     end,
 
     show σ⊨prop.to_vc P₂, by begin
-      have h2: closed_subst σ P₂, from (prop.closed_subst.and.inv P_closed).right,
-      have h3, from (valid_env.and.elim h1).right,
-      from (to_vc_valid_of_erased_n_valid P₂ σ h2).left h3
+      have h2, from (valid_env.and.elim h1).right,
+      from (to_vc_valid_of_erased_n_valid P₂ σ).left h2
     end,
 
     unfold prop.erased_p,
@@ -2051,15 +2043,13 @@ lemma to_vc_valid_of_erased_n_valid:
 
     apply valid_env.and,
     show σ⊨prop.erased_p P₁, by begin
-      have h2: closed_subst σ P₁, from (prop.closed_subst.and.inv P_closed).left,
-      have h3, from (valid_env.and.elim h1).left,
-      from (to_vc_valid_of_erased_n_valid P₁ σ h2).right h3
+      have h2, from (valid_env.and.elim h1).left,
+      from (to_vc_valid_of_erased_n_valid P₁ σ).right h2
     end,
 
     show σ⊨prop.erased_p P₂, by begin
-      have h2: closed_subst σ P₂, from (prop.closed_subst.and.inv P_closed).right,
-      have h3, from (valid_env.and.elim h1).right,
-      from (to_vc_valid_of_erased_n_valid P₂ σ h2).right h3
+      have h2, from (valid_env.and.elim h1).right,
+      from (to_vc_valid_of_erased_n_valid P₂ σ).right h2
     end
   end
 | (prop.or P₁ P₂) :=
@@ -2067,9 +2057,6 @@ lemma to_vc_valid_of_erased_n_valid:
   have rec_2: P₂.simplesize < (prop.or P₁ P₂).simplesize, from simplesize_prop_or₂,
   begin
     assume σ,
-    assume P_closed,
-    have h1a: closed_subst σ P₁, from (prop.closed_subst.or.inv P_closed).left,
-    have h1b: closed_subst σ P₂, from (prop.closed_subst.or.inv P_closed).right,
 
     split,
 
@@ -2080,12 +2067,10 @@ lemma to_vc_valid_of_erased_n_valid:
     cases (valid_env.or.elim h2),
 
     apply valid_env.or₁,
-    from (to_vc_valid_of_erased_n_valid P₁ σ h1a).left a,
-    from to_vc_closed_from_prop_closed h1b,
+    from (to_vc_valid_of_erased_n_valid P₁ σ).left a,
 
     apply valid_env.or₂,
-    from to_vc_closed_from_prop_closed h1a,
-    from (to_vc_valid_of_erased_n_valid P₂ σ h1b).left a,
+    from (to_vc_valid_of_erased_n_valid P₂ σ).left a,
 
     unfold prop.erased_p,
     unfold prop.to_vc,
@@ -2094,16 +2079,13 @@ lemma to_vc_valid_of_erased_n_valid:
     cases (valid_env.or.elim h2),
 
     apply valid_env.or₁,
-    from (to_vc_valid_of_erased_n_valid P₁ σ h1a).right a,
-    from erased_p_closed_from_prop_closed h1b,
+    from (to_vc_valid_of_erased_n_valid P₁ σ).right a,
 
     apply valid_env.or₂,
-    from erased_p_closed_from_prop_closed h1a,
-    from (to_vc_valid_of_erased_n_valid P₂ σ h1b).right a
+    from (to_vc_valid_of_erased_n_valid P₂ σ).right a
   end
 | (prop.pre t₁ t₂) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2116,7 +2098,6 @@ lemma to_vc_valid_of_erased_n_valid:
   end
 | (prop.pre₁ op t) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2129,7 +2110,6 @@ lemma to_vc_valid_of_erased_n_valid:
   end
 | (prop.pre₂ op t₁ t₂) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2142,7 +2122,6 @@ lemma to_vc_valid_of_erased_n_valid:
   end
 | (prop.call t) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2155,7 +2134,6 @@ lemma to_vc_valid_of_erased_n_valid:
   end
 | (prop.post t₁ t₂) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2169,7 +2147,6 @@ lemma to_vc_valid_of_erased_n_valid:
 | (prop.forallc y P₁) :=
   begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2189,10 +2166,7 @@ lemma to_vc_valid_of_erased_n_valid:
       have ht1: P₁.simplesize = (prop.subst y v P₁).simplesize, from same_simplesize_after_subst,
       have ht2: P₁.simplesize < (prop.forallc y P₁).simplesize, from simplesize_prop_forall,
       have rec_wf: (prop.subst y v P₁).simplesize < (prop.forallc y P₁).simplesize, from ht1 ▸ ht2,
-      begin
-        have h7: closed_subst σ (prop.subst y v P₁), from subst_closed_of_forall_closed P_closed,
-        from (to_vc_valid_of_erased_n_valid (prop.subst y v P₁) σ h7).left h5
-      end
+      (to_vc_valid_of_erased_n_valid (prop.subst y v P₁) σ).left h5
     ),
 
     assume h1,
@@ -2201,7 +2175,6 @@ lemma to_vc_valid_of_erased_n_valid:
   end
 | (prop.exis y P₁) := begin
     assume σ,
-    assume P_closed,
     split,
 
     unfold prop.erased_n,
@@ -2210,16 +2183,6 @@ lemma to_vc_valid_of_erased_n_valid:
 
     have h2, from valid_env.not.mpr h1,
     apply valid_env.not.mp,
-
-    show closed_subst σ (vc.univ y (vc.not (prop.to_vc P₁))), by begin
-      assume x: var,
-      assume h1: x ∈ FV (vc.univ y (vc.not (prop.to_vc P₁))),
-      have h2, from free_in_vc.univ.inv h1,
-      have h3, from free_in_vc.not.inv h2.right,
-      have h4: x ∈ FV P₁, from set.mem_of_mem_of_subset h3 free_in_prop_of_free_in_to_vc,
-      have h5: x ∈ FV (prop.exis y P₁), from free_in_prop.exis h2.left h4,
-      show x ∈ σ, from P_closed h5
-    end,
 
     by_contradiction h3,
     have h4: σ⊨vc.univ y (vc.not (prop.erased_n P₁)), by begin
@@ -2238,23 +2201,6 @@ lemma to_vc_valid_of_erased_n_valid:
       have h9, from valid_env.not.mpr h6,
       apply valid_env.not.mp,
 
-      show closed_subst σ (vc.subst y v (prop.erased_n P₁)), by begin
-        assume x: var,
-        assume h1: x ∈ FV (vc.subst y v (prop.erased_n P₁)),
-        have h2, from free_in_vc.subst h1,
-        have h3: x ∈ FV P₁, from set.mem_of_mem_of_subset h2.right free_in_prop_of_free_in_erased.right,
-        have h4: x ∈ FV (prop.exis y P₁), from free_in_prop.exis h2.left h3,
-        show x ∈ σ, from P_closed h4
-      end,
-
-      have h9b: closed_subst σ (prop.subst y v P₁), by begin
-        assume x: var,
-        assume h1: x ∈ FV (prop.subst y v P₁),
-        have h2, from free_of_subst_prop h1,
-        have h4: x ∈ FV (prop.exis y P₁), from free_in_prop.exis h2.left h2.right,
-        show x ∈ σ, from P_closed h4
-      end,
-
       by_contradiction h10,
       have h11: σ⊨vc.subst y v (prop.to_vc P₁), by begin
 
@@ -2268,9 +2214,7 @@ lemma to_vc_valid_of_erased_n_valid:
           have ht1: P₁.simplesize = (prop.subst y v P₁).simplesize, from same_simplesize_after_subst,
           have ht2: P₁.simplesize < (prop.forallc y P₁).simplesize, from simplesize_prop_forall,
           have rec_wf: (prop.subst y v P₁).simplesize < (prop.forallc y P₁).simplesize, from ht1 ▸ ht2,
-          begin
-            from (to_vc_valid_of_erased_n_valid (prop.subst y v P₁) σ h9b).left h13
-          end
+          (to_vc_valid_of_erased_n_valid (prop.subst y v P₁) σ).left h13
         )
       end,
       from h9 h11
@@ -2283,16 +2227,6 @@ lemma to_vc_valid_of_erased_n_valid:
 
     have h2, from valid_env.not.mpr h1,
     apply valid_env.not.mp,
-
-    show closed_subst σ (vc.univ y (vc.not (prop.erased_p P₁))), by begin
-      assume x: var,
-      assume h1: x ∈ FV (vc.univ y (vc.not (prop.erased_p P₁))),
-      have h2, from free_in_vc.univ.inv h1,
-      have h3, from free_in_vc.not.inv h2.right,
-      have h4: x ∈ FV P₁, from set.mem_of_mem_of_subset h3 free_in_prop_of_free_in_erased.left,
-      have h5: x ∈ FV (prop.exis y P₁), from free_in_prop.exis h2.left h4,
-      show x ∈ σ, from P_closed h5
-    end,
 
     by_contradiction h3,
     have h4: σ⊨vc.univ y (vc.not (prop.to_vc P₁)), by begin
@@ -2311,23 +2245,6 @@ lemma to_vc_valid_of_erased_n_valid:
       have h9, from valid_env.not.mpr h6,
       apply valid_env.not.mp,
 
-      show closed_subst σ (vc.subst y v (prop.to_vc P₁)), by begin
-        assume x: var,
-        assume h1: x ∈ FV (vc.subst y v (prop.to_vc P₁)),
-        have h2, from free_in_vc.subst h1,
-        have h3: x ∈ FV P₁, from set.mem_of_mem_of_subset h2.right free_in_prop_of_free_in_to_vc,
-        have h4: x ∈ FV (prop.exis y P₁), from free_in_prop.exis h2.left h3,
-        show x ∈ σ, from P_closed h4
-      end,
-
-      have h9b: closed_subst σ (prop.subst y v P₁), by begin
-        assume x: var,
-        assume h1: x ∈ FV (prop.subst y v P₁),
-        have h2, from free_of_subst_prop h1,
-        have h4: x ∈ FV (prop.exis y P₁), from free_in_prop.exis h2.left h2.right,
-        show x ∈ σ, from P_closed h4
-      end,
-
       by_contradiction h10,
       have h11: σ⊨vc.subst y v (prop.erased_p P₁), by begin
 
@@ -2341,9 +2258,7 @@ lemma to_vc_valid_of_erased_n_valid:
           have ht1: P₁.simplesize = (prop.subst y v P₁).simplesize, from same_simplesize_after_subst,
           have ht2: P₁.simplesize < (prop.forallc y P₁).simplesize, from simplesize_prop_forall,
           have rec_wf: (prop.subst y v P₁).simplesize < (prop.forallc y P₁).simplesize, from ht1 ▸ ht2,
-          begin
-            from (to_vc_valid_of_erased_n_valid (prop.subst y v P₁) σ h9b).right h13
-          end
+          (to_vc_valid_of_erased_n_valid (prop.subst y v P₁) σ).right h13
         )
       end,
       from h9 h11
@@ -2355,6 +2270,241 @@ using_well_founded {
   dec_tac := tactic.assumption
 }
 
+lemma to_vc_valid_of_lifted_to_vc_valid {σ: env} {P Q: prop} {x: var}:
+  (P.lift_p x = some Q → (σ ⊨ Q.to_vc) → σ ⊨ P.to_vc) ∧
+  (P.lift_n x = some Q → (σ ⊨ P.to_vc) → σ ⊨ Q.to_vc) :=
+  sorry
+
+lemma to_vc_valid_of_lift_all_to_vc_valid: ∀P:prop, ∀σ, (σ ⊨ P.lift_all.to_vc) → σ ⊨ P.to_vc
+| P :=
+  begin
+    assume σ,
+    assume h1,
+    unfold prop.lift_all at h1,
+    by_cases (option.is_none_prop (prop.lift_p P (prop.fresh_var P))) with h2,
+
+    have h3: (prop.lift_p P (prop.fresh_var P) = none), from option.is_none.inv.mpr h2,
+    simp[h3] at h1,
+    from h1,
+
+    have h3, from option.some_iff_not_none.mpr h2,
+    have h4: ∃Q, (prop.lift_p P (prop.fresh_var P) = some Q), from option.is_some_iff_exists.mp h3,
+    cases h4 with Q h5,
+    simp[h5] at h1,
+    show σ ⊨ prop.to_vc P, from (
+      have Q.num_quantifiers < P.num_quantifiers, from (lifted_prop_smaller Q).left h5,
+      have σ ⊨ Q.to_vc, from to_vc_valid_of_lift_all_to_vc_valid Q σ h1,
+      to_vc_valid_of_lifted_to_vc_valid.left h5 this
+    )
+  end
+using_well_founded {
+  rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s, s.num_quantifiers ⟩],
+  dec_tac := tactic.assumption
+}
+
+lemma erased_valid_of_instantiated_with_erased_valid {σ: env} {P: prop} {t: calltrigger}:
+  ((σ ⊨ (P.instantiate_with_n t).to_vc) → σ ⊨ P.to_vc) ∧
+  ((σ ⊨ P.to_vc) → σ ⊨ (P.instantiate_with_p t).to_vc) :=
+  begin
+    induction P,
+    case prop.term t {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      from id
+    },
+    case prop.not P₁ ih {
+      split,
+
+      unfold prop.instantiate_with_n,
+      unfold prop.to_vc,
+      assume h1,
+      apply valid_env.not.mp,
+
+      by_contradiction,
+
+      have h4: σ ⊨ prop.to_vc (prop.instantiate_with_p P₁ t),
+      from ih.right a,
+      have h5, from valid_env.not.mpr h1,
+      from h5 h4,
+
+      unfold prop.instantiate_with_p,
+      unfold prop.to_vc,
+      assume h1,
+      apply valid_env.not.mp,
+
+      by_contradiction,
+      have h2: σ ⊨ prop.to_vc P₁,
+      from ih.left a,
+      have h3, from valid_env.not.mpr h1,
+      from h3 h2
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      unfold prop.instantiate_with_n,
+      unfold prop.to_vc,
+      assume h1,
+      have h2: σ ⊨ prop.to_vc (prop.and (prop.instantiate_with_n P₁ t) (prop.instantiate_with_n P₂ t)), from h1,
+      unfold prop.to_vc at h2,
+      have h3, from valid_env.and.elim h2,
+      apply valid_env.and,
+      show σ ⊨ prop.to_vc P₁, from P₁_ih.left h3.left,
+      show σ ⊨ prop.to_vc P₂, from P₂_ih.left h3.right,
+
+      unfold prop.instantiate_with_p,
+      unfold prop.to_vc,
+      assume h1,
+      have h2, from valid_env.and.elim h1,
+      change σ ⊨ prop.to_vc (prop.and (prop.instantiate_with_p P₁ t) (prop.instantiate_with_p P₂ t)),
+      unfold prop.to_vc,
+      apply valid_env.and,
+      show σ ⊨ prop.to_vc (prop.instantiate_with_p P₁ t), from P₁_ih.right h2.left,
+      show σ ⊨ prop.to_vc (prop.instantiate_with_p P₂ t), from P₂_ih.right h2.right
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      split,
+
+      unfold prop.instantiate_with_n,
+      unfold prop.to_vc,
+      assume h1,
+      have h2: σ ⊨ prop.to_vc (prop.or (prop.instantiate_with_n P₁ t) (prop.instantiate_with_n P₂ t)), from h1,
+      unfold prop.to_vc at h2,
+      cases valid_env.or.elim h2 with h3 h4,
+
+      apply valid_env.or₁,
+      from P₁_ih.left h3,
+
+      apply valid_env.or₂,
+      from P₂_ih.left h4,
+
+      unfold prop.instantiate_with_p,
+      unfold prop.to_vc,
+      assume h1,
+      change σ ⊨ prop.to_vc (prop.or (prop.instantiate_with_p P₁ t) (prop.instantiate_with_p P₂ t)),
+      unfold prop.to_vc,
+      cases valid_env.or.elim h1 with h3 h4,
+
+      apply valid_env.or₁,
+      from P₁_ih.right h3,
+
+      apply valid_env.or₂,
+      from P₂_ih.right h4
+    },
+    case prop.pre t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      from id
+    },
+    case prop.pre₁ op t {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      from id
+    },
+    case prop.pre₂ op t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      from id
+    },
+    case prop.call t {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      from id
+    },
+    case prop.post t₁ t₂ {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      from id
+    },
+    case prop.forallc y P₁ P₁_ih {
+      split,
+
+      unfold prop.instantiate_with_n,
+      from id,
+
+      unfold prop.instantiate_with_p,
+      unfold prop.to_vc,
+      assume h1,
+      change σ ⊨ prop.to_vc (prop.and (prop.forallc y P₁) (prop.substt y (t.x) P₁)),
+      unfold prop.to_vc,
+      apply valid_env.and,
+      from h1,
+
+
+
+      admit
+    },
+    case prop.exis y P₁ P₁_ih {
+      admit
+    }
+  end
+
+lemma to_vc_valid_of_instantiate_with_all_lifted_to_vc_valid {σ: env} {T: list calltrigger}:
+  ∀P: prop, (σ ⊨ (P.instantiate_with_all T).lift_all.to_vc) → σ ⊨ P.to_vc :=
+  begin
+    induction T,
+
+    case list.nil {
+      assume P,
+      assume h1,
+      unfold prop.instantiate_with_all at h1,
+      from to_vc_valid_of_lift_all_to_vc_valid P σ h1
+    },
+
+    case list.cons t T ih {
+      assume P,
+      assume h1,
+      unfold prop.instantiate_with_all at h1,
+      have h3, from ih (prop.instantiate_with_n P t),
+      have h4, from h3 h1,
+      from erased_valid_of_instantiated_with_erased_valid.left h4
+    }
+  end
+
+lemma lifted_all_to_vc_valid_of_instantiate_rep_valid {σ: env} {n: ℕ}:
+  ∀P: prop, (σ ⊨ P.instantiate_rep n) → σ ⊨ P.lift_all.to_vc :=
+  begin
+    induction n,
+
+    case nat.zero {
+      assume P,
+      assume h1,
+      unfold prop.instantiate_rep at h1,
+      from (to_vc_valid_of_erased_n_valid (prop.lift_all P) σ).left h1
+    },
+
+    case nat.succ n ih {
+      assume P,
+      unfold prop.instantiate_rep,
+      assume h1,
+      have h2, from ih (prop.instantiate_with_all (prop.lift_all P) (prop.find_calls_n (prop.lift_all P))) h1,
+      from to_vc_valid_of_instantiate_with_all_lifted_to_vc_valid P.lift_all h2
+    }
+  end
+
 --  inst_n(P)   ⇒   inst_p(P)
 --         ⇘    ⇗  
 --     ⇑      P      ⇓
@@ -2363,7 +2513,11 @@ using_well_founded {
 
 lemma to_vc_valid_of_instantiated_n_valid {σ: env} {P: prop}:
   closed_subst σ P → (σ ⊨ P.instantiated_n) → σ ⊨ P.to_vc :=
-  sorry
+  assume P_closed: closed_subst σ P,
+  assume : σ ⊨ P.instantiated_n,
+  have σ ⊨ P.instantiate_rep P.max_nesting_level, by { unfold prop.instantiated_n at this, from this },
+  have σ ⊨ P.lift_all.to_vc, from lifted_all_to_vc_valid_of_instantiate_rep_valid P this,
+  show σ ⊨ P.to_vc, from to_vc_valid_of_lift_all_to_vc_valid P σ this
 
 lemma vc_valid_from_inst_valid {P: prop}:
   ⟪ P ⟫ → ∀ (σ: env), closed_subst σ P → σ ⊨ P.to_vc :=
