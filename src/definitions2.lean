@@ -182,8 +182,8 @@ using_well_founded {
 
 -- performs n rounds of instantiations. each round also involves a repeated lifting.
 -- once all rounds are complete, remaining quantifiers and triggers in negative positions will be erased
-def prop.instantiate_rep: prop → ℕ → prop
-| P 0            := P.lift_all
+def prop.instantiate_rep: prop → ℕ → vc
+| P 0            := P.lift_all.erased_n
 | P (nat.succ n) := have n < n + 1, from lt_of_add_one,
                     (P.lift_all.instantiate_with_all (P.lift_all.find_calls_n)).instantiate_rep n
 using_well_founded {
@@ -217,7 +217,7 @@ using_well_founded {
 
 -- the main instantiation algorithm performs n rounds of instantiations
 -- where n is the maximum quantifier nesting level and returns the erased proposition
-def prop.instantiated_n (P: prop): prop := P.instantiate_rep P.max_nesting_level
+def prop.instantiated_n (P: prop): vc := P.instantiate_rep P.max_nesting_level
 
 --  #############################
 --  ### OPERATIONAL SEMANTICS ###
@@ -327,7 +327,7 @@ notation s `⟶*` s':100 := trans_step s s'
 constant valid : vc → Prop
 notation `⊨` p: 20 := valid p
 notation σ `⊨` p: 20 := ⊨ (vc.subst_env σ p)
-notation `⟪` P `⟫`: 100 := ∀ (σ: env), closed_subst σ P.instantiated_n → σ ⊨ P.instantiated_n.erased_n
+notation `⟪` P `⟫`: 100 := ∀ (σ: env), closed_subst σ P → ⊨ (prop.subst_env σ P).instantiated_n
 
 -- simple axioms for logical reasoning
 
@@ -341,11 +341,9 @@ axiom valid.and {P Q: vc}:
 
 axiom valid.or.left {P Q: vc}:
   (⊨ P) → 
-  closed Q →
   ⊨ P ⋁ Q
 
 axiom valid.or.right {P Q: vc}:
-  closed P →
   (⊨ Q) → 
   ⊨ P ⋁ Q
 
@@ -365,7 +363,6 @@ axiom valid.contradiction {P: vc}:
 
 -- law of excluded middle
 axiom valid.em {P: vc}:
-  closed P →
   (⊨ P ⋁ P.not)
 
 -- a term is valid if it equals true
@@ -381,10 +378,10 @@ axiom valid.univ.mp {x: var} {P: vc}:
   ⊨ vc.univ x P
 
 -- universal quantifier can be instantiated with any term
-axiom valid.univ.mpr {x: var} {P: vc} {σ: env}:
+axiom valid.univ.mpr {x: var} {P: vc}:
   (⊨ vc.univ x P)
   →
-  (∀t, closed_subst σ t → ⊨ vc.substte x t P σ)
+  (∀t, ⊨ vc.substt x t P)
 
 -- unary and binary operators are decidable, so equalities with operators are decidable
 axiom valid.unop {op: unop} {vₓ v: value}:
@@ -408,11 +405,6 @@ axiom valid.pre₂ {v₁ v₂: value} {op: binop}:
   option.is_some (binop.apply op v₁ v₂)
   ↔
   ⊨ vc.pre₂ op v₁ v₂
-
--- closedness assumption: only closed VCs can be validated
-
-axiom valid.closed {P: vc}:
-  (⊨ P) → closed P
 
 --  #####################################
 --  ### VERIFICATION RELATION (VCGEN) ###
@@ -449,7 +441,7 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     FV S.to_prop ⊆ FV P ∪ { f, x } →
     (P ⋀ spec.func f x R S ⋀ R ⊢ e₁ : Q₁) →
     (P ⋀ prop.func f x R (Q₁ (term.app f x) ⋀ S) ⊢ e₂ : Q₂) →
-    ⟪prop.implies (P ⋀ spec.func f x R S ⋀ R ⋀ Q₁ (term.app f x)) S⟫ →
+    ⟪ prop.implies (P ⋀ spec.func f x R S ⋀ R ⋀ Q₁ (term.app f x)) S ⟫ →
     (P ⊢ letf f[x] req R ens S {e₁} in e₂ : propctx.exis f (prop.func f x R (Q₁ (term.app f x) ⋀ S) ⋀ Q₂))
 
 | unop {P: prop} {op: unop} {e: exp} {x y: var} {Q: propctx}:
@@ -522,7 +514,7 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
     FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
     FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
     (Q₂ ⋀ spec.func g x R S ⋀ R ⊢ e : Q₃) →
-    ⟪prop.implies (Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S⟫ →
+    ⟪ prop.implies (Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S ⟫ →
     (⊢ (σ₁[f ↦ value.func g x R S e σ₂]) :
       (Q₁
        ⋀ f ≡ value.func g x R S e σ₂

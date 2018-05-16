@@ -2623,6 +2623,96 @@ lemma term.closed_subst_of_closed {σ: env} {t: term}: closed (term.subst_env σ
     show x ∈ σ.dom, from this
   )
 
+lemma term.substt_value_eq_subst {x: var} {v: value} {t: term}: term.substt x v t = term.subst x v t :=
+  begin
+    induction t with v' z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+
+    show (term.substt x v (term.value v') = term.subst x v (term.value v')), by begin
+      unfold term.substt,
+      unfold term.subst
+    end,
+
+    show (term.substt x v (term.var z) = term.subst x v (term.var z)), by begin
+      unfold term.substt,
+      unfold term.subst
+    end,
+
+    show (term.substt x ↑v (term.unop unop t₁) = term.subst x v (term.unop unop t₁)), by begin
+      unfold term.substt,
+      unfold term.subst,
+      congr
+    end,
+
+    show (term.substt x v (term.binop binop t₂ t₃) = term.subst x v (term.binop binop t₂ t₃)), by begin
+      unfold term.substt,
+      unfold term.subst,
+      congr
+    end,
+
+    show (term.substt x ↑v (term.app t₄ t₅) = term.subst x v (term.app t₄ t₅)), by begin
+      unfold term.substt,
+      unfold term.subst,
+      congr
+    end
+  end
+
+lemma vc.substt_value_eq_subst {x: var} {v: value} {P: vc}: vc.substt x v P = vc.subst x v P :=
+  begin
+    induction P,
+
+    case vc.term t {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr
+    },
+    case vc.not P₁ ih {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr,
+      from ih
+    },
+    case vc.and P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr,
+      from P₁_ih,
+      from P₂_ih
+    },
+    case vc.or P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr,
+      from P₁_ih,
+      from P₂_ih
+    },
+    case vc.pre t₁ t₂ {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr
+    },
+    case vc.pre₁ op t {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr
+    },
+    case vc.pre₂ op t₁ t₂ {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr
+    },
+    case vc.post t₁ t₂ {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr
+    },
+    case vc.univ z P' P'_ih {
+      unfold vc.substt,
+      unfold vc.subst,
+      congr,
+      from P'_ih
+    }
+  end
+
 lemma prop.free_of_free_in_subst {x y: var} {v: value} {P: prop}: x ∈ FV (prop.subst y v P) → x ∈ FV P :=
   begin
     assume h1,
@@ -4637,7 +4727,6 @@ lemma vc.substte_env.order {P: vc} {x: var} {t: term}:
       simp[h2],
       rw[vc.subst_env.univ],
       congr,
-
 
       have h3: (∀ (z : var), z ∈ σ₁.without y → ((σ₁.without y) z = (σ₂.without y) z)), by begin
         assume z: var,

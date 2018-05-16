@@ -199,6 +199,26 @@ instance {α: Type} {a: option α} : decidable (option.is_none_prop a) :=
     is_false this
   ) rfl
 
+lemma eq_from_map_result_some {α: Type} {a: option α} {b: α} {f: α → α}: f <$> a = some b → ∃c: α, a=some c ∧ b=f c :=
+  begin
+    assume h1,
+    unfold has_map.map at h1,
+    cases a with c,
+
+    unfold option.map at h1,
+    unfold option.bind at h1,
+    contradiction,
+
+    unfold option.map at h1,
+    unfold option.bind at h1,
+    unfold function.comp at h1,
+    have h2, from option.some.inj h1,
+    existsi c,
+    split,
+    from rfl,
+    from h2.symm
+  end
+
 -- auxiliary lemmas for sets
 
 lemma set.two_elems_mem {α: Type} {a b c: α}:

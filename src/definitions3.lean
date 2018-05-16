@@ -64,7 +64,7 @@ notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
 | top {R: spec} {P: prop} {σ: env} {e: exp} {Q: propctx}:
     (⊢ σ : P) →
     FV R.to_prop ⊆ FV P →
-    (σ ⊨ R.to_prop.instantiated_n.erased_n) →
+    (σ ⊨ R.to_prop.instantiated_n) →
     (R ⋀ P ⊢ e : Q) →
     (⊢ₛ (R, σ, e) : P ⋀ Q)
 
@@ -76,12 +76,12 @@ notation `⊢ₛ` s `:` Q : 10 := stack.vcgen s Q
     (⊢ σ₂ : P₂ ) →
     (⊢ (σ₂[f↦value.func f fx R₂ S₂ e₂ σ₂][fx↦v]) : P₃) →
     FV R₁.to_prop ⊆ FV P₁ →
-    (σ₁ ⊨ R₁.to_prop.instantiated_n.erased_n) →
+    (σ₁ ⊨ R₁.to_prop.instantiated_n) →
     (σ₁ g = value.func f fx R₂ S₂ e₂ σ₂) →
     (σ₁ x = v) →
     (R₁ ⋀ P₁ ⋀ prop.call g x ⋀ prop.post g x ⋀ y ≡ term.app g x ⊢ e₁ : Q₁) →
     (P₂ ⋀ spec.func f fx R₂ S₂ ⋀ R₂ ⊢ e₂ : Q₂) →
-    (∀σ' t, (σ' ⊨ (Q₂' t).instantiated_n.erased_n) → σ' ⊨ (P₃ ⋀ (Q₂ t)).instantiated_n.erased_n) →
+    (∀σ' t, (σ' ⊨ (Q₂' t).instantiated_n) → σ' ⊨ (P₃ ⋀ (Q₂ t)).instantiated_n) →
     (∀v: value, FV (P₃ ⋀ (Q₂ v)) ⊆ FV (Q₂' v)) →
     ⟪ prop.implies (R₁ ⋀ P₁ ⋀ prop.call g x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⟫ →
     ((R₂, σ₂[f↦value.func f fx R₂ S₂ e₂ σ₂][fx↦v], e₂) ⟶* s) →
