@@ -2228,3 +2228,10 @@ lemma prop_uses_var_of_to_vc_uses_var {x: var} {P: prop}: vc.uses_var x P.to_vc 
       from P₁_ih h5
     }
   end
+
+lemma to_vc_closed_of_closed {P: prop}: closed P → closed P.to_vc :=
+  assume P_closed: closed P,
+  assume x: var,
+  assume : x ∈ FV P.to_vc,
+  have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_to_vc,
+  show «false», from P_closed x this

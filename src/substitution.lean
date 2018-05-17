@@ -5079,3 +5079,393 @@ lemma vc.substt_var_cancel {x y: var} {P: vc}: ¬ vc.uses_var x P → (vc.substt
       from P₁_ih h3
     }
   end
+
+lemma subst_distrib_to_vc {P: prop} {x: var} {v: value}:
+      (vc.subst x v (prop.to_vc P) = prop.to_vc (prop.subst x v P)) := begin
+  induction P,
+  case prop.term t {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst,
+    change (vc.term (term.subst x v t) = prop.to_vc (prop.term (term.subst x v t))),
+    unfold prop.to_vc
+  },
+  case prop.not P₁ ih {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst,
+    congr,
+    from ih
+  },
+  case prop.and P₁ P₂ P₁_ih P₂_ih {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    change (vc.subst x v (vc.and (prop.to_vc P₁) (prop.to_vc P₂))
+           = prop.to_vc (prop.and (prop.subst x v P₁) (prop.subst x v P₂))),
+    unfold vc.subst,
+    unfold prop.to_vc,
+    congr,
+    from P₁_ih,
+    from P₂_ih
+  },
+  case prop.or P₁ P₂ P₁_ih P₂_ih {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    change (vc.subst x v (vc.or (prop.to_vc P₁) (prop.to_vc P₂))
+           = prop.to_vc (prop.or (prop.subst x v P₁) (prop.subst x v P₂))),
+    unfold vc.subst,
+    unfold prop.to_vc,
+    congr,
+    from P₁_ih,
+    from P₂_ih
+  },
+  case prop.pre t₁ t₂ {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst
+  },
+  case prop.pre₁ op t {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst
+  },
+  case prop.pre₂ op t₁ t₂ {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst
+  },
+  case prop.call t {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst,
+    congr
+  },
+  case prop.post t₁ t₂ {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst
+  },
+  case prop.forallc y P₁ P₁_ih {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst,
+    congr,
+
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    from P₁_ih
+  },
+  case prop.exis y P₁ P₁_ih {
+    unfold prop.subst,
+    unfold prop.to_vc,
+    unfold vc.subst,
+    congr,
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    congr,
+    from P₁_ih
+  }
+end
+
+lemma subst_env_distrib_to_vc {P: prop} {σ: env}:
+      (vc.subst_env σ (prop.to_vc P) = prop.to_vc (prop.subst_env σ P)) :=
+  begin
+    induction σ with σ₁ y v' ih,
+
+    show (vc.subst_env env.empty (prop.to_vc P) = prop.to_vc (prop.subst_env env.empty P)), by begin
+      unfold prop.subst_env,
+      unfold vc.subst_env
+    end,
+
+    show (vc.subst_env (σ₁[y↦v']) (prop.to_vc P) = prop.to_vc (prop.subst_env (σ₁[y↦v']) P)), by begin
+      unfold prop.subst_env,
+      unfold vc.subst_env,
+      rw[ih],
+      from subst_distrib_to_vc
+    end
+  end
+
+lemma substt_distrib_to_vc {P: prop} {x: var} {t: term}:
+      (vc.substt x t (prop.to_vc P) = prop.to_vc (prop.substt x t P)) := begin
+  induction P,
+  case prop.term t₂ {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt,
+    change (vc.term (term.substt x t t₂) = prop.to_vc (prop.term (term.substt x t t₂))),
+    unfold prop.to_vc
+  },
+  case prop.not P₁ ih {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt,
+    congr,
+    from ih
+  },
+  case prop.and P₁ P₂ P₁_ih P₂_ih {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    change (vc.substt x t (vc.and (prop.to_vc P₁) (prop.to_vc P₂))
+           = prop.to_vc (prop.and (prop.substt x t P₁) (prop.substt x t P₂))),
+    unfold vc.substt,
+    unfold prop.to_vc,
+    congr,
+    from P₁_ih,
+    from P₂_ih
+  },
+  case prop.or P₁ P₂ P₁_ih P₂_ih {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    change (vc.substt x t (vc.or (prop.to_vc P₁) (prop.to_vc P₂))
+           = prop.to_vc (prop.or (prop.substt x t P₁) (prop.substt x t P₂))),
+    unfold vc.substt,
+    unfold prop.to_vc,
+    congr,
+    from P₁_ih,
+    from P₂_ih
+  },
+  case prop.pre t₁ t₂ {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt
+  },
+  case prop.pre₁ op t₁ {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt
+  },
+  case prop.pre₂ op t₁ t₂ {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt
+  },
+  case prop.call t₁ {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt,
+    congr
+  },
+  case prop.post t₁ t₂ {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt
+  },
+  case prop.forallc y P₁ P₁_ih {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt,
+    congr,
+
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    from P₁_ih
+  },
+  case prop.exis y P₁ P₁_ih {
+    unfold prop.substt,
+    unfold prop.to_vc,
+    unfold vc.substt,
+    congr,
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    congr,
+    from P₁_ih
+  }
+end
+
+lemma subst_distrib_erased {P: prop} {x: var} {v: value}:
+      (vc.subst x v (prop.erased_p P) = prop.erased_p (prop.subst x v P)) ∧
+      (vc.subst x v (prop.erased_n P) = prop.erased_n (prop.subst x v P)) := begin
+  induction P,
+  case prop.term t {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+    change (vc.term (term.subst x v t) = prop.erased_p (prop.term (term.subst x v t))),
+    unfold prop.erased_p,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst,
+    change (vc.term (term.subst x v t) = prop.erased_n (prop.term (term.subst x v t))),
+    unfold prop.erased_n
+  },
+  case prop.not P₁ ih {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+    congr,
+    from ih.right,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst,
+    congr,
+    from ih.left
+  },
+  case prop.and P₁ P₂ P₁_ih P₂_ih {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    change (vc.subst x v (vc.and (prop.erased_p P₁) (prop.erased_p P₂))
+           = prop.erased_p (prop.and (prop.subst x v P₁) (prop.subst x v P₂))),
+    unfold vc.subst,
+    unfold prop.erased_p,
+    congr,
+    from P₁_ih.left,
+    from P₂_ih.left,
+    
+    unfold prop.subst,
+    unfold prop.erased_n,
+    change (vc.subst x v (vc.and (prop.erased_n P₁) (prop.erased_n P₂))
+           = prop.erased_n (prop.and (prop.subst x v P₁) (prop.subst x v P₂))),
+    unfold vc.subst,
+    unfold prop.erased_n,
+    congr,
+    from P₁_ih.right,
+    from P₂_ih.right
+  },
+  case prop.or P₁ P₂ P₁_ih P₂_ih {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    change (vc.subst x v (vc.or (prop.erased_p P₁) (prop.erased_p P₂))
+           = prop.erased_p (prop.or (prop.subst x v P₁) (prop.subst x v P₂))),
+    unfold vc.subst,
+    unfold prop.erased_p,
+    congr,
+    from P₁_ih.left,
+    from P₂_ih.left,
+    
+    unfold prop.subst,
+    unfold prop.erased_n,
+    change (vc.subst x v (vc.or (prop.erased_n P₁) (prop.erased_n P₂))
+           = prop.erased_n (prop.or (prop.subst x v P₁) (prop.subst x v P₂))),
+    unfold vc.subst,
+    unfold prop.erased_n,
+    congr,
+    from P₁_ih.right,
+    from P₂_ih.right
+  },
+  case prop.pre t₁ t₂ {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst
+  },
+  case prop.pre₁ op t {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst
+  },
+  case prop.pre₂ op t₁ t₂ {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst
+  },
+  case prop.call t {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+    congr,
+
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst,
+    congr
+  },
+  case prop.post t₁ t₂ {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst
+  },
+  case prop.forallc y P₁ P₁_ih {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+    congr,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst,
+    congr,
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    from P₁_ih.right
+  },
+  case prop.exis y P₁ P₁_ih {
+    split,
+
+    unfold prop.subst,
+    unfold prop.erased_p,
+    unfold vc.subst,
+    congr,
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    congr,
+    from P₁_ih.left,
+
+    unfold prop.subst,
+    unfold prop.erased_n,
+    unfold vc.subst,
+    congr,
+    by_cases (x = y) with h1,
+
+    simp[h1],
+
+    simp[h1],
+    congr,
+    from P₁_ih.right
+  }
+end

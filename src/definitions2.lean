@@ -469,9 +469,9 @@ notation P `⊢` e `:` Q : 10 := exp.vcgen P e Q
     f ∈ FV P →
     x ∈ FV P →
     y ∉ FV P →
-    (P ⋀ prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e : Q) →
-    ⟪ prop.implies (P ⋀ prop.call f x) (term.unop unop.isFunc f ⋀ prop.pre f x) ⟫ →
-    (P ⊢ letapp y = f [x] in e : propctx.exis y (prop.call f x ⋀ prop.post f x ⋀ y ≡ term.app f x ⋀ Q))
+    (P ⋀ prop.call x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊢ e : Q) →
+    ⟪ prop.implies (P ⋀ prop.call x) (term.unop unop.isFunc f ⋀ prop.pre f x) ⟫ →
+    (P ⊢ letapp y = f [x] in e : propctx.exis y (prop.call x ⋀ prop.post f x ⋀ y ≡ term.app f x ⋀ Q))
 
 | ite {P: prop} {e₁ e₂: exp} {x: var} {Q₁ Q₂: propctx}:
     x ∈ FV P →
@@ -528,6 +528,127 @@ notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
 notation `⊢` σ `:` Q : 10 := env.vcgen σ Q
 
+--  ###############################
+--  ### VERIFICATION WITHOUT QI ###
+--  ###############################
+
+-- verification conditions without quantifier instantiation algorithm
+
+notation `⦃` P `⦄`: 100 := ∀ (σ: env), closed_subst σ P → σ ⊨ P.to_vc
+
+reserve infix `⊩`:10
+
+-- verification of expressions
+
+inductive exp.dvcgen : prop → exp → propctx → Prop
+notation P `⊩` e `:` Q : 10 := exp.dvcgen P e Q
+
+| tru {P: prop} {x: var} {e: exp} {Q: propctx}:
+    x ∉ FV P →
+    (P ⋀ x ≡ value.true ⊩ e : Q) →
+    (P ⊩ lett x = true in e : propctx.exis x (x ≡ value.true ⋀ Q))
+
+| fals {P: prop} {x: var} {e: exp} {Q: propctx}:
+    x ∉ FV P →
+    (P ⋀ x ≡ value.false ⊩ e : Q) →
+    (P ⊩ letf x = false in e : propctx.exis x (x ≡ value.false ⋀ Q))
+
+| num {P: prop} {x: var} {n: ℕ} {e: exp} {Q: propctx}:
+    x ∉ FV P →
+    (P ⋀ x ≡ value.num n ⊩ e : Q) →
+    (P ⊩ letn x = n in e : propctx.exis x (x ≡ value.num n ⋀ Q))
+
+| func {P: prop} {f x: var} {R S: spec} {e₁ e₂: exp} {Q₁ Q₂: propctx}:
+    f ∉ FV P →
+    x ∉ FV P →
+    f ≠ x →
+    x ∈ FV R.to_prop.to_vc →
+    FV R.to_prop ⊆ FV P ∪ { f, x } →
+    FV S.to_prop ⊆ FV P ∪ { f, x } →
+    (P ⋀ spec.func f x R S ⋀ R ⊩ e₁ : Q₁) →
+    (P ⋀ prop.func f x R (Q₁ (term.app f x) ⋀ S) ⊩ e₂ : Q₂) →
+    ⦃ prop.implies (P ⋀ spec.func f x R S ⋀ R ⋀ Q₁ (term.app f x)) S ⦄ →
+    (P ⊩ letf f[x] req R ens S {e₁} in e₂ : propctx.exis f (prop.func f x R (Q₁ (term.app f x) ⋀ S) ⋀ Q₂))
+
+| unop {P: prop} {op: unop} {e: exp} {x y: var} {Q: propctx}:
+    x ∈ FV P →
+    y ∉ FV P →
+    (P ⋀ y ≡ term.unop op x ⊩ e : Q) →
+    ⦃ prop.implies P (prop.pre₁ op x) ⦄ →
+    (P ⊩ letop y = op [x] in e : propctx.exis y (y ≡ term.unop op x ⋀ Q))
+
+| binop {P: prop} {op: binop} {e: exp} {x y z: var} {Q: propctx}:
+    x ∈ FV P →
+    y ∈ FV P →
+    z ∉ FV P →
+    (P ⋀ z ≡ term.binop op x y ⊩ e : Q) →
+    ⦃ prop.implies P (prop.pre₂ op x y) ⦄ →
+    (P ⊩ letop2 z = op [x, y] in e : propctx.exis z (z ≡ term.binop op x y ⋀ Q))
+
+| app {P: prop} {e: exp} {y f x: var} {Q: propctx}:
+    f ∈ FV P →
+    x ∈ FV P →
+    y ∉ FV P →
+    (P ⋀ prop.call x ⋀ prop.post f x ⋀ y ≡ term.app f x ⊩ e : Q) →
+    ⦃ prop.implies (P ⋀ prop.call x) (term.unop unop.isFunc f ⋀ prop.pre f x) ⦄ →
+    (P ⊩ letapp y = f [x] in e : propctx.exis y (prop.call x ⋀ prop.post f x ⋀ y ≡ term.app f x ⋀ Q))
+
+| ite {P: prop} {e₁ e₂: exp} {x: var} {Q₁ Q₂: propctx}:
+    x ∈ FV P →
+    (P ⋀ x ⊩ e₁ : Q₁) →
+    (P ⋀ prop.not x ⊩ e₂ : Q₂) →
+    ⦃ prop.implies P (term.unop unop.isBool x) ⦄ →
+    (P ⊩ exp.ite x e₁ e₂ : propctx.implies x Q₁ ⋀ propctx.implies (prop.not x) Q₂)
+
+| return {P: prop} {x: var}:
+    x ∈ FV P →
+    (P ⊩ exp.return x : x ≣ •)
+
+notation P `⊩` e `:` Q : 10 := exp.dvcgen P e Q
+
+-- verification of environments/translation into logic
+
+inductive env.dvcgen : env → prop → Prop
+notation `⊩` σ `:` Q : 10 := env.dvcgen σ Q
+
+| empty:
+    ⊩ env.empty : value.true
+
+| tru {σ: env} {x: var} {Q: prop}:
+    x ∉ σ →
+    (⊩ σ : Q) →
+    (⊩ (σ[x ↦ value.true]) : Q ⋀ x ≡ value.true)
+
+| fls {σ: env} {x: var} {Q: prop}:
+    x ∉ σ →
+    (⊩ σ : Q) →
+    (⊩ (σ[x ↦ value.false]) : Q ⋀ x ≡ value.false)
+
+| num {n: ℤ} {σ: env} {x: var} {Q: prop}:
+    x ∉ σ →
+    (⊩ σ : Q) →
+    (⊩ (σ[x ↦ value.num n]) : Q ⋀ x ≡ value.num n)
+
+| func {σ₁ σ₂: env} {f g x: var} {R S: spec} {e: exp} {Q₁ Q₂: prop} {Q₃: propctx}:
+    f ∉ σ₁ →
+    g ∉ σ₂ →
+    x ∉ σ₂ →
+    g ≠ x →
+    (⊩ σ₁ : Q₁) →
+    (⊩ σ₂ : Q₂) →
+    x ∈ FV R.to_prop.to_vc →
+    FV R.to_prop ⊆ FV Q₂ ∪ { g, x } →
+    FV S.to_prop ⊆ FV Q₂ ∪ { g, x } →
+    (Q₂ ⋀ spec.func g x R S ⋀ R ⊩ e : Q₃) →
+    ⦃ prop.implies (Q₂ ⋀ spec.func g x R S ⋀ R ⋀ Q₃ (term.app g x)) S ⦄ →
+    (⊩ (σ₁[f ↦ value.func g x R S e σ₂]) :
+      (Q₁
+       ⋀ f ≡ value.func g x R S e σ₂
+       ⋀ prop.subst_env (σ₂[g↦value.func g x R S e σ₂]) (prop.func g x R (Q₃ (term.app g x) ⋀ S))))
+
+notation `⊩` σ `:` Q : 10 := env.dvcgen σ Q
+
+
 
 --  #################################################################
 --  ### AXIOMS ABOUT FUNCTION EXPRESSIONS, PRE and POSTCONDITIONS ###
@@ -559,15 +680,15 @@ axiom valid.pre.mpr {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
   (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ R.to_prop.to_vc)
 
 axiom valid.post.mp {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp}:
-  (⊢ σ : Q) →
-  (Q ⋀ spec.func f x R S ⋀ R ⊢ e : Q₂) →
+  (⊩ σ : Q) →
+  (Q ⋀ spec.func f x R S ⋀ R ⊩ e : Q₂) →
   (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ (Q₂ (term.app f x) ⋀ S.to_prop).to_vc)
   →
   (⊨ vc.post (value.func f x R S e σ) vₓ)
 
 axiom valid.post.mpr {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp}:
-  (⊢ σ : Q) →
-  (Q ⋀ spec.func f x R S ⋀ R ⊢ e : Q₂) →
+  (⊩ σ : Q) →
+  (Q ⋀ spec.func f x R S ⋀ R ⊩ e : Q₂) →
   (⊨ vc.post (value.func f x R S e σ) vₓ)
   →
   (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ (Q₂ (term.app f x) ⋀ S.to_prop).to_vc)
