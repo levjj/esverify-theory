@@ -3081,7 +3081,7 @@ lemma to_vc_valid_of_instantiated_n_valid {P: prop}:
   show ⊨ P.to_vc, from to_vc_valid_of_lift_all_to_vc_valid P this
 
 lemma vc_valid_from_inst_valid {P: prop}:
-  ⟪ P ⟫ → ∀ (σ: env), closed_subst σ P → σ ⊨ P.to_vc :=
+  ⟪ P ⟫ → ⦃ P ⦄ :=
   assume h1: ⟪ P ⟫,
   assume σ: env,
   assume h2: closed_subst σ P,

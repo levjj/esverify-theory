@@ -1,6 +1,85 @@
-/-
-import .definitions2 .freevars .substitution
+import .definitions3 .qi
 
+lemma exp.vcgen.extension {P: prop} {e: exp} {Q: propctx}: (P ⊢ e : Q) → (P ⊩ e : Q) :=
+  begin
+
+    assume e_verified: P ⊢ e : Q,
+
+    induction e_verified,
+
+    case exp.vcgen.tru P y e' Q y_not_in_P e'_verified ih {
+      apply exp.dvcgen.tru,
+      from y_not_in_P,
+      from ih
+    },
+
+    case exp.vcgen.fals P y e' Q y_not_in_P e'_verified ih {
+      apply exp.dvcgen.fals,
+      from y_not_in_P,
+      from ih
+    },
+
+    case exp.vcgen.num P y n e' Q y_not_in_P e'_verified ih {
+      apply exp.dvcgen.num,
+      from y_not_in_P,
+      from ih
+    },
+
+    case exp.vcgen.func P f fx R S e₁ e₂ Q₁ Q₂ f_not_in_P fx_not_in_P f_neq_fx fx_in_R fv_R fv_S
+                        e₁_verified e₂_verified func_vc ih₁ ih₂ {
+      apply exp.dvcgen.func,
+      from f_not_in_P,
+      from fx_not_in_P,
+      from f_neq_fx,
+      from fx_in_R,
+      from fv_R,
+      from fv_S,
+      from ih₁,
+      from ih₂,
+      from vc_valid_from_inst_valid func_vc
+    },
+
+    case exp.vcgen.unop op P e' x₁ y Q x_free_in_P y_not_in_P e'_verified vc_valid ih {
+      apply exp.dvcgen.unop,
+      from x_free_in_P,
+      from y_not_in_P,
+      from ih,
+      from vc_valid_from_inst_valid vc_valid
+    },
+
+    case exp.vcgen.binop op P e' x₁ x₂ y Q x₁_free_in_P x₂_free_in_P y_not_in_P e'_verified vc_valid ih {
+      apply exp.dvcgen.binop,
+      from x₁_free_in_P,
+      from x₂_free_in_P,
+      from y_not_in_P,
+      from ih,
+      from vc_valid_from_inst_valid vc_valid
+    },
+
+    case exp.vcgen.app P y f e' x₁ Q f_free_in_P x₁_free_in_P y_not_in_P e'_verified vc_valid ih {
+      apply exp.dvcgen.app,
+      from f_free_in_P,
+      from x₁_free_in_P,
+      from y_not_in_P,
+      from ih,
+      from vc_valid_from_inst_valid vc_valid
+    },
+
+    case exp.vcgen.ite P e₁ e₂ y Q₁ Q₂ y_free_in_P e₁_verified e₂_verified vc_valid ih₁ ih₂ {
+      apply exp.dvcgen.ite,
+      from y_free_in_P,
+      from ih₁,
+      from ih₂,
+      from vc_valid_from_inst_valid vc_valid
+    },
+
+    case exp.vcgen.return P y y_free_in_P {
+      apply exp.dvcgen.return,
+      from y_free_in_P
+    }
+  end
+
+/-
 lemma exp.vcgen.return.inv {P: prop} {x: var} {Q: propctx}: (P ⊢ exp.return x : Q) → x ∈ FV P :=
   assume return_verified: P ⊢ exp.return x : Q,
   begin

@@ -31,11 +31,10 @@ Verification conditions are processed with a deterministic quantifier instantiat
 in order to ensure that checking of verification conditions is deterministic and decidable.
 
 The file [`src/qi.lean`](src/qi.lean) proves that any proposition `P` that is valid with instantiations
-`⟪ P ⟫` is also a valid proposition when without quantifier instantiation for all models `σ` for which
-`P` is closed:
+`⟪ P ⟫` is also a valid proposition without quantifier instantiation `⦃ P ⦄`:
 
 ```
-⟪ P ⟫ → ∀σ, closed_subst σ P → σ ⊨ P.to_vc
+⟪ P ⟫ → ⦃ P ⦄
 ```
 
 The converse is not true. There are valid propositions that cannot be confirmed when the
