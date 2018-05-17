@@ -1,6 +1,6 @@
 -- lemmas about substitution
 
-import .definitions1 .freevars .others
+import .definitions3 .freevars .others
 
 lemma env.contains.inv {σ: env} {x y: var} {v: value}: x ∈ (σ[y↦v]) → (x = y ∨ x ∈ σ) :=
   assume x_in: x ∈ (σ[y↦v]),
@@ -530,6 +530,79 @@ lemma unchanged_of_subst_nonfree_term {t: term} {x: var} {v: value}:
     )
   end
 
+lemma unchanged_of_substt_nonfree_term {t: term} {x: var} {t': term}:
+    x ∉ FV t → (term.substt x t' t = t) :=
+  assume x_not_free: ¬ free_in_term x t,
+  begin
+    induction t with v y unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+    show (term.substt x t' (term.value v) = ↑v), by unfold term.substt,
+    show (term.substt x t' (term.var y) = (term.var y)), from (
+      have h: term.substt x t' (term.var y) = (if x = y then t' else y), by unfold term.substt,
+      if x_is_y: x = y then (
+        have free_in_term y (term.var y), from free_in_term.var y,
+        have free_in_term x (term.var y), from x_is_y.symm ▸ this,
+        show term.substt x t' (term.var y) = y, from absurd this x_not_free
+      ) else (
+        show term.substt x t' (term.var y) = y, by { simp[x_is_y] at h, assumption }
+      )
+    ),
+    show (term.substt x t' (term.unop unop t₁) = term.unop unop t₁), from (
+      have h: term.substt x t' (term.unop unop t₁) = term.unop unop (term.substt x t' t₁), by unfold term.substt,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_term x (term.unop unop t₁), from free_in_term.unop this,
+        show «false», from x_not_free this
+      ),
+      have term.substt x t' t₁ = t₁, from t₁_ih this,
+      show term.substt x t' (term.unop unop t₁) = term.unop unop t₁,
+      from @eq.subst term (λa, term.substt x t' (term.unop unop t₁) = term.unop unop a) (term.substt x t' t₁) t₁ this h
+    ),
+    show (term.substt x t' (term.binop binop t₂ t₃) = term.binop binop t₂ t₃), from (
+      have h: term.substt x t' (term.binop binop t₂ t₃)
+            = term.binop binop (term.substt x t' t₂) (term.substt x t' t₃), by unfold term.substt,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_term x (term.binop binop t₂ t₃), from free_in_term.binop₁ this,
+        show «false», from x_not_free this
+      ),
+      have t2_substt: term.substt x t' t₂ = t₂, from t₂_ih this,
+      have ¬ free_in_term x t₃, from (
+        assume : free_in_term x t₃,
+        have free_in_term x (term.binop binop t₂ t₃), from free_in_term.binop₂ this,
+        show «false», from x_not_free this
+      ),
+      have t3_substt: term.substt x t' t₃ = t₃, from t₃_ih this,
+      have term.substt x t' (term.binop binop t₂ t₃) = term.binop binop t₂ (term.substt x t' t₃),
+      from @eq.subst term (λa, term.substt x t' (term.binop binop t₂ t₃) = term.binop binop a (term.substt x t' t₃))
+      (term.substt x t' t₂) t₂ t2_substt h,
+      show term.substt x t' (term.binop binop t₂ t₃) = term.binop binop t₂ t₃,
+      from @eq.subst term (λa, term.substt x t' (term.binop binop t₂ t₃) = term.binop binop t₂ a)
+      (term.substt x t' t₃) t₃ t3_substt this
+    ),
+    show (term.substt x t' (term.app t₄ t₅) = term.app t₄ t₅), from (
+      have h: term.substt x t' (term.app t₄ t₅)
+            = term.app (term.substt x t' t₄) (term.substt x t' t₅), by unfold term.substt,
+      have ¬ free_in_term x t₄, from (
+        assume : free_in_term x t₄,
+        have free_in_term x (term.app t₄ t₅), from free_in_term.app₁ this,
+        show «false», from x_not_free this
+      ),
+      have t4_substt: term.substt x t' t₄ = t₄, from t₄_ih this,
+      have ¬ free_in_term x t₅, from (
+        assume : free_in_term x t₅,
+        have free_in_term x (term.app t₄ t₅), from free_in_term.app₂ this,
+        show «false», from x_not_free this
+      ),
+      have t5_substt: term.substt x t' t₅ = t₅, from t₅_ih this,
+      have term.substt x t' (term.app t₄ t₅) = term.app t₄ (term.substt x t' t₅),
+      from @eq.subst term (λa, term.substt x t' (term.app t₄ t₅) = term.app a (term.substt x t' t₅))
+      (term.substt x t' t₄) t₄ t4_substt h,
+      show term.substt x t' (term.app t₄ t₅) = term.app t₄ t₅,
+      from @eq.subst term (λa, term.substt x t' (term.app t₄ t₅) = term.app t₄ a)
+      (term.substt x t' t₅) t₅ t5_substt this
+    )
+  end
+
 lemma unchanged_of_subst_env_nonfree_term {t: term}:
     closed t → (∀σ, term.subst_env σ t = t) :=
   assume x_not_free: (∀x, x ∉ FV t),
@@ -911,6 +984,164 @@ lemma unchanged_of_subst_nonfree_vc {P: vc} {x: var} {v: value}:
         have vc.subst x v P' = P', from P'_ih this,
         show vc.subst x v (vc.univ y P') = vc.univ y P',
         from @eq.subst vc (λa, vc.subst x v (vc.univ y P') = vc.univ y a) (vc.subst x v P') P' this h2
+      )
+    )}
+  end
+
+lemma unchanged_of_substt_nonfree_vc {P: vc} {x: var} {t: term}:
+    x ∉ FV P → (vc.substt x t P = P) :=
+  assume x_not_free: ¬ free_in_vc x P,
+  begin
+    induction P,
+    case vc.term t₁ { from (
+      have h: vc.substt x t (vc.term t₁) = term.substt x t t₁, by unfold vc.substt,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_vc x (vc.term t₁), from free_in_vc.term this,
+        show «false», from x_not_free this
+      ),
+      have term.substt x t t₁ = t₁, from unchanged_of_substt_nonfree_term this,
+      show vc.substt x t t₁ = vc.term t₁,
+      from @eq.subst term (λa, vc.substt x t (vc.term t₁) = vc.term a) (term.substt x t t₁) t₁ this h
+    )},
+    case vc.not P₁ ih { from (
+      have h: vc.substt x t P₁.not = (vc.substt x t P₁).not, by unfold vc.substt,
+      have ¬ free_in_vc x P₁, from (
+        assume : free_in_vc x P₁,
+        have free_in_vc x P₁.not, from free_in_vc.not this,
+        show «false», from x_not_free this
+      ),
+      have vc.substt x t P₁ = P₁, from ih this,
+      show vc.substt x t P₁.not = P₁.not,
+      from @eq.subst vc (λa, vc.substt x t P₁.not = vc.not a) (vc.substt x t P₁) P₁ this h
+    )},
+    case vc.and P₁ P₂ P₁_ih P₂_ih { from (
+      have h: vc.substt x t (vc.and P₁ P₂) = (vc.substt x t P₁ ⋀ vc.substt x t P₂), by unfold vc.substt,
+      have ¬ free_in_vc x P₁, from (
+        assume : free_in_vc x P₁,
+        have free_in_vc x (P₁ ⋀ P₂), from free_in_vc.and₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: vc.substt x t P₁ = P₁, from P₁_ih this,
+      have ¬ free_in_vc x P₂, from (
+        assume : free_in_vc x P₂,
+        have free_in_vc x (P₁ ⋀ P₂), from free_in_vc.and₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: vc.substt x t P₂ = P₂, from P₂_ih this,
+      have vc.substt x t (P₁ ⋀ P₂) = (P₁ ⋀ vc.substt x t P₂),
+      from @eq.subst vc (λa, vc.substt x t (vc.and P₁ P₂) = (a ⋀ vc.substt x t P₂)) (vc.substt x t P₁) P₁ h1 h,
+      show vc.substt x t (P₁ ⋀ P₂) = (P₁ ⋀ P₂),
+      from @eq.subst vc (λa, vc.substt x t (vc.and P₁ P₂) = (P₁ ⋀ a)) (vc.substt x t P₂) P₂ h2 this
+    )},
+    case vc.or P₁ P₂ P₁_ih P₂_ih { from (
+      have h: vc.substt x t (vc.or P₁ P₂) = (vc.substt x t P₁ ⋁ vc.substt x t P₂), by unfold vc.substt,
+      have ¬ free_in_vc x P₁, from (
+        assume : free_in_vc x P₁,
+        have free_in_vc x (P₁ ⋁ P₂), from free_in_vc.or₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: vc.substt x t P₁ = P₁, from P₁_ih this,
+      have ¬ free_in_vc x P₂, from (
+        assume : free_in_vc x P₂,
+        have free_in_vc x (P₁ ⋁ P₂), from free_in_vc.or₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: vc.substt x t P₂ = P₂, from P₂_ih this,
+      have vc.substt x t (P₁ ⋁ P₂) = (P₁ ⋁ vc.substt x t P₂),
+      from @eq.subst vc (λa, vc.substt x t (vc.or P₁ P₂) = (a ⋁ vc.substt x t P₂)) (vc.substt x t P₁) P₁ h1 h,
+      show vc.substt x t (P₁ ⋁ P₂) = (P₁ ⋁ P₂),
+      from @eq.subst vc (λa, vc.substt x t (vc.or P₁ P₂) = (P₁ ⋁ a)) (vc.substt x t P₂) P₂ h2 this
+    )},
+    case vc.pre t₁ t₂ { from (
+      have h: vc.substt x t (vc.pre t₁ t₂) = vc.pre (term.substt x t t₁) (term.substt x t t₂), by unfold vc.substt,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_vc x (vc.pre t₁ t₂), from free_in_vc.pre₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.substt x t t₁ = t₁, from unchanged_of_substt_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_vc x (vc.pre t₁ t₂), from free_in_vc.pre₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.substt x t t₂ = t₂, from unchanged_of_substt_nonfree_term this,
+      have vc.substt x t (vc.pre t₁ t₂) = vc.pre t₁ (term.substt x t t₂),
+      from @eq.subst term (λa, vc.substt x t (vc.pre t₁ t₂) = vc.pre a (term.substt x t t₂)) (term.substt x t t₁) t₁ h1 h,
+      show vc.substt x t (vc.pre t₁ t₂) = vc.pre t₁ t₂,
+      from @eq.subst term (λa, vc.substt x t (vc.pre t₁ t₂) = vc.pre t₁ a) (term.substt x t t₂) t₂ h2 this
+    )},
+    case vc.pre₁ op t₁ { from (
+      have h: vc.substt x t (vc.pre₁ op t₁) = vc.pre₁ op (term.substt x t t₁), by unfold vc.substt,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_vc x (vc.pre₁ op t₁), from free_in_vc.preop this,
+        show «false», from x_not_free this
+      ),
+      have term.substt x t t₁ = t₁, from unchanged_of_substt_nonfree_term this,
+      show vc.substt x t (vc.pre₁ op t₁ ) = vc.pre₁ op t₁,
+      from @eq.subst term (λa, vc.substt x t (vc.pre₁ op t₁) = vc.pre₁ op a) (term.substt x t t₁) t₁ this h
+    )},
+    case vc.pre₂ op t₁ t₂ { from (
+      have h: vc.substt x t (vc.pre₂ op t₁ t₂) = vc.pre₂ op (term.substt x t t₁) (term.substt x t t₂),
+      by unfold vc.substt,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_vc x (vc.pre₂ op t₁ t₂), from free_in_vc.preop₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.substt x t t₁ = t₁, from unchanged_of_substt_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_vc x (vc.pre₂ op t₁ t₂), from free_in_vc.preop₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.substt x t t₂ = t₂, from unchanged_of_substt_nonfree_term this,
+      have vc.substt x t (vc.pre₂ op t₁ t₂) = vc.pre₂ op t₁ (term.substt x t t₂),
+      from @eq.subst term (λa, vc.substt x t (vc.pre₂ op t₁ t₂) = vc.pre₂ op a (term.substt x t t₂)) (term.substt x t t₁) t₁ h1 h,
+      show vc.substt x t (vc.pre₂ op t₁ t₂) = vc.pre₂ op t₁ t₂,
+      from @eq.subst term (λa, vc.substt x t (vc.pre₂ op t₁ t₂) = vc.pre₂ op t₁ a) (term.substt x t t₂) t₂ h2 this
+    )},
+    case vc.post t₁ t₂ { from (
+      have h: vc.substt x t (vc.post t₁ t₂) = vc.post (term.substt x t t₁) (term.substt x t t₂), by unfold vc.substt,
+      have ¬ free_in_term x t₁, from (
+        assume : free_in_term x t₁,
+        have free_in_vc x (vc.post t₁ t₂), from free_in_vc.post₁ this,
+        show «false», from x_not_free this
+      ),
+      have h1: term.substt x t t₁ = t₁, from unchanged_of_substt_nonfree_term this,
+      have ¬ free_in_term x t₂, from (
+        assume : free_in_term x t₂,
+        have free_in_vc x (vc.post t₁ t₂), from free_in_vc.post₂ this,
+        show «false», from x_not_free this
+      ),
+      have h2: term.substt x t t₂ = t₂, from unchanged_of_substt_nonfree_term this,
+      have vc.substt x t (vc.post t₁ t₂) = vc.post t₁ (term.substt x t t₂),
+      from @eq.subst term (λa, vc.substt x t (vc.post t₁ t₂) = vc.post a (term.substt x t t₂)) (term.substt x t t₁) t₁ h1 h,
+      show vc.substt x t (vc.post t₁ t₂) = vc.post t₁ t₂,
+      from @eq.subst term (λa, vc.substt x t (vc.post t₁ t₂) = vc.post t₁ a) (term.substt x t t₂) t₂ h2 this
+    )},
+    case vc.univ y P' P'_ih { from (
+      have h: vc.substt x t (vc.univ y P') = vc.univ y (if x = y then P' else vc.substt x t P'), by unfold vc.substt,
+      if x_eq_y: x = y then (
+        have (if x = y then P' else vc.substt x t P') = P', by simp[x_eq_y],
+        show vc.substt x t (vc.univ y P') = vc.univ y P',
+        from @eq.subst vc (λa, vc.substt x t (vc.univ y P') = vc.univ y a)
+                          (if x = y then P' else vc.substt x t P') P' this h
+      ) else (
+        have (if x = y then P' else vc.substt x t P') = vc.substt x t P', by simp[x_eq_y],
+        have h2: vc.substt x t (vc.univ y P') = vc.univ y (vc.substt x t P'),
+        from @eq.subst vc (λa, vc.substt x t (vc.univ y P') = vc.univ y a)
+                          (if x = y then P' else vc.substt x t P') (vc.substt x t P') this h,
+        have ¬ free_in_vc x P', from (
+          assume : free_in_vc x P',
+          have free_in_vc x (vc.univ y P'), from free_in_vc.univ x_eq_y this,
+          show «false», from x_not_free this
+        ),
+        have vc.substt x t P' = P', from P'_ih this,
+        show vc.substt x t (vc.univ y P') = vc.univ y P',
+        from @eq.subst vc (λa, vc.substt x t (vc.univ y P') = vc.univ y a) (vc.substt x t P') P' this h2
       )
     )}
   end
@@ -2127,203 +2358,6 @@ lemma vc.not_free_of_substt {x: var} {t: term} {P: vc}: closed t → x ∉ FV (v
       have x ∈ FV (P₁.substt x t), from (free_in_vc.univ.inv this).right,
       show «false», from P₁_ih this
     )}
-  end
-
--- lemma term.not_free_of_substte {x: var} {t₁ t₂: term} {σ: env}:
---       closed_subst σ t₁ → x ∉ FV (term.substt x (term.subst_env σ t₁) t₂) :=
---   begin
---     assume t_closed: closed_subst σ t₁,
---     assume x_free: x ∈ FV (term.substt x (term.subst_env σ t₁) t₂),
---     have h1: closed (term.subst_env σ t₁), from term.closed_of_closed_subst t_closed,
---     have h2: x ∉ FV (term.substt x (term.subst_env σ t₁) t₂), from term.not_free_of_substt h1,
---     show «false», from h2 x_free
---   end
-
-lemma term.not_free_of_substte {x: var} {t₁ t₂: term} {σ₁ σ₂: env}:
-      closed_subst σ₁ t₁ → x ∉ FV (term.substt x (term.subst_env σ₂ t₁) t₂) - (σ₁.dom - σ₂.dom) :=
-  begin
-    assume t_closed: closed_subst σ₁ t₁,
-    assume x_free: x ∈ FV (term.substt x (term.subst_env σ₂ t₁) t₂) - (σ₁.dom - σ₂.dom),
-    have h1, from set.mem_of_mem_diff x_free,
-    have h2: x ∈ FV (term.subst_env σ₂ t₁), from free_of_substt_same_term h1,
-    have h3: x ∈ FV t₁ ∧ x ∉ σ₂, from free_of_subst_env_term h2,
-    have h4: x ∈ σ₁, from t_closed h3.left,
-    have h5: x ∉ σ₂, from h3.right,
-    have h6, from set.not_mem_of_mem_diff x_free,
-    have h7, from set.not_mem_or_mem_of_not_mem_diff h6,
-    cases h7,
-    contradiction,
-    contradiction
-  end
-
-lemma vc.not_free_of_substte_step {σ₁: env} {x: var} {t: term} {P: vc}:
-      closed_subst σ₁ t → ∀σ₂, x ∉ FV (vc.substte x t P σ₂) - (σ₁.dom - σ₂.dom) :=
-  begin
-    assume t_closed: closed_subst σ₁ t,
-    induction P,
-    case vc.term t₂ {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (vc.term t₂) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.term t₂) σ₂ = (term.substt x (term.subst_env σ₂ t) t₂)), by unfold vc.substte,
-      have : free_in_vc x (vc.term (term.substt x (term.subst_env σ₂ t) t₂)), from this ▸ h1,
-      have h3: x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂), from free_in_vc.term.inv this,
-      have : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂) - (σ₁.dom - σ₂.dom), from set.mem_diff h3 h2, 
-      from term.not_free_of_substte t_closed this
-    },
-    case vc.not P₁ P₁_ih {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t P₁.not σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.not P₁) σ₂ = (P₁.substte x t σ₂).not), by unfold vc.substte,
-      have : x ∈ FV (P₁.substte x t σ₂).not, from this ▸ h1,
-      have h2: x ∈ FV (P₁.substte x t σ₂), from free_in_vc.not.inv this,
-      have h3, from set.not_mem_of_mem_diff x_free,
-      have : x ∈ FV (vc.substte x t P₁ σ₂) - (env.dom σ₁ - env.dom σ₂), from set.mem_diff h2 h3,
-      from P₁_ih σ₂ this
-    },
-    case vc.and P₁ P₂ P₁_ih P₂_ih {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (P₁ ⋀ P₂) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.and P₁ P₂) σ₂ = (P₁.substte x t σ₂ ⋀ P₂.substte x t σ₂)), by unfold vc.substte,
-      have : x ∈ FV (P₁.substte x t σ₂ ⋀ P₂.substte x t σ₂), from this ▸ h1,
-      from or.elim (free_in_vc.and.inv this) (
-        assume : x ∈ FV (P₁.substte x t σ₂),
-        have x ∈ FV (vc.substte x t P₁ σ₂) - (env.dom σ₁ - env.dom σ₂), from set.mem_diff this h2,
-        show «false», from P₁_ih σ₂ this
-      ) (
-        assume : x ∈ FV (P₂.substte x t σ₂),
-        have x ∈ FV (vc.substte x t P₂ σ₂) - (env.dom σ₁ - env.dom σ₂), from set.mem_diff this h2,
-        show «false», from P₂_ih σ₂ this
-      )
-    },
-    case vc.or P₁ P₂ P₁_ih P₂_ih {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (P₁ ⋁ P₂) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.or P₁ P₂) σ₂ = (P₁.substte x t σ₂ ⋁ P₂.substte x t σ₂)), by unfold vc.substte,
-      have : x ∈ FV (P₁.substte x t σ₂ ⋁ P₂.substte x t σ₂), from this ▸ h1,
-      from or.elim (free_in_vc.or.inv this) (
-        assume : x ∈ FV (P₁.substte x t σ₂),
-        have x ∈ FV (vc.substte x t P₁ σ₂) - (env.dom σ₁ - env.dom σ₂), from set.mem_diff this h2,
-        show «false», from P₁_ih σ₂ this
-      ) (
-        assume : x ∈ FV (P₂.substte x t σ₂),
-        have x ∈ FV (vc.substte x t P₂ σ₂) - (env.dom σ₁ - env.dom σ₂), from set.mem_diff this h2,
-        show «false», from P₂_ih σ₂ this
-      )
-    },
-    case vc.pre t₁ t₂ {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (vc.pre t₁ t₂) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.pre t₁ t₂) σ₂
-            = vc.pre (term.substt x (term.subst_env σ₂ t) t₁) (term.substt x (term.subst_env σ₂ t) t₂)),
-      by unfold vc.substte,
-      have : x ∈ FV (vc.pre (term.substt x (term.subst_env σ₂ t) t₁) (term.substt x (term.subst_env σ₂ t) t₂)),
-      from this ▸ h1,
-      from or.elim (free_in_vc.pre.inv this) (
-        assume : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁),
-        have x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-        term.not_free_of_substte t_closed this
-      ) (
-        assume : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂),
-        have x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-        term.not_free_of_substte t_closed this
-      )
-    },
-    case vc.pre₁ op t₁ {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (vc.pre₁ op t₁) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.pre₁ op t₁) σ₂ = vc.pre₁ op (term.substt x (term.subst_env σ₂ t) t₁)),
-      by unfold vc.substte,
-      have : x ∈ FV (vc.pre₁ op (term.substt x (term.subst_env σ₂ t) t₁)), from this ▸ h1,
-      have : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁), from free_in_vc.pre₁.inv this,
-      have : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-      from term.not_free_of_substte t_closed this
-    },
-    case vc.pre₂ op t₁ t₂ {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (vc.pre₂ op t₁ t₂) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.pre₂ op t₁ t₂) σ₂
-            = vc.pre₂ op (term.substt x (term.subst_env σ₂ t) t₁) (term.substt x (term.subst_env σ₂ t) t₂)),
-      by unfold vc.substte,
-      have : x ∈ FV (vc.pre₂ op (term.substt x (term.subst_env σ₂ t) t₁) (term.substt x (term.subst_env σ₂ t) t₂)),
-      from this ▸ h1,
-      from or.elim (free_in_vc.pre₂.inv this) (
-        assume : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁),
-        have x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-        term.not_free_of_substte t_closed this
-      ) (
-        assume : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂),
-        have x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-        term.not_free_of_substte t_closed this
-      )
-    },
-    case vc.post t₁ t₂ {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (vc.post t₁ t₂) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.post t₁ t₂) σ₂
-            = vc.post (term.substt x (term.subst_env σ₂ t) t₁) (term.substt x (term.subst_env σ₂ t) t₂)),
-      by unfold vc.substte,
-      have : x ∈ FV (vc.post (term.substt x (term.subst_env σ₂ t) t₁) (term.substt x (term.subst_env σ₂ t) t₂)),
-      from this ▸ h1,
-      from or.elim (free_in_vc.post.inv this) (
-        assume : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁),
-        have x ∈ FV (term.substt x (term.subst_env σ₂ t) t₁) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-        term.not_free_of_substte t_closed this
-      ) (
-        assume : x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂),
-        have x ∈ FV (term.substt x (term.subst_env σ₂ t) t₂) - (σ₁.dom - σ₂.dom), from set.mem_diff this h2, 
-        term.not_free_of_substte t_closed this
-      )
-    },
-    case vc.univ y P₁ P₁_ih {
-      assume σ₂,
-      assume x_free: x ∈ FV (vc.substte x t (vc.univ y P₁) σ₂) - (σ₁.dom - σ₂.dom),
-      have h1, from set.mem_of_mem_diff x_free,
-      have h2, from set.not_mem_of_mem_diff x_free,
-      have : (vc.substte x t (vc.univ y P₁) σ₂ = vc.univ y (if x = y then P₁ else P₁.substte x t (σ₂.without y))),
-      by unfold vc.substte,
-      have : x ∈ FV (vc.univ y (if x = y then P₁ else P₁.substte x t (σ₂.without y))), from this ▸ h1,
-      have y_neq_x: x ≠ y, from (free_in_vc.univ.inv this).left,
-      have : x ∈ FV (vc.univ y (P₁.substte x t (σ₂.without y))), by { simp[y_neq_x] at this, from this },
-      have h3: x ∈ FV (P₁.substte x t (σ₂.without y)), from (free_in_vc.univ.inv this).right,
-      have h4: x ∉ σ₁.dom - (σ₂.without y).dom, by begin
-        assume h5: x ∈ env.dom σ₁ - env.dom (env.without σ₂ y),
-        have h6, from set.mem_of_mem_diff h5,
-        have h7, from set.not_mem_of_mem_diff h5,
-        have h8, from set.not_mem_or_mem_of_not_mem_diff h2,
-        cases h8 with h9 h10,
-        contradiction,
-        have : x ∈ σ₂.without y, from env.contains_without.rinv ⟨h10, y_neq_x⟩,
-        contradiction
-      end,
-      have : x ∈ FV (vc.substte x t P₁ (σ₂.without y)) - (env.dom σ₁ - env.dom (σ₂.without y)),
-      from set.mem_diff h3 h4,
-      show «false», from P₁_ih (σ₂.without y) this
-    }
-  end
-
-lemma vc.not_free_of_substte {σ: env} {x: var} {t: term} {P: vc}:
-      closed_subst σ t → x ∉ FV (vc.substte x t P σ) :=
-  begin
-    assume t_closed: closed_subst σ t,
-    have : x ∉ FV (vc.substte x t P σ) \ (σ.dom - σ.dom), from vc.not_free_of_substte_step t_closed σ,
-    rw[set.diff_self] at this,
-    rw[set.diff_empty] at this,
-    from this
   end
 
 lemma vc.not_free_of_subst_env {x: var} {σ: env} {P: vc}: x ∈ σ → x ∉ FV (vc.subst_env σ P) :=
@@ -4619,133 +4653,6 @@ lemma vc.substt_env.order {P: vc}:
     }
   end
 
-lemma vc.substte_env.order {P: vc} {x: var} {t: term}:
-    ∀ {σ₁ σ₂: env},
-      (∀z, z ∈ σ₁ → (σ₁ z = σ₂ z)) → (x ∉ σ₁) →
-      (vc.subst_env σ₁ (vc.substte x t P σ₂) = vc.substte x t (vc.subst_env σ₁ P) σ₂) :=
-  begin
-    induction P,
-    case vc.term t' {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      change (vc.subst_env σ₁ (vc.substte x t (vc.term t') σ₂) = vc.substte x t (vc.subst_env σ₁ t') σ₂),
-      rw[vc.subst_env.term],
-      unfold vc.substte,
-      rw[vc.subst_env.term],
-      congr,
-      from term.substte_env.order env_equiv x_not_in_σ₁
-    },
-    case vc.not P₁ ih {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      rw[vc.subst_env.not],
-      unfold vc.substte,
-      rw[vc.subst_env.not],
-      congr,
-      from ih env_equiv x_not_in_σ₁
-    },
-    case vc.and P₁ P₂ P₁_ih P₂_ih {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      change (vc.subst_env σ₁ (vc.substte x t (vc.and P₁ P₂) σ₂) = vc.substte x t (vc.subst_env σ₁ (P₁ ⋀ P₂)) σ₂),
-      rw[vc.subst_env.and],
-      unfold vc.substte,
-      rw[vc.subst_env.and],
-      congr,
-      from P₁_ih env_equiv x_not_in_σ₁,
-      from P₂_ih env_equiv x_not_in_σ₁
-    },
-    case vc.or P₁ P₂ P₁_ih P₂_ih {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      change (vc.subst_env σ₁ (vc.substte x t (vc.or P₁ P₂) σ₂) = vc.substte x t (vc.subst_env σ₁ (P₁ ⋁ P₂)) σ₂),
-      rw[vc.subst_env.or],
-      unfold vc.substte,
-      rw[vc.subst_env.or],
-      congr,
-      from P₁_ih env_equiv x_not_in_σ₁,
-      from P₂_ih env_equiv x_not_in_σ₁
-    },
-    case vc.pre t₁ t₂ {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      rw[vc.subst_env.pre],
-      unfold vc.substte,
-      rw[vc.subst_env.pre],
-      congr,
-      from term.substte_env.order env_equiv x_not_in_σ₁,
-      from term.substte_env.order env_equiv x_not_in_σ₁
-    },
-    case vc.pre₁ op t {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      rw[vc.subst_env.pre₁],
-      unfold vc.substte,
-      rw[vc.subst_env.pre₁],
-      congr,
-      from term.substte_env.order env_equiv x_not_in_σ₁
-    },
-    case vc.pre₂ op t₁ t₂ {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      rw[vc.subst_env.pre₂],
-      unfold vc.substte,
-      rw[vc.subst_env.pre₂],
-      congr,
-      from term.substte_env.order env_equiv x_not_in_σ₁,
-      from term.substte_env.order env_equiv x_not_in_σ₁
-    },
-    case vc.post t₁ t₂ {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      rw[vc.subst_env.post],
-      unfold vc.substte,
-      rw[vc.subst_env.post],
-      congr,
-      from term.substte_env.order env_equiv x_not_in_σ₁,
-      from term.substte_env.order env_equiv x_not_in_σ₁
-    },
-    case vc.univ y P' P'_ih {
-      assume σ₁ σ₂,
-      assume env_equiv,
-      assume x_not_in_σ₁,
-      rw[vc.subst_env.univ],
-      unfold vc.substte,
-      by_cases (x = y) with h2,
-
-      simp[h2],
-      rw[vc.subst_env.univ],
-
-      simp[h2],
-      rw[vc.subst_env.univ],
-      congr,
-
-      have h3: (∀ (z : var), z ∈ σ₁.without y → ((σ₁.without y) z = (σ₂.without y) z)), by begin
-        assume z: var,
-        assume h4: z ∈ σ₁.without y,
-        have h5, from env.contains_without.inv h4,
-        have h6: (σ₁ z = σ₂ z), from env_equiv z h5.right,
-        have h7, from env.contains_apply_equiv.right.mpr h5.right,
-        rw[h6] at h7,
-        have h8, from env.contains_apply_equiv.right.mp h7,
-        have h9, from env.contains_without.rinv ⟨h8, h5.left⟩,
-        have h10, from env.without_equiv_with z h4,
-        have h11, from env.without_equiv_with z h9,
-        from eq.trans h10 (eq.trans h6 h11.symm)
-      end,
-      have h4: (x ∉ σ₁.without y), from env.not_in_without x_not_in_σ₁,
-      from P'_ih h3 h4
-    }
-  end
-
 lemma vc.subst_env_inner {P: vc} {σ: env} {x: var} {v: value}:
       (σ x = some v) → (vc.subst_env σ (vc.subst x v P) = vc.subst_env σ P) :=
   begin
@@ -4921,19 +4828,6 @@ lemma vc.substt_env.reorder {σ: env} {x: var} {t: term} {P: vc}:
   show vc.subst_env σ (vc.substt x t P) = vc.substt x t (vc.subst_env (σ.without x) P),
   from eq.trans h1 h2
 
-lemma vc.substte_env.reorder {σ: env} {x: var} {t: term} {P: vc}:
-  closed_subst σ t → (vc.subst_env σ (vc.substte x t P σ) = vc.substte x t (vc.subst_env (σ.without x) P) σ) :=
-  assume t_closed: closed_subst σ t,
-  have x ∉ FV (vc.substte x t P σ), from vc.not_free_of_substte t_closed,
-  have h1: vc.subst_env σ (vc.substte x t P σ) = vc.subst_env (σ.without x) (vc.substte x t P σ),
-  from vc.subst_env_without_nonfree this,
-  have h2: (∀z, z ∈ σ.without x → (σ.without x z = σ z)), from env.without_equiv_with,
-  have x ∉ σ.without x, from env.not_contains_without,
-  have h3: (vc.subst_env (σ.without x) (vc.substte x t P σ) = vc.substte x t (vc.subst_env (σ.without x) P) σ),
-  from vc.substte_env.order h2 this,
-  show vc.subst_env σ (vc.substte x t P σ) = vc.substte x t (vc.subst_env (σ.without x) P) σ,
-  from eq.trans h1 h3
-
 lemma term.substt_env.redundant {σ: env} {x: var} {t t': term}:
   (term.subst_env σ (term.substt x (term.subst_env σ t) t') = term.subst_env σ (term.substt x t t')) :=
   begin
@@ -4983,89 +4877,205 @@ lemma term.substt_env.redundant {σ: env} {x: var} {t t': term}:
     end
   end
 
--- lemma vc.substt_env.redundant {x: var} {t: term} {P: vc}:
---   ∀σ, (vc.subst_env σ (vc.substt x (term.subst_env σ t) P) = vc.subst_env σ (vc.substt x t P)) :=
---   begin
---     induction P,
---     case vc.term t' {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.term],
---       rw[vc.subst_env.term],
---       apply vc.term.inj.inv,
---       from term.substt_env.redundant
---     },
---     case vc.not P₁ ih {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.not],
---       rw[vc.subst_env.not],
---       apply vc.not.inj.inv,
---       from ih σ
---     },
---     case vc.and P₁ P₂ P₁_ih P₂_ih {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.and],
---       rw[vc.subst_env.and],
---       apply vc.and.inj.inv,
---       from P₁_ih σ,
---       from P₂_ih σ
---     },
---     case vc.or P₁ P₂ P₁_ih P₂_ih {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.or],
---       rw[vc.subst_env.or],
---       apply vc.or.inj.inv,
---       from P₁_ih σ,
---       from P₂_ih σ
---     },
---     case vc.pre t₁ t₂ {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.pre],
---       rw[vc.subst_env.pre],
---       apply vc.pre.inj.inv,
---       from term.substt_env.redundant,
---       from term.substt_env.redundant
---     },
---     case vc.pre₁ op t₁ {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.pre₁],
---       rw[vc.subst_env.pre₁],
---       apply vc.pre₁.inj.inv,
---       from term.substt_env.redundant
---     },
---     case vc.pre₂ op t₁ t₂ {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.pre₂],
---       rw[vc.subst_env.pre₂],
---       apply vc.pre₂.inj.inv,
---       from term.substt_env.redundant,
---       from term.substt_env.redundant
---     },
---     case vc.post t₁ t₂ {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.post],
---       rw[vc.subst_env.post],
---       apply vc.post.inj.inv,
---       from term.substt_env.redundant,
---       from term.substt_env.redundant
---     },
---     case vc.univ y P₁ P₁_ih {
---       assume σ,
---       unfold vc.substt,
---       rw[vc.subst_env.univ],
---       rw[vc.subst_env.univ],
---       apply vc.univ.inj.inv,
---       by_cases (x = y) with h1,
+lemma term.substt_var_cancel {x y: var} {t: term}: x ∉ FV t → (term.substt x y (term.substt y x t) = t) :=
+  begin
+    assume h1,
 
---       simp[h1],
---       simp[h1],
---       from P₁_ih (σ.without y)
---     }
---   end
+    induction t with v z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+
+    show (term.substt x y (term.substt y x (term.value v)) = term.value v), by begin
+      unfold term.substt,
+      change (term.substt x ↑y (term.value v) = term.value v),
+      unfold term.substt,
+      refl
+    end,
+
+    show (term.substt x ↑y (term.substt y ↑x (term.var z)) = term.var z), by begin
+      have h2: (x ≠ z), by begin
+        assume h3,
+        rw[h3] at h1,
+        have h4, from free_in_term.var z,
+        contradiction
+      end,
+
+      unfold term.substt,
+      by_cases (y = z) with h3,
+
+      simp[h3],
+      change (term.substt x ↑z (term.var x) = term.var z),
+      unfold term.substt,
+      simp,
+      refl,
+
+      simp[h3],
+      change (term.substt x ↑y (term.var z) = term.var z),
+      unfold term.substt,
+      simp[h2],
+      refl
+    end,
+    
+    show (term.substt x y (term.substt y x (term.unop unop t₁)) = term.unop unop t₁), by begin
+      unfold term.substt,
+      congr,
+      apply t₁_ih,
+      assume h1,
+      have h2: x ∈ FV (term.unop unop t₁), from free_in_term.unop h1,
+      contradiction
+    end,
+    
+    show (term.substt x y (term.substt y x (term.binop binop t₂ t₃)) = term.binop binop t₂ t₃), by begin
+      unfold term.substt,
+      congr,
+      apply t₂_ih,
+      assume h1,
+      have h2: x ∈ FV (term.binop binop t₂ t₃), from free_in_term.binop₁ h1,
+      contradiction,
+      apply t₃_ih,
+      assume h1,
+      have h2: x ∈ FV (term.binop binop t₂ t₃), from free_in_term.binop₂ h1,
+      contradiction
+    end,
+    
+    show (term.substt x y (term.substt y x (term.app t₄ t₅)) = term.app t₄ t₅), by begin
+      unfold term.substt,
+      congr,
+      apply t₄_ih,
+      assume h1,
+      have h2: x ∈ FV (term.app t₄ t₅), from free_in_term.app₁ h1,
+      contradiction,
+      apply t₅_ih,
+      assume h1,
+      have h2: x ∈ FV (term.app t₄ t₅), from free_in_term.app₂ h1,
+      contradiction
+    end
+  end
+
+lemma vc.substt_var_cancel {x y: var} {P: vc}: ¬ vc.uses_var x P → (vc.substt x y (vc.substt y x P) = P) :=
+  begin
+    assume h1,
+    induction P,
+    case vc.term t {
+      unfold vc.substt,
+      change (vc.substt x ↑y (vc.term (term.substt y ↑x t)) = vc.term t),
+      unfold vc.substt,
+      congr,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x t, from vc.uses_var.term h1,
+      contradiction
+    },
+    case vc.not P₁ P₁_ih {
+      unfold vc.substt,
+      congr,
+      apply P₁_ih,
+      assume h1,
+      have h2: vc.uses_var x (vc.not P₁), from vc.uses_var.not h1,
+      contradiction
+    },
+    case vc.and P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.substt,
+      change (vc.substt x ↑y (vc.and (vc.substt y ↑x P₁) (vc.substt y ↑x P₂)) = vc.and P₁ P₂),
+      unfold vc.substt,
+      congr,
+      apply P₁_ih,
+      assume h1,
+      have h2: vc.uses_var x (vc.and P₁ P₂), from vc.uses_var.and₁ h1,
+      contradiction,
+      apply P₂_ih,
+      assume h1,
+      have h2: vc.uses_var x (vc.and P₁ P₂), from vc.uses_var.and₂ h1,
+      contradiction
+    },
+    case vc.or P₁ P₂ P₁_ih P₂_ih {
+      unfold vc.substt,
+      change (vc.substt x ↑y (vc.or (vc.substt y ↑x P₁) (vc.substt y ↑x P₂)) = vc.or P₁ P₂),
+      unfold vc.substt,
+      congr,
+      apply P₁_ih,
+      assume h1,
+      have h2: vc.uses_var x (vc.or P₁ P₂), from vc.uses_var.or₁ h1,
+      contradiction,
+      apply P₂_ih,
+      assume h1,
+      have h2: vc.uses_var x (vc.or P₁ P₂), from vc.uses_var.or₂ h1,
+      contradiction
+    },
+    case vc.pre t₁ t₂ {
+      unfold vc.substt,
+      congr,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.pre t₁ t₂), from vc.uses_var.pre₁ h1,
+      contradiction,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.pre t₁ t₂), from vc.uses_var.pre₂ h1,
+      contradiction
+    },
+    case vc.pre₁ op t {
+      unfold vc.substt,
+      congr,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.pre₁ op t), from vc.uses_var.preop h1,
+      contradiction
+    },
+    case vc.pre₂ op t₁ t₂ {
+      unfold vc.substt,
+      congr,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.pre₂ op t₁ t₂), from vc.uses_var.preop₁ h1,
+      contradiction,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.pre₂ op t₁ t₂), from vc.uses_var.preop₂ h1,
+      contradiction
+    },
+    case vc.post t₁ t₂ {
+      unfold vc.substt,
+      congr,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.post t₁ t₂), from vc.uses_var.post₁ h1,
+      contradiction,
+      apply term.substt_var_cancel,
+      assume h1,
+      have h2: vc.uses_var x (vc.post t₁ t₂), from vc.uses_var.post₂ h1,
+      contradiction
+    },
+    case vc.univ z P₁ P₁_ih {
+      unfold vc.substt,
+      congr,
+
+      have h1: (x ≠ z), by begin
+        assume h2,
+        rw[h2] at h1,
+        have h3: vc.uses_var z (vc.univ z P₁), from vc.uses_var.quantified z,
+        contradiction
+      end,
+
+      by_cases (y = z) with h2,
+
+      simp[h1],
+      simp[h2],
+
+      have h3: x ∉ FV P₁, by begin
+        assume h4,
+        have h5, from vc.uses_var_of_free h4,
+        have h6: vc.uses_var x (vc.univ z P₁), from vc.uses_var.univ h5,
+        contradiction
+      end,
+      from unchanged_of_substt_nonfree_vc h3,
+
+      simp[h1],
+      simp[h2],
+
+      have h3: ¬vc.uses_var x P₁, by begin
+        assume h4,
+        have h5: vc.uses_var x (vc.univ z P₁), from vc.uses_var.univ h4,
+        contradiction
+      end,
+      from P₁_ih h3
+    }
+  end

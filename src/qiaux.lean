@@ -15,65 +15,65 @@ def prop.num_quantifiers: prop → ℕ
 | (prop.forallc x P)   := 1 + P.num_quantifiers
 | (prop.exis x P)      := 1 + P.num_quantifiers
 
-lemma same_num_quantifiers_after_rename {P: prop} {x y: var}:
-      P.num_quantifiers = (P.rename x y).num_quantifiers :=
+lemma same_num_quantifiers_after_substt {P: prop} {x y: var}:
+      P.num_quantifiers = (P.substt x y).num_quantifiers :=
   begin
     induction P,
     case prop.term t {
-      unfold prop.rename,
+      unfold prop.substt,
       change (
         prop.num_quantifiers (prop.term t) =
-        prop.num_quantifiers (prop.term (term.rename x y t))
+        prop.num_quantifiers (prop.term (term.substt x y t))
       ),
       unfold prop.num_quantifiers
     },
     case prop.not P₁ ih {
-      unfold prop.rename,
+      unfold prop.substt,
       unfold prop.num_quantifiers,
       from ih
     },
     case prop.and P₁ P₂ P₁_ih P₂_ih {
-      unfold prop.rename,
+      unfold prop.substt,
       change (
         prop.num_quantifiers (prop.and P₁ P₂) =
-        prop.num_quantifiers (prop.and (prop.rename x y P₁) (prop.rename x y P₂))
+        prop.num_quantifiers (prop.and (prop.substt x y P₁) (prop.substt x y P₂))
       ),
       unfold prop.num_quantifiers,
       rw[P₁_ih],
       rw[P₂_ih]
     },
     case prop.or P₁ P₂ P₁_ih P₂_ih {
-      unfold prop.rename,
+      unfold prop.substt,
       change (
         prop.num_quantifiers (prop.or P₁ P₂) =
-        prop.num_quantifiers (prop.or (prop.rename x y P₁) (prop.rename x y P₂))
+        prop.num_quantifiers (prop.or (prop.substt x y P₁) (prop.substt x y P₂))
       ),
       unfold prop.num_quantifiers,
       rw[P₁_ih],
       rw[P₂_ih]
     },
     case prop.pre t₁ t₂ {
-      unfold prop.rename,
+      unfold prop.substt,
       unfold prop.num_quantifiers
     },
     case prop.pre₁ op t {
-      unfold prop.rename,
+      unfold prop.substt,
       unfold prop.num_quantifiers
     },
     case prop.pre₂ op t₁ t₂ {
-      unfold prop.rename,
+      unfold prop.substt,
       unfold prop.num_quantifiers
     },
     case prop.call t {
-      unfold prop.rename,
+      unfold prop.substt,
       unfold prop.num_quantifiers
     },
     case prop.post t₁ t₂ {
-      unfold prop.rename,
+      unfold prop.substt,
       unfold prop.num_quantifiers
     },
     case prop.forallc y P₁ P₁_ih {
-      unfold prop.rename,
+      unfold prop.substt,
       by_cases (x = y) with h,
       
       simp[h],
@@ -84,7 +84,7 @@ lemma same_num_quantifiers_after_rename {P: prop} {x y: var}:
       from P₁_ih
     },
     case prop.exis y P' P'_ih {
-      unfold prop.rename,
+      unfold prop.substt,
       by_cases (x = y) with h,
       
       simp[h],
@@ -308,8 +308,8 @@ lemma lifted_prop_smaller {P: prop} {x: var}:
       have h2, from option.some.inj h1,
       simp[h2.symm],
       unfold prop.num_quantifiers,
-      have h3: (prop.num_quantifiers P₁ = prop.num_quantifiers (prop.rename y x P₁)),
-      from same_num_quantifiers_after_rename,
+      have h3: (prop.num_quantifiers P₁ = prop.num_quantifiers (prop.substt y x P₁)),
+      from same_num_quantifiers_after_substt,
       rw[←h3],
       simp,
       from lt_of_add_one,
@@ -328,14 +328,7 @@ lemma lifted_prop_smaller {P: prop} {x: var}:
 
       assume h1,
       unfold prop.lift_n at h1,
-      have h2, from option.some.inj h1,
-      simp[h2.symm],
-      unfold prop.num_quantifiers,
-      have h3: (prop.num_quantifiers P₁ = prop.num_quantifiers (prop.rename y x P₁)),
-      from same_num_quantifiers_after_rename,
-      rw[←h3],
-      simp,
-      from lt_of_add_one
+      contradiction
     }
   end
 

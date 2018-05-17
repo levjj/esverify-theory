@@ -386,28 +386,6 @@ using_well_founded {
 @[reducible]
 def closed_subst {α: Type} [h: has_fv α] (σ: env) (a: α): Prop := FV a ⊆ σ.dom
 
--- renaming
-
-def term.rename (x y: var): term → term
-| (term.value v')       := v'
-| (term.var z)          := if x = z then y else z
-| (term.unop op t)      := term.unop op t.rename
-| (term.binop op t₁ t₂) := term.binop op t₁.rename t₂.rename
-| (term.app t₁ t₂)      := term.app t₁.rename t₂.rename
-
-def prop.rename (x y: var): prop → prop
-| (prop.term t)        := term.rename x y t
-| (prop.not P)         := P.rename.not
-| (prop.and P Q)       := P.rename ⋀ Q.rename
-| (prop.or P Q)        := P.rename ⋁ Q.rename
-| (prop.pre t₁ t₂)     := prop.pre (term.rename x y t₁) (term.rename x y t₂)
-| (prop.pre₁ op t)     := prop.pre₁ op (term.rename x y t)
-| (prop.pre₂ op t₁ t₂) := prop.pre₂ op (term.rename x y t₁) (term.rename x y t₂)
-| (prop.call t)        := prop.call (term.rename x y t)
-| (prop.post t₁ t₂)    := prop.post (term.rename x y t₁) (term.rename x y t₂)
-| (prop.forallc z P)   := prop.forallc z (if x = z then P else P.rename)
-| (prop.exis z P)      := prop.exis z (if x = z then P else P.rename)
-
 -- subst term
 
 def term.substt (x: var) (t: term): term → term
@@ -440,18 +418,6 @@ def vc.substt (x: var) (t: term): vc → vc
 | (vc.pre₂ op t₁ t₂) := vc.pre₂ op (term.substt x t t₁) (term.substt x t t₂)
 | (vc.post t₁ t₂)    := vc.post (term.substt x t t₁) (term.substt x t t₂)
 | (vc.univ y P)      := vc.univ y (if x = y then P else P.substt)
-
--- substitution with a substituted term
-def vc.substte (x: var) (t: term): vc → env → vc
-| (vc.term t₁) σ       := term.substt x (term.subst_env σ t) t₁
-| (vc.not P) σ         := (P.substte σ).not
-| (vc.and P Q) σ       := P.substte σ ⋀ Q.substte σ
-| (vc.or P Q) σ        := P.substte σ ⋁ Q.substte σ
-| (vc.pre t₁ t₂) σ     := vc.pre (term.substt x (term.subst_env σ t) t₁) (term.substt x (term.subst_env σ t) t₂)
-| (vc.pre₁ op t₁) σ    := vc.pre₁ op (term.substt x (term.subst_env σ t) t₁)
-| (vc.pre₂ op t₁ t₂) σ := vc.pre₂ op (term.substt x (term.subst_env σ t) t₁) (term.substt x (term.subst_env σ t) t₂)
-| (vc.post t₁ t₂) σ    := vc.post (term.substt x (term.subst_env σ t) t₁) (term.substt x (term.subst_env σ t) t₂)
-| (vc.univ y P) σ      := vc.univ y (if x = y then P else P.substte (σ.without y))
 
 --  ################################
 --  ### QUANTIFIER INSTANTIATION ###
@@ -500,7 +466,7 @@ with prop.lift_p: prop → var → option prop
 | (prop.pre₂ op t₁ t₂) y := none
 | (prop.post t₁ t₂) y    := none
 | (prop.call t) y        := none
-| (prop.forallc x P) y   := some (prop.implies (prop.call y) (P.rename x y)) 
+| (prop.forallc x P) y   := some (prop.implies (prop.call y) (P.substt x y)) 
 | (prop.exis x P) y      := none
 
 with prop.lift_n: prop → var → option prop
@@ -525,7 +491,7 @@ with prop.lift_n: prop → var → option prop
 | (prop.post t₁ t₂) y    := none
 | (prop.call t) y        := none
 | (prop.forallc x P) y   := none
-| (prop.exis x P) y      := some (P.rename x y)
+| (prop.exis x P) y      := none
 
 using_well_founded {
   rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s,

@@ -377,6 +377,12 @@ axiom valid.univ.mp {x: var} {P: vc}:
   →
   ⊨ vc.univ x P
 
+-- a free top-level variable is implicitly universally quantified
+axiom valid.univ.free {x: var} {P: vc}:
+  (x ∈ FV P ∧ ⊨ P)
+  →
+  ⊨ vc.univ x P
+
 -- universal quantifier can be instantiated with any term
 axiom valid.univ.mpr {x: var} {P: vc}:
   (⊨ vc.univ x P)

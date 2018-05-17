@@ -46,6 +46,7 @@ with prop.has_quantifier_n: callquantifier → prop → Prop
 -- sets of quantifiers
 def quantifiers_p (P: prop): set callquantifier := λc, has_quantifier_p c P
 def quantifiers_n (P: prop): set callquantifier := λc, has_quantifier_n c P
+def quantifiers (P: prop): set callquantifier := quantifiers_p P ∪ quantifiers_n P
 
  -- propositions without call triggers or quantifiers do not participate in instantiations
 def no_instantiations(P: prop): Prop := (calls_p P = ∅) ∧ (calls_n P = ∅) ∧
@@ -55,6 +56,45 @@ def no_instantiations(P: prop): Prop := (calls_p P = ∅) ∧ (calls_n P = ∅) 
 def calltrigger.subst (σ: env) (c: calltrigger): calltrigger := ⟨term.subst_env σ c.x⟩
 def calls_p_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_p P
 def calls_n_subst (σ: env) (P: prop): set calltrigger := (calltrigger.subst σ) '' calls_n P
+
+-- uses variables (either free or quantified)
+
+inductive prop.uses_var (x: var) : prop → Prop
+| term {t: term}                        : free_in_term x t  → prop.uses_var t
+| not {P: prop}                         : prop.uses_var P   → prop.uses_var (prop.not P)
+| and₁ {P₁ P₂: prop}                    : prop.uses_var P₁  → prop.uses_var (prop.and P₁ P₂)
+| and₂ {P₁ P₂: prop}                    : prop.uses_var P₂  → prop.uses_var (prop.and P₁ P₂)
+| or₁ {P₁ P₂: prop}                     : prop.uses_var P₁  → prop.uses_var (prop.or P₁ P₂)
+| or₂ {P₁ P₂: prop}                     : prop.uses_var P₂  → prop.uses_var (prop.or P₁ P₂)
+| pre₁ {t₁ t₂: term}                    : free_in_term x t₁ → prop.uses_var (prop.pre t₁ t₂)
+| pre₂ {t₁ t₂: term}                    : free_in_term x t₂ → prop.uses_var (prop.pre t₁ t₂)
+| preop {t: term} {op: unop}            : free_in_term x t  → prop.uses_var (prop.pre₁ op t)
+| preop₁ {t₁ t₂: term} {op: binop}      : free_in_term x t₁ → prop.uses_var (prop.pre₂ op t₁ t₂)
+| preop₂ {t₁ t₂: term} {op: binop}      : free_in_term x t₂ → prop.uses_var (prop.pre₂ op t₁ t₂)
+| post₁ {t₁ t₂: term}                   : free_in_term x t₁ → prop.uses_var (prop.post t₁ t₂)
+| post₂ {t₁ t₂: term}                   : free_in_term x t₂ → prop.uses_var (prop.post t₁ t₂)
+| call {t: term}                        : free_in_term x t → prop.uses_var (prop.call t)
+| forallc {y: var} {P: prop}            : prop.uses_var P → prop.uses_var (prop.forallc y P)
+| uquantified {P: prop}                 : prop.uses_var (prop.forallc x P)
+| exis {y: var} {P: prop}               : prop.uses_var P → prop.uses_var (prop.exis y P)
+| equantified {P: prop}                 : prop.uses_var (prop.exis x P)
+
+inductive vc.uses_var (x: var) : vc → Prop
+| term {t: term}                        : free_in_term x t  → vc.uses_var t
+| not {P: vc}                           : vc.uses_var P     → vc.uses_var (vc.not P)
+| and₁ {P₁ P₂: vc}                      : vc.uses_var P₁    → vc.uses_var (vc.and P₁ P₂)
+| and₂ {P₁ P₂: vc}                      : vc.uses_var P₂    → vc.uses_var (vc.and P₁ P₂)
+| or₁ {P₁ P₂: vc}                       : vc.uses_var P₁    → vc.uses_var (vc.or P₁ P₂)
+| or₂ {P₁ P₂: vc}                       : vc.uses_var P₂    → vc.uses_var (vc.or P₁ P₂)
+| pre₁ {t₁ t₂: term}                    : free_in_term x t₁ → vc.uses_var (vc.pre t₁ t₂)
+| pre₂ {t₁ t₂: term}                    : free_in_term x t₂ → vc.uses_var (vc.pre t₁ t₂)
+| preop {t: term} {op: unop}            : free_in_term x t  → vc.uses_var (vc.pre₁ op t)
+| preop₁ {t₁ t₂: term} {op: binop}      : free_in_term x t₁ → vc.uses_var (vc.pre₂ op t₁ t₂)
+| preop₂ {t₁ t₂: term} {op: binop}      : free_in_term x t₂ → vc.uses_var (vc.pre₂ op t₁ t₂)
+| post₁ {t₁ t₂: term}                   : free_in_term x t₁ → vc.uses_var (vc.post t₁ t₂)
+| post₂ {t₁ t₂: term}                   : free_in_term x t₂ → vc.uses_var (vc.post t₁ t₂)
+| univ {y: var} {P: vc}                 : vc.uses_var P → vc.uses_var (vc.univ y P)
+| quantified {P: vc}                    : vc.uses_var (vc.univ x P)
 
 -- runtime verification of stacks
 

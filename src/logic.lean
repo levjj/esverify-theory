@@ -281,6 +281,20 @@ lemma valid_env.subst_of_eq {σ: env} {x: var} {v: value}:
   have v' = v, from binop.eq.inv this,
   show σ x = some v, from h6.symm ▸ (some.inj.inv this)
 
+lemma valid.alpha_equiv {x y: var} {P: vc}: (⊨ P) → ⊨ vc.substt x y P :=
+  begin
+    assume h1,
+    by_cases (free_in_vc x P) with h2,
+
+    have h3, from valid.univ.free ⟨h2, h1⟩,
+    from valid.univ.mpr h3 y,
+
+    have h4: (vc.substt x y P = P),
+    from unchanged_of_substt_nonfree_vc h2,
+    rw[h4],
+    from h1
+  end
+
 /-
 
 lemma valid_env.subst_of_eq_instantiated_p {σ: env} {x: var} {v: value}:

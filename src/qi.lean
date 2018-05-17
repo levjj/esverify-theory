@@ -1325,30 +1325,6 @@ lemma prop.has_call_of_subst_env_has_call {P: prop} {σ: env}:
     from ih.right c' h3,
   end
 
-    -- induction P,
-    -- case prop.term t {
-    -- },
-    -- case prop.not P₁ ih {
-    -- },
-    -- case prop.and P₁ P₂ P₁_ih P₂_ih {
-    -- },
-    -- case prop.or P₁ P₂ P₁_ih P₂_ih {
-    -- },
-    -- case prop.pre t₁ t₂ {
-    -- },
-    -- case prop.pre₁ op t {
-    -- },
-    -- case prop.pre₂ op t₁ t₂ {
-    -- },
-    -- case prop.call t {
-    -- },
-    -- case prop.post t₁ t₂ {
-    -- },
-    -- case prop.forallc y P₁ P₁_ih {
-    -- },
-    -- case prop.exis y P₁ P₁_ih {
-    -- }
-
 lemma find_calls_equiv_has_call {P: prop} {c: calltrigger}:
        (c ∈ calls_p P ↔ c ∈ P.find_calls_p) ∧ (c ∈ calls_n P ↔ c ∈ P.find_calls_n) :=
   begin
@@ -2374,287 +2350,476 @@ using_well_founded {
   dec_tac := tactic.assumption
 }
 
-lemma to_vc_valid_of_lifted_to_vc_valid {P Q: prop} {x: var}:
-  ∀P: prop, ∀Q: prop, 
+lemma and_lifted_p_is_some {P₁ P₂ Q: prop} {x: var}:
+      prop.lift_p (prop.and P₁ P₂) x = some Q →
+      (∃Q₁: prop, P₁.lift_p x = some Q₁ ∧ (Q = (Q₁ ⋀ P₂))) ∨ (∃Q₂: prop, P₂.lift_p x = some Q₂ ∧ (Q = (P₁ ⋀ Q₂))) :=
+  begin
+    assume h1,
+    unfold prop.lift_p at h1,
+    cases (prop.lift_p P₁ x) with Q₁ h2,
+
+    unfold prop.lift_p._match_1 at h1,
+    have h3, from eq_from_map_result_some h1,
+    cases h3 with Q₂ h4,
+    right,
+    existsi Q₂,
+    from h4,
+
+    unfold prop.lift_p._match_1 at h1,
+    have h2, from option.some.inj h1,
+    left,
+    existsi Q₁,
+    split,
+    from rfl,
+    from h2.symm
+  end
+
+lemma and_lifted_n_is_some {P₁ P₂ Q: prop} {x: var}:
+      prop.lift_n (prop.and P₁ P₂) x = some Q →
+      (∃Q₁: prop, P₁.lift_n x = some Q₁ ∧ (Q = (Q₁ ⋀ P₂))) ∨ (∃Q₂: prop, P₂.lift_n x = some Q₂ ∧ (Q = (P₁ ⋀ Q₂))) :=
+  begin
+    assume h1,
+    unfold prop.lift_n at h1,
+    cases (prop.lift_n P₁ x) with Q₁ h2,
+
+    unfold prop.lift_n._match_1 at h1,
+    have h3, from eq_from_map_result_some h1,
+    cases h3 with Q₂ h4,
+    right,
+    existsi Q₂,
+    from h4,
+
+    unfold prop.lift_n._match_1 at h1,
+    have h2, from option.some.inj h1,
+    left,
+    existsi Q₁,
+    split,
+    from rfl,
+    from h2.symm
+  end
+
+lemma or_lifted_p_is_some {P₁ P₂ Q: prop} {x: var}:
+      prop.lift_p (prop.or P₁ P₂) x = some Q →
+      (∃Q₁: prop, P₁.lift_p x = some Q₁ ∧ (Q = (Q₁ ⋁ P₂))) ∨ (∃Q₂: prop, P₂.lift_p x = some Q₂ ∧ (Q = (P₁ ⋁ Q₂))) :=
+  begin
+    assume h1,
+    unfold prop.lift_p at h1,
+    cases (prop.lift_p P₁ x) with Q₁ h2,
+
+    unfold prop.lift_p._match_2 at h1,
+    have h3, from eq_from_map_result_some h1,
+    cases h3 with Q₂ h4,
+    right,
+    existsi Q₂,
+    from h4,
+
+    unfold prop.lift_p._match_2 at h1,
+    have h2, from option.some.inj h1,
+    left,
+    existsi Q₁,
+    split,
+    from rfl,
+    from h2.symm
+  end
+
+lemma or_lifted_n_is_some {P₁ P₂ Q: prop} {x: var}:
+      prop.lift_n (prop.or P₁ P₂) x = some Q →
+      (∃Q₁: prop, P₁.lift_n x = some Q₁ ∧ (Q = (Q₁ ⋁ P₂))) ∨ (∃Q₂: prop, P₂.lift_n x = some Q₂ ∧ (Q = (P₁ ⋁ Q₂))) :=
+  begin
+    assume h1,
+    unfold prop.lift_n at h1,
+    cases (prop.lift_n P₁ x) with Q₁ h2,
+
+    unfold prop.lift_n._match_2 at h1,
+    have h3, from eq_from_map_result_some h1,
+    cases h3 with Q₂ h4,
+    right,
+    existsi Q₂,
+    from h4,
+
+    unfold prop.lift_n._match_2 at h1,
+    have h2, from option.some.inj h1,
+    left,
+    existsi Q₁,
+    split,
+    from rfl,
+    from h2.symm
+  end
+
+lemma to_vc_valid_of_lifted_to_vc_valid {x: var}:
+  ∀P: prop, ∀Q: prop, ¬ prop.uses_var x P →
   (P.lift_p x = some Q → (⊨ Q.to_vc) → ⊨ P.to_vc) ∧
-  (P.lift_n x = some Q → (⊨ P.to_vc) → ⊨ Q.to_vc) :=
+  (P.lift_n x = some Q → (⊨ P.to_vc) → ⊨ Q.to_vc)
 | (prop.term t) := begin
+    assume Q,
+    assume x_unused,
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
-    from id,
+    assume h1,
+    unfold prop.lift_p at h1,
+    contradiction,
 
-    unfold prop.erased_p,
-    unfold prop.to_vc,
-    from id
+    assume h1,
+    unfold prop.lift_n at h1,
+    contradiction
   end
 | (prop.not P₁) :=
   have rec_wf: P₁.simplesize < (prop.not P₁).simplesize, from simplesize_prop_not,
   begin
+    assume Q,
+    assume x_unused,
+
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
     assume h1,
-    have h2, from mt (to_vc_valid_of_erased_n_valid P₁).right,
-    have h3, from valid.not.mpr h1,
-    have h4, from h2 h3,
-    from valid.not.mp h4,
+    unfold prop.lift_p at h1,
+    have h2, from eq_from_map_result_some h1,
+    cases h2 with Q₂ h3,
+    assume h4,
+    rw[h3.right] at h4,
+    unfold prop.to_vc at h4,
+    unfold prop.to_vc,
+    apply valid.not.mp,
+    have h5, from valid.not.mpr h4,
+    by_contradiction h6,
+    have h7: ⊨prop.to_vc Q₂, by begin
+      have h8: ¬ prop.uses_var x P₁, by begin
+        assume h9,
+        have h10, from prop.uses_var.not h9,
+        from x_unused h10
+      end,
+      from (to_vc_valid_of_lifted_to_vc_valid P₁ Q₂ h8).right h3.left h6
+    end,
+    from h5 h7,
 
-    unfold prop.erased_p,
-    unfold prop.to_vc,
     assume h1,
-    have h2, from mt (to_vc_valid_of_erased_n_valid P₁).left,
-    have h3, from valid.not.mpr h1,
-    have h4, from h2 h3,
-    from valid.not.mp h4
+    unfold prop.lift_n at h1,
+    have h2, from eq_from_map_result_some h1,
+    cases h2 with Q₂ h3,
+    assume h4,
+    rw[h3.right],
+    unfold prop.to_vc at h4,
+    unfold prop.to_vc,
+    apply valid.not.mp,
+    have h5, from valid.not.mpr h4,
+    by_contradiction h6,
+    have h7: ⊨prop.to_vc P₁, by begin
+      have h8: ¬ prop.uses_var x P₁, by begin
+        assume h9,
+        have h10, from prop.uses_var.not h9,
+        from x_unused h10
+      end,
+      from (to_vc_valid_of_lifted_to_vc_valid P₁ Q₂ h8).left h3.left h6
+    end,
+    from h5 h7
   end
 | (prop.and P₁ P₂) :=
   have rec_1: P₁.simplesize < (prop.and P₁ P₂).simplesize, from simplesize_prop_and₁,
   have rec_2: P₂.simplesize < (prop.and P₁ P₂).simplesize, from simplesize_prop_and₂,
   begin
+    assume Q,
+    assume x_unused,
+
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
     assume h1,
-
+    have h2, from and_lifted_p_is_some h1,
+    cases h2 with h3 h4,
+    cases h3 with Q₁ h4,
+    assume h5,
+    rw[h4.right] at h5,
+    have h6: ⊨prop.to_vc (prop.and Q₁ P₂), from h5,
+    unfold prop.to_vc at h6,
+    unfold prop.to_vc,
     apply valid.and.mp,
     split,
-    show ⊨ prop.to_vc P₁, by begin
-      have h2, from (valid.and.mpr h1).left,
-      from (to_vc_valid_of_erased_n_valid P₁).left h2
+    have h7, from (valid.and.mpr h6).left,
+    have h8: ¬ prop.uses_var x P₁, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.and P₁ P₂), from prop.uses_var.and₁ h9,
+      from x_unused h10
     end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₁ Q₁ h8).left h4.left h7,
+    from (valid.and.mpr h6).right,
 
-    show ⊨ prop.to_vc P₂, by begin
-      have h2, from (valid.and.mpr h1).right,
-      from (to_vc_valid_of_erased_n_valid P₂).left h2
-    end,
-
-    unfold prop.erased_p,
+    cases h4 with Q₂ h5,
+    assume h6,
+    rw[h5.right] at h6,
+    have h7: ⊨prop.to_vc (prop.and P₁ Q₂), from h6,
+    unfold prop.to_vc at h7,
+    have h8, from valid.and.mpr h7,
     unfold prop.to_vc,
-    assume h1,
-
     apply valid.and.mp,
     split,
-    show ⊨prop.erased_p P₁, by begin
-      have h2, from (valid.and.mpr h1).left,
-      from (to_vc_valid_of_erased_n_valid P₁).right h2
+    from h8.left,
+    have h9: ¬ prop.uses_var x P₂, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.and P₁ P₂), from prop.uses_var.and₂ h9,
+      from x_unused h10
     end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₂ Q₂ h9).left h5.left h8.right,
 
-    show ⊨prop.erased_p P₂, by begin
-      have h2, from (valid.and.mpr h1).right,
-      from (to_vc_valid_of_erased_n_valid P₂).right h2
-    end
+    assume h1,
+    have h2, from and_lifted_n_is_some h1,
+    cases h2 with h3 h4,
+    cases h3 with Q₁ h4,
+    assume h5,
+    rw[h4.right],
+    unfold prop.to_vc at h5,
+    change ⊨prop.to_vc (prop.and Q₁ P₂),
+    unfold prop.to_vc,
+    apply valid.and.mp,
+    split,
+    have h7, from (valid.and.mpr h5).left,
+    have h8: ¬ prop.uses_var x P₁, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.and P₁ P₂), from prop.uses_var.and₁ h9,
+      from x_unused h10
+    end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₁ Q₁ h8).right h4.left h7,
+    from (valid.and.mpr h5).right,
+
+    cases h4 with Q₂ h5,
+    assume h6,
+    rw[h5.right],
+    change ⊨prop.to_vc (prop.and P₁ Q₂),
+    unfold prop.to_vc,
+    unfold prop.to_vc at h6,
+    have h7, from valid.and.mpr h6,
+    apply valid.and.mp,
+    split,
+    from h7.left,
+    have h8: ¬ prop.uses_var x P₂, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.and P₁ P₂), from prop.uses_var.and₂ h9,
+      from x_unused h10
+    end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₂ Q₂ h8).right h5.left h7.right
   end
 | (prop.or P₁ P₂) :=
   have rec_1: P₁.simplesize < (prop.or P₁ P₂).simplesize, from simplesize_prop_or₁,
   have rec_2: P₂.simplesize < (prop.or P₁ P₂).simplesize, from simplesize_prop_or₂,
   begin
+    assume Q,
+    assume x_unused,
+
     split,
 
-    unfold prop.erased_n,
+    assume h1,
+    have h2, from or_lifted_p_is_some h1,
+    cases h2 with h3 h4,
+    cases h3 with Q₁ h4,
+    assume h5,
+    rw[h4.right] at h5,
+    have h6: ⊨prop.to_vc (prop.or Q₁ P₂), from h5,
+    unfold prop.to_vc at h6,
     unfold prop.to_vc,
-    assume h2,
-
-    cases (valid.or.elim h2),
+    cases (valid.or.elim h6) with h7 h8,
 
     apply valid.or.left,
-    from (to_vc_valid_of_erased_n_valid P₁).left a,
+    have h8: ¬ prop.uses_var x P₁, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.or P₁ P₂), from prop.uses_var.or₁ h9,
+      from x_unused h10
+    end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₁ Q₁ h8).left h4.left h7,
 
     apply valid.or.right,
-    from (to_vc_valid_of_erased_n_valid P₂).left a,
+    from h8,
 
-    unfold prop.erased_p,
+    assume h5,
     unfold prop.to_vc,
-    assume h2,
+    cases h4 with Q₂ h6,
+    rw[h6.right] at h5,
+    have h7: ⊨prop.to_vc (prop.or P₁ Q₂), from h5,
+    unfold prop.to_vc at h7,
+    cases (valid.or.elim h7) with h8 h9,
+    apply valid.or.left,
+    from h8,
+    apply valid.or.right,
+    have h10: ¬ prop.uses_var x P₂, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.or P₁ P₂), from prop.uses_var.or₂ h9,
+      from x_unused h10
+    end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₂ Q₂ h10).left h6.left h9,
 
-    cases (valid.or.elim h2),
+    assume h1,
+    have h2, from or_lifted_n_is_some h1,
+    cases h2 with h3 h4,
+    cases h3 with Q₁ h4,
+    assume h5,
+    rw[h4.right],
+    change ⊨prop.to_vc (prop.or Q₁ P₂),
+    unfold prop.to_vc at h5,
+    unfold prop.to_vc,
+    cases (valid.or.elim h5) with h7 h8,
 
     apply valid.or.left,
-    from (to_vc_valid_of_erased_n_valid P₁).right a,
+    have h8: ¬ prop.uses_var x P₁, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.or P₁ P₂), from prop.uses_var.or₁ h9,
+      from x_unused h10
+    end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₁ Q₁ h8).right h4.left h7,
 
     apply valid.or.right,
-    from (to_vc_valid_of_erased_n_valid P₂).right a
+    from h8,
+
+    assume h5,
+    unfold prop.to_vc at h5,
+    cases h4 with Q₂ h6,
+    rw[h6.right],
+    change ⊨prop.to_vc (prop.or P₁ Q₂),
+    unfold prop.to_vc,
+    cases (valid.or.elim h5) with h8 h9,
+    apply valid.or.left,
+    from h8,
+    apply valid.or.right,
+    have h10: ¬ prop.uses_var x P₂, by begin
+      assume h9,
+      have h10: prop.uses_var x (prop.or P₁ P₂), from prop.uses_var.or₂ h9,
+      from x_unused h10
+    end,
+    from (to_vc_valid_of_lifted_to_vc_valid P₂ Q₂ h10).right h6.left h9
   end
 | (prop.pre t₁ t₂) := begin
+    assume Q,
+    assume x_unused,
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
-    from id,
+    assume h1,
+    unfold prop.lift_p at h1,
+    contradiction,
 
-    unfold prop.erased_p,
-    unfold prop.to_vc,
-    from id
+    assume h1,
+    unfold prop.lift_n at h1,
+    contradiction
   end
 | (prop.pre₁ op t) := begin
+    assume Q,
+    assume x_unused,
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
-    from id,
+    assume h1,
+    unfold prop.lift_p at h1,
+    contradiction,
 
-    unfold prop.erased_p,
-    unfold prop.to_vc,
-    from id
+    assume h1,
+    unfold prop.lift_n at h1,
+    contradiction
   end
 | (prop.pre₂ op t₁ t₂) := begin
+    assume Q,
+    assume x_unused,
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
-    from id,
+    assume h1,
+    unfold prop.lift_p at h1,
+    contradiction,
 
-    unfold prop.erased_p,
-    unfold prop.to_vc,
-    from id
+    assume h1,
+    unfold prop.lift_n at h1,
+    contradiction
   end
 | (prop.call t) := begin
+    assume Q,
+    assume x_unused,
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
-    from id,
+    assume h1,
+    unfold prop.lift_p at h1,
+    contradiction,
 
-    unfold prop.erased_p,
-    unfold prop.to_vc,
-    from id
+    assume h1,
+    unfold prop.lift_n at h1,
+    contradiction
   end
 | (prop.post t₁ t₂) := begin
+    assume Q,
+    assume x_unused,
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
-    from id,
-
-    unfold prop.erased_p,
-    unfold prop.to_vc,
-    from id
-  end
-| (prop.forallc y P₁) :=
-  begin
-    split,
-
-    unfold prop.erased_n,
-    unfold prop.to_vc,
     assume h1,
-    have h2, from valid.univ.mpr h1,
+    unfold prop.lift_p at h1,
+    contradiction,
+
+    assume h1,
+    unfold prop.lift_n at h1,
+    contradiction
+  end
+| (prop.forallc y P₁) := begin
+    assume Q,
+    assume x_unused,
+
+    split,
+
+    assume h1,
+    unfold prop.lift_p at h1,
+    have h2, from option.some.inj h1,
+    assume h3,
+    rw[h2.symm] at h3,
+    unfold prop.to_vc at h3,
+    cases (valid.or.elim h3) with h4 h5,
+    have h5, from valid.not.mpr h4,
+    have h6: ⊨vc.term ↑value.true, from valid.tru,
+    contradiction,
+
+    unfold prop.to_vc,
     apply valid.univ.mp,
     assume v,
-    have h3, from h2 v,
-    have h3b: (vc.substt y v (prop.erased_n P₁) = vc.subst y v (prop.erased_n P₁)),
+    have h6: (vc.substt y x (prop.to_vc P₁) = prop.to_vc (prop.substt y x P₁)),
+    from substt_distrib_to_vc,
+    rw[←h6] at h5,
+
+    by_cases (free_in_vc y P₁.to_vc) with h7,
+
+    have h8: ⊨ vc.substt x y (vc.substt y ↑x (prop.to_vc P₁)), from valid.alpha_equiv h5,
+    have h9: ¬ vc.uses_var x (prop.to_vc P₁), by begin
+      assume h10,
+      have h11, from prop_uses_var_of_to_vc_uses_var h10,
+      have h12: prop.uses_var x (prop.forallc y P₁), from prop.uses_var.forallc h11,
+      contradiction
+    end,
+    have h10: (vc.substt x y (vc.substt y x (prop.to_vc P₁)) = (prop.to_vc P₁)),
+    from vc.substt_var_cancel h9,
+    rw[h10] at h8,
+    have h11: ⊨ vc.univ y P₁.to_vc, from valid.univ.free ⟨h7, h8⟩,
+    have h12: ⊨ vc.substt y v (prop.to_vc P₁),
+    from valid.univ.mpr h11 v,
+    have h13: (vc.substt y v (prop.to_vc P₁) = vc.subst y v (prop.to_vc P₁)),
     from vc.substt_value_eq_subst,
-    have h3c: ⊨vc.subst y v (prop.erased_n P₁), from h3b ▸ h3,
-    have h4: (vc.subst y v (prop.erased_n P₁) = prop.erased_n (prop.subst y v P₁)),
-    from subst_distrib_erased.right,
-    have h5: ⊨ prop.erased_n (prop.subst y v P₁), from h4 ▸ h3c,
-    have h6: (vc.subst y v (prop.to_vc P₁) = prop.to_vc (prop.subst y v P₁)),
-    from subst_distrib_to_vc,
-    rw[h6],
-    show ⊨prop.to_vc (prop.subst y v P₁), from (
-      have ht1: P₁.simplesize = (prop.subst y v P₁).simplesize, from same_simplesize_after_subst,
-      have ht2: P₁.simplesize < (prop.forallc y P₁).simplesize, from simplesize_prop_forall,
-      have rec_wf: (prop.subst y v P₁).simplesize < (prop.forallc y P₁).simplesize, from ht1 ▸ ht2,
-      (to_vc_valid_of_erased_n_valid (prop.subst y v P₁)).left h5
-    ),
+    rw[h13] at h12,
+    from h12,
+
+    have h8: (vc.subst y v (prop.to_vc P₁) = (prop.to_vc P₁)),
+    from unchanged_of_subst_nonfree_vc h7,
+    rw[h8],
+    have h9: (vc.substt y x (prop.to_vc P₁) = (prop.to_vc P₁)),
+    from unchanged_of_substt_nonfree_vc h7,
+    rw[h9] at h5,
+    from h5,
 
     assume h1,
-    unfold prop.erased_p,
-    from valid.tru
+    unfold prop.lift_n at h1,
+    exfalso,
+    from option.no_confusion h1
   end
 | (prop.exis y P₁) := begin
+    assume Q,
+    assume x_unused,
+
     split,
 
-    unfold prop.erased_n,
-    unfold prop.to_vc,
     assume h1,
+    unfold prop.lift_p at h1,
+    exfalso,
+    from option.no_confusion h1,
 
-    have h2, from valid.not.mpr h1,
-    apply valid.not.mp,
-
-    by_contradiction h3,
-    have h4: ⊨vc.univ y (vc.not (prop.erased_n P₁)), by begin
-      have h5, from valid.univ.mpr h3,
-      apply valid.univ.mp,
-      assume v: value,
-      have h6, from h5 v,
-      have h6b: (vc.substt y v (vc.not (prop.to_vc P₁)) = vc.subst y v (vc.not (prop.to_vc P₁))),
-      from vc.substt_value_eq_subst,
-      have h6c: ⊨vc.subst y v (vc.not (prop.to_vc P₁)), from h6b ▸ h6,
-      have h7: (vc.subst y v (vc.not (prop.to_vc P₁)) = vc.not (vc.subst y v (prop.to_vc P₁))),
-      by unfold vc.subst,
-      rw[h7] at h6c,
-      have h8: (vc.subst y v (vc.not (prop.erased_n P₁)) = vc.not (vc.subst y v (prop.erased_n P₁))),
-      by unfold vc.subst,
-      rw[h8],
-
-      have h9, from valid.not.mpr h6,
-      apply valid.not.mp,
-
-      by_contradiction h10,
-      have h11: ⊨vc.subst y v (prop.to_vc P₁), by begin
-
-        have h12: (vc.subst y v (prop.erased_n P₁) = prop.erased_n (prop.subst y v P₁)),
-        from subst_distrib_erased.right,
-        have h13: ⊨ prop.erased_n (prop.subst y v P₁), from h12 ▸ h10,
-        have h14: (vc.subst y v (prop.to_vc P₁) = prop.to_vc (prop.subst y v P₁)),
-        from subst_distrib_to_vc,
-        rw[h14],
-        show ⊨prop.to_vc (prop.subst y v P₁), from (
-          have ht1: P₁.simplesize = (prop.subst y v P₁).simplesize, from same_simplesize_after_subst,
-          have ht2: P₁.simplesize < (prop.forallc y P₁).simplesize, from simplesize_prop_forall,
-          have rec_wf: (prop.subst y v P₁).simplesize < (prop.forallc y P₁).simplesize, from ht1 ▸ ht2,
-          (to_vc_valid_of_erased_n_valid (prop.subst y v P₁)).left h13
-        )
-      end,
-      from h9 h11
-    end,
-    from h2 h4,
-
-    unfold prop.erased_p,
-    unfold prop.to_vc,
     assume h1,
-
-    have h2, from valid.not.mpr h1,
-    apply valid.not.mp,
-
-    by_contradiction h3,
-    have h4: ⊨vc.univ y (vc.not (prop.to_vc P₁)), by begin
-      have h5, from valid.univ.mpr h3,
-      apply valid.univ.mp,
-      assume v: value,
-      have h6, from h5 v,
-
-      have h7: (vc.subst y v (vc.not (prop.erased_p P₁)) = vc.not (vc.subst y v (prop.erased_p P₁))),
-      by unfold vc.subst,
-      have h8: (vc.subst y v (vc.not (prop.to_vc P₁)) = vc.not (vc.subst y v (prop.to_vc P₁))),
-      by unfold vc.subst,
-      rw[h8],
-
-      have h9, from valid.not.mpr h6,
-      apply valid.not.mp,
-
-      by_contradiction h10,
-      have h11: ⊨vc.subst y v (prop.erased_p P₁), by begin
-
-        have h12: (vc.subst y v (prop.to_vc P₁) = prop.to_vc (prop.subst y v P₁)),
-        from subst_distrib_to_vc,
-        have h13: ⊨ prop.to_vc (prop.subst y v P₁), from h12 ▸ h10,
-        have h14: (vc.subst y v (prop.erased_p P₁) = prop.erased_p (prop.subst y v P₁)),
-        from subst_distrib_erased.left,
-        rw[h14],
-        show ⊨prop.erased_p (prop.subst y v P₁), from (
-          have ht1: P₁.simplesize = (prop.subst y v P₁).simplesize, from same_simplesize_after_subst,
-          have ht2: P₁.simplesize < (prop.forallc y P₁).simplesize, from simplesize_prop_forall,
-          have rec_wf: (prop.subst y v P₁).simplesize < (prop.forallc y P₁).simplesize, from ht1 ▸ ht2,
-          (to_vc_valid_of_erased_n_valid (prop.subst y v P₁)).right h13
-        )
-      end,
-      from h9 h11
-    end,
-    from h2 h4
+    unfold prop.lift_n at h1,
+    exfalso,
+    from option.no_confusion h1,
   end
 using_well_founded {
   rel_tac := λ _ _, `[exact ⟨_, measure_wf $ λ s, s.simplesize⟩],
@@ -2678,8 +2843,10 @@ lemma to_vc_valid_of_lift_all_to_vc_valid: ∀P:prop, (⊨ P.lift_all.to_vc) →
     simp[h5] at h1,
     show ⊨ prop.to_vc P, from (
       have Q.num_quantifiers < P.num_quantifiers, from (lifted_prop_smaller Q).left h5,
-      have ⊨ Q.to_vc, from to_vc_valid_of_lift_all_to_vc_valid Q h1,
-      to_vc_valid_of_lifted_to_vc_valid.left h5 this
+      have h6: ⊨ Q.to_vc, from to_vc_valid_of_lift_all_to_vc_valid Q h1,
+      have P.fresh_var ≤ P.fresh_var, from le_refl P.fresh_var,
+      have ¬ prop.uses_var (prop.fresh_var P) P, from prop.fresh_var_is_unused P.fresh_var this,
+      (to_vc_valid_of_lifted_to_vc_valid P Q this).left h5 h6
     )
   end
 using_well_founded {

@@ -1,6 +1,6 @@
 -- lemmas about free variables and environments
 
-import .definitions2
+import .definitions3
 
 lemma free_in_term.value.inv {x: var} {v: value}: ¬ free_in_term x v :=
   assume x_free_in_v: free_in_term x v,
@@ -1629,14 +1629,602 @@ lemma free_in_instantiate_with_of_free_in_prop {P: prop} {t: calltrigger}:
     }
   end
 
--- lemma free_in_instantiate_rep_of_free_in_prop {P: prop} {n: ℕ}:
---       FV P ⊆ FV (P.instantiate_rep n) :=
---   begin
---     induction n,
+instance {x: var} {t: term}: decidable (free_in_term x t) :=
+  begin
+    induction t with v y unop t₁ ih₁ binop t₂ t₃ ih₂ ih₃ t₄ t₅ ih₄ ih₅,
 
---     case nat.zero {
---       unfold prop.instantiate_rep,
+    show decidable (free_in_term x (term.value v)), by begin
+      from is_false (free_in_term.value.inv)
+    end,
 
---     }
+    show decidable (free_in_term x (term.var y)), by begin
+      by_cases (x = y)  with h1,
 
---   end
+      rw[h1],
+      from is_true (free_in_term.var y),
+      apply is_false, 
+      assume h2,
+      have h3, from free_in_term.var.inv h2,
+      contradiction
+    end,
+
+    show decidable (free_in_term x (term.unop unop t₁)), by begin
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_term.unop h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_term.unop.inv h2,
+      contradiction
+    end,
+
+    show decidable (free_in_term x (term.binop binop t₂ t₃)), by begin
+      by_cases (free_in_term x t₂) with h1,
+      from is_true (free_in_term.binop₁ h1),
+
+      by_cases (free_in_term x t₃) with h2,
+      from is_true (free_in_term.binop₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_term.binop.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    end,
+
+    show decidable (free_in_term x (term.app t₄ t₅)), by begin
+      by_cases (free_in_term x t₄) with h1,
+      from is_true (free_in_term.app₁ h1),
+
+      by_cases (free_in_term x t₅) with h2,
+      from is_true (free_in_term.app₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_term.app.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    end
+  end
+
+instance {x: var} {P: vc}: decidable (free_in_vc x P) :=
+  begin
+    induction P,
+    case vc.term t {
+      by_cases (free_in_term x t) with h1,
+      from is_true (free_in_vc.term h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_vc.term.inv h2,
+      contradiction
+    },
+    case vc.not P₁ ih {
+      by_cases (free_in_vc x P₁) with h1,
+      from is_true (free_in_vc.not h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_vc.not.inv h2,
+      contradiction
+    },
+    case vc.and P₁ P₂ P₁_ih P₂_ih {
+      by_cases (free_in_vc x P₁) with h1,
+      from is_true (free_in_vc.and₁ h1),
+
+      by_cases (free_in_vc x P₂) with h2,
+      from is_true (free_in_vc.and₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_vc.and.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case vc.or P₁ P₂ P₁_ih P₂_ih {
+      by_cases (free_in_vc x P₁) with h1,
+      from is_true (free_in_vc.or₁ h1),
+
+      by_cases (free_in_vc x P₂) with h2,
+      from is_true (free_in_vc.or₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_vc.or.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case vc.pre t₁ t₂ {
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_vc.pre₁ h1),
+
+      by_cases (free_in_term x t₂) with h2,
+      from is_true (free_in_vc.pre₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_vc.pre.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case vc.pre₁ op t {
+      by_cases (free_in_term x t) with h1,
+      from is_true (free_in_vc.preop h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_vc.pre₁.inv h2,
+      contradiction
+    },
+    case vc.pre₂ op t₁ t₂ {
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_vc.preop₁ h1),
+
+      by_cases (free_in_term x t₂) with h2,
+      from is_true (free_in_vc.preop₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_vc.pre₂.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case vc.post t₁ t₂ {
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_vc.post₁ h1),
+
+      by_cases (free_in_term x t₂) with h2,
+      from is_true (free_in_vc.post₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_vc.post.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case vc.univ y P' P'_ih {
+      by_cases (x = y) with h1,
+      rw[h1],
+      apply is_false,
+      assume h2,
+      have h3, from free_in_vc.univ.inv h2,
+      from h3.left rfl,
+
+      by_cases (free_in_vc x P') with h2,
+      from is_true (free_in_vc.univ h1 h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_vc.univ.inv h3,
+      from h2 h4.right
+    }
+  end
+
+lemma term.fresh_var_is_not_free {t: term}: ∀y, y ≥ t.fresh_var → y ∉ FV t :=
+  begin
+    induction t with v z unop t₁ t₁_ih binop t₂ t₃ t₂_ih t₃_ih t₄ t₅ t₄_ih t₅_ih,
+
+    show ∀y : var, y ≥ term.fresh_var (term.value v) → y ∉ FV (term.value v), by begin
+      assume y,
+      assume h1,
+      from free_in_term.value.inv
+    end,
+
+    show ∀y: var, y ≥ term.fresh_var (term.var z) → y ∉ FV (term.var z), by begin
+      assume y,
+      assume h1,
+      assume h2,
+      have h3: (y = z), from free_in_term.var.inv h2,
+      rw[h3] at h1,
+      unfold term.fresh_var at h1,
+      have h3: z < z + 1, from lt_of_add_one,
+      have h4, from not_lt_of_ge h1,
+      contradiction
+    end,
+
+    show ∀y: var, y ≥ term.fresh_var (term.unop unop t₁) → y ∉ FV (term.unop unop t₁), by begin
+      assume y,
+      assume h1,
+      assume h2,
+      have h3, from free_in_term.unop.inv h2,
+      unfold term.fresh_var at h1,
+      from t₁_ih y h1 h3
+    end,
+
+    show ∀y: var, y ≥ term.fresh_var (term.binop binop t₂ t₃) → y ∉ FV (term.binop binop t₂ t₃), by begin
+      assume y,
+      assume h1,
+      assume h2,
+      unfold term.fresh_var at h1,
+      cases (free_in_term.binop.inv h2) with h3 h3,
+
+      have h4: (term.fresh_var t₂ ≤ max (term.fresh_var t₂) (term.fresh_var t₃)),
+      from le_max_left (term.fresh_var t₂) (term.fresh_var t₃),
+      have h5, from ge_trans h1 h4,
+      from t₂_ih y h5 h3,
+
+      have h4: (term.fresh_var t₃ ≤ max (term.fresh_var t₂) (term.fresh_var t₃)),
+      from le_max_right (term.fresh_var t₂) (term.fresh_var t₃),
+      have h5, from ge_trans h1 h4,
+      from t₃_ih y h5 h3
+    end,
+
+    show ∀y: var, y ≥ term.fresh_var (term.app t₄ t₅) → y ∉ FV (term.app t₄ t₅), by begin
+      assume y,
+      assume h1,
+      assume h2,
+      unfold term.fresh_var at h1,
+      cases (free_in_term.app.inv h2) with h3 h3,
+
+      have h4: (term.fresh_var t₄ ≤ max (term.fresh_var t₄) (term.fresh_var t₅)),
+      from le_max_left (term.fresh_var t₄) (term.fresh_var t₅),
+      have h5, from ge_trans h1 h4,
+      from t₄_ih y h5 h3,
+
+      have h4: (term.fresh_var t₅ ≤ max (term.fresh_var t₄) (term.fresh_var t₅)),
+      from le_max_right (term.fresh_var t₄) (term.fresh_var t₅),
+      have h5, from ge_trans h1 h4,
+      from t₅_ih y h5 h3
+    end
+  end
+
+lemma prop.fresh_var_is_unused {P: prop}: ∀x, x ≥ P.fresh_var → ¬ prop.uses_var x P :=
+  begin
+    induction P,
+
+    case prop.term t {
+      assume y,
+      assume h1,
+      assume h2,
+      cases h2 with _ h3,
+      unfold prop.fresh_var at h1,
+      from term.fresh_var_is_not_free y h1 h3
+    },
+
+    case prop.not P₁ P₁_ih {
+      assume y,
+      assume h1,
+      assume h2,
+      cases h2 with _ _ _ h3,
+      unfold prop.fresh_var at h1,
+      from P₁_ih y h1 h3
+    },
+
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2 with _ _ _ _ _ _ h3 _ _ h3,
+
+      have h4: (prop.fresh_var P₁ ≤ max (prop.fresh_var P₁) (prop.fresh_var P₂)),
+      from le_max_left (prop.fresh_var P₁) (prop.fresh_var P₂),
+      have h5, from ge_trans h1 h4,
+      from P₁_ih y h5 h3,
+
+      have h4: (prop.fresh_var P₂ ≤ max (prop.fresh_var P₁) (prop.fresh_var P₂)),
+      from le_max_right (prop.fresh_var P₁) (prop.fresh_var P₂),
+      have h5, from ge_trans h1 h4,
+      from P₂_ih y h5 h3
+    },
+
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2 with _ _ _ _ _ _ _ _ _ _ _ _ h3 _ _ h3,
+
+      have h4: (prop.fresh_var P₁ ≤ max (prop.fresh_var P₁) (prop.fresh_var P₂)),
+      from le_max_left (prop.fresh_var P₁) (prop.fresh_var P₂),
+      have h5, from ge_trans h1 h4,
+      from P₁_ih y h5 h3,
+
+      have h4: (prop.fresh_var P₂ ≤ max (prop.fresh_var P₁) (prop.fresh_var P₂)),
+      from le_max_right (prop.fresh_var P₁) (prop.fresh_var P₂),
+      have h5, from ge_trans h1 h4,
+      from P₂_ih y h5 h3
+    },
+
+    case prop.pre t₁ t₂ {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2 with _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ h3 _ _ h3,
+
+      have h4: (term.fresh_var t₁ ≤ max (term.fresh_var t₁) (term.fresh_var t₂)),
+      from le_max_left (term.fresh_var t₁) (term.fresh_var t₂),
+      have h5, from ge_trans h1 h4,
+      from term.fresh_var_is_not_free y h5 h3,
+
+      have h4: (term.fresh_var t₂ ≤ max (term.fresh_var t₁) (term.fresh_var t₂)),
+      from le_max_right (term.fresh_var t₁) (term.fresh_var t₂),
+      have h5, from ge_trans h1 h4,
+      from term.fresh_var_is_not_free y h5 h3
+    },
+
+    case prop.pre₁ op t {
+      assume y,
+      assume h1,
+      assume h2,
+      cases h2,
+      unfold prop.fresh_var at h1,
+      from term.fresh_var_is_not_free y h1 a
+    },
+
+    case prop.pre₂ op t₁ t₂ {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2,
+
+      have h4: (term.fresh_var t₁ ≤ max (term.fresh_var t₁) (term.fresh_var t₂)),
+      from le_max_left (term.fresh_var t₁) (term.fresh_var t₂),
+      have h5, from ge_trans h1 h4,
+      from term.fresh_var_is_not_free y h5 a,
+
+      have h4: (term.fresh_var t₂ ≤ max (term.fresh_var t₁) (term.fresh_var t₂)),
+      from le_max_right (term.fresh_var t₁) (term.fresh_var t₂),
+      have h5, from ge_trans h1 h4,
+      from term.fresh_var_is_not_free y h5 a
+    },
+
+    case prop.call t {
+      assume y,
+      assume h1,
+      assume h2,
+      cases h2,
+      unfold prop.fresh_var at h1,
+      from term.fresh_var_is_not_free y h1 a
+    },
+
+    case prop.post t₁ t₂ {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2,
+
+      have h4: (term.fresh_var t₁ ≤ max (term.fresh_var t₁) (term.fresh_var t₂)),
+      from le_max_left (term.fresh_var t₁) (term.fresh_var t₂),
+      have h5, from ge_trans h1 h4,
+      from term.fresh_var_is_not_free y h5 a,
+
+      have h4: (term.fresh_var t₂ ≤ max (term.fresh_var t₁) (term.fresh_var t₂)),
+      from le_max_right (term.fresh_var t₁) (term.fresh_var t₂),
+      have h5, from ge_trans h1 h4,
+      from term.fresh_var_is_not_free y h5 a
+    },
+
+    case prop.forallc z P₁ P₁_ih {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2,
+      
+      have h4: (prop.fresh_var P₁ ≤ max (z + 1) (prop.fresh_var P₁)),
+      from le_max_right (z + 1) (prop.fresh_var P₁),
+      have h5, from ge_trans h1 h4,
+      from P₁_ih y h5 a,
+
+      have h4: (z + 1 ≤ max (z + 1) (prop.fresh_var P₁)),
+      from le_max_left (z + 1) (prop.fresh_var P₁),
+      have h5, from ge_trans h1 h4,
+      have h3: z < z + 1, from lt_of_add_one,
+      have h4, from not_lt_of_ge h1,
+      contradiction
+    },
+
+    case prop.exis z P₁ P₁_ih {
+      assume y,
+      assume h1,
+      assume h2,
+      unfold prop.fresh_var at h1,
+      cases h2,
+      
+      have h4: (prop.fresh_var P₁ ≤ max (z + 1) (prop.fresh_var P₁)),
+      from le_max_right (z + 1) (prop.fresh_var P₁),
+      have h5, from ge_trans h1 h4,
+      from P₁_ih y h5 a,
+
+      have h4: (z + 1 ≤ max (z + 1) (prop.fresh_var P₁)),
+      from le_max_left (z + 1) (prop.fresh_var P₁),
+      have h5, from ge_trans h1 h4,
+      have h3: z < z + 1, from lt_of_add_one,
+      have h4, from not_lt_of_ge h1,
+      contradiction
+    }
+  end
+
+lemma vc.uses_var_of_free {x: var} {P: vc}: x ∈ FV P → vc.uses_var x P :=
+  begin
+    assume h1,
+    induction P,
+    case vc.term t {
+      from vc.uses_var.term (free_in_vc.term.inv h1)
+    },
+    case vc.not P₁ P₁_ih {
+      from vc.uses_var.not (P₁_ih (free_in_vc.not.inv h1))
+    },
+    case vc.and P₁ P₂ P₁_ih P₂_ih {
+      cases (free_in_vc.and.inv h1) with h2 h3,
+
+      from vc.uses_var.and₁ (P₁_ih h2),
+      from vc.uses_var.and₂ (P₂_ih h3)
+    },
+    case vc.or P₁ P₂ P₁_ih P₂_ih {
+      cases (free_in_vc.or.inv h1) with h2 h3,
+
+      from vc.uses_var.or₁ (P₁_ih h2),
+      from vc.uses_var.or₂ (P₂_ih h3)
+    },
+    case vc.pre t₁ t₂ {
+      cases (free_in_vc.pre.inv h1) with h2 h3,
+
+      from vc.uses_var.pre₁ h2,
+      from vc.uses_var.pre₂ h3
+    },
+    case vc.pre₁ op t {
+      from vc.uses_var.preop (free_in_vc.pre₁.inv h1)
+    },
+    case vc.pre₂ op t₁ t₂ {
+      cases (free_in_vc.pre₂.inv h1) with h2 h3,
+
+      from vc.uses_var.preop₁ h2,
+      from vc.uses_var.preop₂ h3
+    },
+    case vc.post t₁ t₂ {
+      cases (free_in_vc.post.inv h1) with h2 h3,
+
+      from vc.uses_var.post₁ h2,
+      from vc.uses_var.post₂ h3
+    },
+    case vc.univ y P' P'_ih {
+      have h2, from free_in_vc.univ.inv h1,
+      from vc.uses_var.univ (P'_ih h2.right)
+    }
+  end
+
+lemma vc.uses_var.term.inv {t: term} {x: var}: vc.uses_var x t → x ∈ FV t :=
+  assume x_free_in_not: vc.uses_var x t,
+  begin
+    cases x_free_in_not,
+    case vc.uses_var.term free_in_P { from free_in_P }
+  end
+
+lemma vc.uses_var.not.inv {P: vc} {x: var}: vc.uses_var x P.not → vc.uses_var x P :=
+  assume x_free_in_not: vc.uses_var x P.not,
+  begin
+    cases x_free_in_not,
+    case vc.uses_var.not free_in_P { from free_in_P }
+  end
+
+lemma vc.uses_var.and.inv {P₁ P₂: vc} {x: var}: vc.uses_var x (P₁ ⋀ P₂) → vc.uses_var x P₁ ∨ vc.uses_var x P₂ :=
+  assume x_free_in_and: vc.uses_var x (P₁ ⋀ P₂),
+  begin
+    cases x_free_in_and,
+    case vc.uses_var.and₁ free_in_P₁ {
+      show vc.uses_var x P₁ ∨ vc.uses_var x P₂, from or.inl free_in_P₁
+    },
+    case vc.uses_var.and₂ free_in_P₂ {
+      show vc.uses_var x P₁ ∨ vc.uses_var x P₂, from or.inr free_in_P₂
+    }
+  end
+
+lemma vc.uses_var.or.inv {P₁ P₂: vc} {x: var}: vc.uses_var x (P₁ ⋁ P₂) → vc.uses_var x P₁ ∨ vc.uses_var x P₂ :=
+  assume x_free_in_or: vc.uses_var x (P₁ ⋁ P₂),
+  begin
+    cases x_free_in_or,
+    case vc.uses_var.or₁ free_in_P₁ {
+      show vc.uses_var x P₁ ∨ vc.uses_var x P₂, from or.inl free_in_P₁
+    },
+    case vc.uses_var.or₂ free_in_P₂ {
+      show vc.uses_var x P₁ ∨ vc.uses_var x P₂, from or.inr free_in_P₂
+    }
+  end
+
+lemma vc.uses_var.univ.inv {P: vc} {x y: var}: vc.uses_var x (vc.univ y P) → (x = y) ∨ vc.uses_var x P :=
+  assume x_free_in_univ: vc.uses_var x (vc.univ y P),
+  begin
+    cases x_free_in_univ,
+    case vc.uses_var.univ h1 {
+      from or.inr h1
+    },
+    case vc.uses_var.quantified h1 {
+      from or.inl rfl
+    }
+  end
+
+lemma prop_uses_var_of_to_vc_uses_var {x: var} {P: prop}: vc.uses_var x P.to_vc → prop.uses_var x P :=
+  begin
+    assume h1,
+
+    induction P,
+
+    case prop.term t {
+      unfold prop.to_vc at h1,
+      cases h1,
+      from prop.uses_var.term a
+    },
+
+    case prop.not P₁ P₁_ih {
+      unfold prop.to_vc at h1,
+      have h2, from vc.uses_var.not.inv h1,
+      apply prop.uses_var.not,
+      from P₁_ih h2
+    },
+
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.to_vc at h1,
+      cases vc.uses_var.and.inv h1 with h2 h3,
+      apply prop.uses_var.and₁,
+      from P₁_ih h2,
+      apply prop.uses_var.and₂,
+      from P₂_ih h3
+    },
+
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      unfold prop.to_vc at h1,
+      cases vc.uses_var.or.inv h1 with h2 h3,
+      apply prop.uses_var.or₁,
+      from P₁_ih h2,
+      apply prop.uses_var.or₂,
+      from P₂_ih h3
+    },
+
+    case prop.pre t₁ t₂ {
+      unfold prop.to_vc at h1,
+      cases h1,
+      from prop.uses_var.pre₁ a,
+      from prop.uses_var.pre₂ a
+    },
+
+    case prop.pre₁ op t {
+      unfold prop.to_vc at h1,
+      cases h1,
+      from prop.uses_var.preop a
+    },
+
+    case prop.pre₂ op t₁ t₂ {
+      unfold prop.to_vc at h1,
+      cases h1,
+      from prop.uses_var.preop₁ a,
+      from prop.uses_var.preop₂ a
+    },
+
+    case prop.call t {
+      unfold prop.to_vc at h1,
+      have h2, from vc.uses_var.term.inv h1,
+      have h3: ¬ free_in_term x value.true, from free_in_term.value.inv,
+      contradiction
+    },
+
+    case prop.post t₁ t₂ {
+      unfold prop.to_vc at h1,
+      cases h1,
+      from prop.uses_var.post₁ a,
+      from prop.uses_var.post₂ a
+    },
+
+    case prop.forallc z P₁ P₁_ih {
+      unfold prop.to_vc at h1,
+      cases vc.uses_var.univ.inv h1 with h2 h3,
+
+      rw[h2],
+      from prop.uses_var.uquantified z,
+
+      apply prop.uses_var.forallc,
+      from P₁_ih h3
+    },
+
+    case prop.exis z P₁ P₁_ih {
+      unfold prop.to_vc at h1,
+      have h2, from vc.uses_var.not.inv h1,
+      cases vc.uses_var.univ.inv h2 with h3 h4,
+
+      rw[h3],
+      from prop.uses_var.equantified z,
+
+      apply prop.uses_var.exis,
+      have h5, from vc.uses_var.not.inv h4,
+      from P₁_ih h5
+    }
+  end
