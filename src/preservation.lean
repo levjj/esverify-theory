@@ -1,5 +1,6 @@
+import .definitions3
+
 /-
-import .definitions2
 
 lemma no_calls_in_env_translation {P: prop} {σ: env}: (⊢ σ : P) → (calls_p P = ∅) :=
   assume env_verified: ⊢ σ : P,
@@ -527,20 +528,22 @@ lemma eq_value_of_equiv_subst {σ₁ σ₂: env} {x: var} {v: value}:
   have σ₁ x = σ₂ x, from env_equiv x this,
   show σ₂ x = v, from this ▸ x_is_v
 
-lemma exp.preservation {R: spec} {H: history} {σ σ': env} {P: prop} {e e': exp} {Q: propctx}:
-      (⊢ σ : P) → FV (spec.to_prop R) ⊆ FV P → (σ ⊨ R.to_prop.instantiated_n) → (R ⋀ H ⋀ P ⊢ e : Q) →
-      ((R, H, σ, e) ⟶ (R, H, σ', e')) →
-      ∃Q', (⊢ₛ (R, H, σ', e') : Q') ∧ (∀σ' t, dominates_n σ' (Q' t) ((↑H ⋀ ↑P ⋀ Q) t)) ∧
-                                      (∀v: value, FV ((↑H ⋀ ↑P ⋀ Q) v) ⊆ FV (Q' v)) :=
-  assume σ_verified: ⊢ σ : P,
+-/
+
+lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx}:
+      (⊩ σ : P) → FV (spec.to_prop R) ⊆ FV P → (σ ⊨ R.to_prop.to_vc) → (R ⋀ P ⊩ e : Q) →
+      ((R, σ, e) ⟶ (R, σ', e')) →
+      ∃Q', (⊩ₛ (R, σ', e') : Q') ∧ (∀σ' t, σ' ⊨ vc.implies (Q' t).to_vc ((↑P ⋀ Q) t).to_vc) ∧
+                                   (∀v: value, FV ((↑P ⋀ Q) v) ⊆ FV (Q' v)) :=
+  assume σ_verified: ⊩ σ : P,
   assume fv_R: FV (spec.to_prop R) ⊆ FV P,
-  assume R_valid: (σ ⊨ R.to_prop.instantiated_n),
-  assume e_verified: R ⋀ H ⋀ P ⊢ e : Q,
-  assume e_steps: ((R, H, σ, e) ⟶ (R, H, σ', e')),
+  assume R_valid: (σ ⊨ R.to_prop.to_vc),
+  assume e_verified: R ⋀ P ⊩ e : Q,
+  assume e_steps: ((R, σ, e) ⟶ (R, σ', e')),
   begin
     cases e_verified,
 
-    case exp.vcgen.tru x e' Q x_not_free e'_verified {
+    case exp.dvcgen.tru x e' Q x_not_free e'_verified {
       cases e_steps,
       
       case step.tru { from
@@ -548,18 +551,16 @@ lemma exp.preservation {R: spec} {H: history} {σ σ': env} {P: prop} {e e': exp
           assume : x ∈ σ,
           have x ∈ σ.dom, from this,
           have x ∈ FV P, from (free_iff_contains σ_verified) ▸ this,
-          have x ∈ FV (↑H ⋀ P), from free_in_prop.and₂ this,
-          have x ∈ FV (↑R ⋀ ↑H ⋀ P), from free_in_prop.and₂ this,
+          have x ∈ FV (↑R ⋀ P), from free_in_prop.and₂ this,
           show «false», from x_not_free this
         ),
-        have σ'_verified: ⊢ (σ[x↦value.true]) : P ⋀ x ≡ value.true, from env.vcgen.tru this σ_verified,
+        have σ'_verified: ⊩ (σ[x↦value.true]) : P ⋀ x ≡ value.true, from env.vcgen.tru this σ_verified,
         have fv_R': FV R.to_prop ⊆ FV (P ⋀ x ≡ value.true), from set.subset.trans fv_R free_in_prop.and_left_subset,
         have R_valid': σ[x↦value.true] ⊨ R.to_prop.instantiated_n, from valid_with_additional_var R_valid,
-        have h1: (∀σ, (σ ⊨ P.instantiated_p) → dominates_p σ (x ≡ value.true) (x ≡ value.true)),
-        from λ_ _, dominates_p.self,
-        have h2: (∀σ, (σ ⊨ P.instantiated_p) → dominates_n σ (x ≡ value.true) (x ≡ value.true)),
-        from λ_ _, dominates_n.self,
-        have h3: FV (prop.term (x ≡ value.true)) = set.insert x ∅, from set.eq_of_subset_of_subset (
+
+        have h1: (∀σ, (σ ⊨ P.to_vc) → σ ⊨ vc.implies (x ≡ value.true) (x ≡ value.true)),
+        from λ_ _, valid_env.implies.self,
+        have h2: FV (prop.term (x ≡ value.true)) = set.insert x ∅, from set.eq_of_subset_of_subset (
           assume z: var,
           assume : free_in_prop z (x ≡ value.true),
           have free_in_term z (x ≡ value.true), from free_in_prop.term.inv this,
@@ -579,18 +580,18 @@ lemma exp.preservation {R: spec} {H: history} {σ σ': env} {P: prop} {e e': exp
           have free_in_term z (x ≡ value.true), from free_in_term.binop₁ this,
           show free_in_prop z (x ≡ value.true), from free_in_prop.term this
         ),
-        have h4: (FV (↑R ⋀ ↑H ⋀ P ⋀ (x ≡ value.true)) = FV ((↑R ⋀ ↑H ⋀ P) ⋀ (x ≡ value.true))) ∧
-          (∀σ, dominates_p σ (↑R ⋀ ↑H ⋀ P ⋀ (x ≡ value.true)) ((↑R ⋀ ↑H ⋀ P) ⋀ (x ≡ value.true))) ∧
-          (∀σ t, dominates_n σ ((↑H ⋀ ↑(P ⋀ (x ≡ value.true)) ⋀ Q) t)
-                               ((↑H ⋀ ↑P ⋀ propctx.exis x (↑(x ≡ value.true) ⋀ Q)) t)) ∧
-          (∀v: value, FV ((↑H ⋀ ↑P ⋀ propctx.exis x (↑(x ≡ value.true) ⋀ Q)) v)
-                    ⊆ FV ((↑H ⋀ ↑(P ⋀ (x ≡ value.true)) ⋀ Q) v)),
-        from @free_dominates_helper_eq_free H R P (x ≡ value.true) (x ≡ value.true) Q x h1 h2 h3 h3,
-        have e'_verified': ↑R ⋀ H ⋀ P ⋀ x ≡ value.true ⊢ e' : Q,
-        from strengthen_exp e'_verified (↑R ⋀ ↑H ⋀ P ⋀ x ≡ value.true) h4.left h4.right.left,
-        have h3: ⊢ₛ (R, H, σ[x↦value.true], e') : ↑H ⋀ ↑(P ⋀ x ≡ value.true) ⋀ Q,
+        have h3: (FV (↑R ⋀ P ⋀ (x ≡ value.true)) = FV ((↑R ⋀ P) ⋀ (x ≡ value.true))) ∧
+          (∀σ, σ ⊨ vc.implies (↑R ⋀ P ⋀ (x ≡ value.true)).to_vc ((↑R ⋀ P) ⋀ (x ≡ value.true)).to_vc) ∧
+          (∀σ t, σ ⊨ vc.implies ((↑(P ⋀ (x ≡ value.true)) ⋀ Q) t).to_vc
+                                 ((↑P ⋀ propctx.exis x (↑(x ≡ value.true) ⋀ Q)) t).to_vc) ∧
+          (∀v: value, FV ((↑P ⋀ propctx.exis x (↑(x ≡ value.true) ⋀ Q)) v)
+                    ⊆ FV ((↑(P ⋀ (x ≡ value.true)) ⋀ Q) v)),
+        from @free_dominates_helper_eq_free R P (x ≡ value.true) (x ≡ value.true) Q x h1 h1 h2 h2,
+        have e'_verified': ↑R ⋀ P ⋀ x ≡ value.true ⊩ e' : Q,
+        from strengthen_exp e'_verified (↑R ⋀ P ⋀ x ≡ value.true) h3.left h3.right.left,
+        have h4: ⊩ₛ (R, σ[x↦value.true], e') : ↑(P ⋀ x ≡ value.true) ⋀ Q,
         from stack.vcgen.top σ'_verified fv_R' R_valid' e'_verified',
-        exists.intro (↑H ⋀ ↑(P ⋀ x ≡ value.true) ⋀ Q) ⟨h3, h4.right.right⟩
+        exists.intro (↑(P ⋀ x ≡ value.true) ⋀ Q) ⟨h4, h3.right.right⟩
       }
     },
     case exp.vcgen.fals x e' Q x_not_free e'_verified {
@@ -2326,15 +2327,18 @@ lemma inlined_dominates_n_spec {σ σ₁: env} {P: prop} {Q: propctx} {f x: var}
                    (spec.to_prop (spec.func f x R S)),
   from h3.symm ▸ h4.symm ▸ h7
 
+-/
+
+/-
 theorem preservation {s: stack} {Q: propctx}:
-   (⊢ₛ s : Q) → ∀s', (s ⟶ s') →
-   ∃Q', (⊢ₛ s' : Q') ∧ (∀σ' t, dominates_n σ' (Q' t) (Q t)) ∧ (∀v: value, FV (Q v) ⊆ FV (Q' v)) :=
-  assume s_verified:  ⊢ₛ s : Q,
+   (⊩ₛ s : Q) → ∀s', (s ⟶ s') →
+   ∃Q', (⊩ₛ s' : Q') ∧ (∀σ' t, σ' ⊨ vc.implies (Q' t).to_vc (Q t).to_vc) ∧ (∀v: value, FV (Q v) ⊆ FV (Q' v)) :=
+  assume s_verified:  ⊩ₛ s : Q,
   begin
     induction s_verified,
-    case stack.vcgen.top σ e P R H Q σ_verified fv_R R_valid e_verified {
+    case stack.dvcgen.top σ e P R Q σ_verified fv_R R_valid e_verified {
       assume s',
-      assume s_steps: ((R, H, σ, e) ⟶ s'),
+      assume s_steps: ((R, σ, e) ⟶ s'),
 
       have R_closed: closed_subst σ R.to_prop, from (
         assume z: var,
@@ -4721,5 +4725,4 @@ theorem preservation {s: stack} {Q: propctx}:
       }
     }
   end
-
 -/

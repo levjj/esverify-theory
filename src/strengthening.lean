@@ -1,104 +1,57 @@
-/-
-import .definitions2
+import .definitions3 .logic
 
 lemma strengthen_and_with_dominating_instantiations {σ: env} {P P' Q: prop}:
-  dominates_p σ P P' → (σ ⊨ (P ⋀ Q).instantiated_p) → σ ⊨ (P' ⋀ Q).instantiated_p :=
-  assume h1: dominates_p σ P P',
-  assume h2: (σ ⊨ (P ⋀ Q).instantiated_p),
-  have dominates_p σ (P ⋀ Q) (P' ⋀ Q), from dominates_p.same_right (λ_, h1),
-  dominates_p.elim this h2
+  (σ ⊨ vc.implies P.to_vc P'.to_vc) → (σ ⊨ (P ⋀ Q).to_vc) → σ ⊨ (P' ⋀ Q).to_vc :=
+  begin
+    assume h1: σ ⊨ vc.implies P.to_vc P'.to_vc,
+    assume h2: σ ⊨ (P ⋀ Q).to_vc,
+    apply valid_env.to_vc_and,
+    have h3, from (valid_env.to_vc_and.elim h2).left,
+    from valid_env.mp h1 h3,
+    from (valid_env.to_vc_and.elim h2).right
+  end
 
 lemma strengthen_impl_with_dominating_instantiations {σ: env} {P P' Q: prop}:
-  dominates_p σ P' P → FV P' ⊆ FV P → (σ ⊨ (prop.implies P Q).instantiated_n) → (σ ⊨ (prop.implies P' Q).instantiated_n) :=
-  assume P'_dominates_P: dominates_p σ P' P,
-  assume fv_P'_P: FV P' ⊆ FV P,
-  assume h0: σ ⊨ (P.not ⋁ Q).instantiated_n,
-  have h11: closed_subst σ (P'.not ⋁ Q).not.instantiated_p, from (
-    assume x: var,
-    assume h12: x ∈ FV (P'.not ⋁ Q).not.instantiated_p,
-    have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
-    have x ∈ FV (P'.not ⋁ Q).instantiated_n.not, from this ▸ h12,
-    have h13: x ∈ FV (P'.not ⋁ Q).instantiated_n, from free_in_vc.not.inv this,
-    have FV P'.not ⊆ FV P.not, from (
-      assume y: var,
-      assume : y ∈ FV P'.not,
-      have y ∈ FV P', from free_in_prop.not.inv this,
-      have y ∈ FV P, from set.mem_of_subset_of_mem fv_P'_P this,
-      show y ∈ FV P.not, from free_in_prop.not this
-    ),
-    have FV (P'.not ⋁ Q).instantiated_n ⊆ FV (P.not ⋁ Q).instantiated_n,
-    from free_in_prop.strengthen_or_with_instantiations this,
-    have x ∈ FV (P.not ⋁ Q).instantiated_n, from set.mem_of_subset_of_mem this h13,
-    show x ∈ σ.dom,
-    from set.mem_of_subset_of_mem (valid_env.closed h0) this
-  ),
-  have h12: σ ⊨ (P.not ⋁ Q).instantiated_n.not.not, from valid_env.not_not.mpr h0,
-  have (P.not ⋁ Q).not.instantiated_p = (P.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
-  have σ ⊨ (P.not ⋁ Q).not.instantiated_p.not, from this.symm ▸ h12,
-  have h2: ¬ σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.not.mpr this,
-
-  have h3: (σ ⊨ (P'.not ⋁ Q).not.instantiated_p) → (σ ⊨ (P.not ⋁ Q).not.instantiated_p), from (
-    assume : σ ⊨ (P'.not ⋁ Q).not.instantiated_p,
-    have h4: σ ⊨ (P'.not.not ⋀ Q.not).instantiated_p, from valid_env.or_not_dist_with_instantiations.mp this,
-
-    have h41: σ ⊨ P'.not.not.instantiated_p, from (valid_env.and.elim (valid_env.instantiated_p_and_elim h4)).left,
-    have h42: P'.not.not.instantiated_p = P'.not.instantiated_n.not, from not_dist_instantiated_p,
-    have h43: P'.not.instantiated_n = P'.instantiated_p.not, from not_dist_instantiated_n,
-    have σ ⊨ P'.instantiated_p.not.not, from h43 ▸ h42 ▸ h41,
-    have σ ⊨ P'.instantiated_p, from valid_env.not_not.mp this,
-    have dominates_p σ P'.not.not P', from dominates_p.not_not,
-    have h5: σ ⊨ (P' ⋀ Q.not).instantiated_p, from strengthen_and_with_dominating_instantiations this h4,
-    have h6: σ ⊨ (P ⋀ Q.not).instantiated_p, from strengthen_and_with_dominating_instantiations P'_dominates_P h5,
-
-    have dominates_p σ P P.not.not, from dominates_p.of_not_not,
-    have σ ⊨ (P.not.not ⋀ Q.not).instantiated_p, from strengthen_and_with_dominating_instantiations this h6,
-    show σ ⊨ (P.not ⋁ Q).not.instantiated_p, from valid_env.or_not_dist_with_instantiations.mpr this
-  ),
-
-  have ¬ σ ⊨ (P'.not ⋁ Q).not.instantiated_p, from mt h3 h2,
-  have h9: σ ⊨ (P'.not ⋁ Q).not.instantiated_p.not, from valid_env.not.mp h11 this,
-  have (P'.not ⋁ Q).not.instantiated_p = (P'.not ⋁ Q).instantiated_n.not, from not_dist_instantiated_p,
-  have σ ⊨ (P'.not ⋁ Q).instantiated_n.not.not, from this ▸ h9,
-  show σ ⊨ (P'.not ⋁ Q).instantiated_n, from valid_env.not_not.mp this
+  (σ ⊨ vc.implies P'.to_vc P.to_vc) → (σ ⊨ (prop.implies P Q).to_vc) → (σ ⊨ (prop.implies P' Q).to_vc) :=
+  begin
+    assume h1,
+    assume h2,
+    apply valid_env.to_vc_implies.mpr,
+    apply valid_env.mpr,
+    assume h3,
+    have h4, from valid_env.mp h1 h3,
+    have h5, from valid_env.to_vc_implies.mp h2,
+    from valid_env.mp h5 h4
+  end
 
 lemma strengthen_vc {P P' Q S: prop} {σ: env}:
-  dominates_p σ P' P → FV P' ⊆ FV P →
-  (σ ⊨ (prop.implies (P ⋀ Q) S).instantiated_n) → σ ⊨ (prop.implies (P' ⋀ Q) S).instantiated_n :=
-  assume : dominates_p σ P' P,
-  assume fv_P'_P: FV P' ⊆ FV P,
-  have h1: dominates_p σ (P' ⋀ Q) (P ⋀ Q), from dominates_p.same_right (λ_, this),
-  have h2: FV (P' ⋀ Q) ⊆ FV (P ⋀ Q), from (
-    assume x: var,
-    assume : x ∈ FV (P' ⋀ Q),
-    or.elim (free_in_prop.and.inv this) (
-      assume : x ∈ FV P',
-      have x ∈ FV P, from set.mem_of_subset_of_mem fv_P'_P this,
-      show x ∈ FV (P ⋀ Q), from free_in_prop.and₁ this
-    ) (
-      assume : x ∈ FV Q,
-      show x ∈ FV (P ⋀ Q), from free_in_prop.and₂ this
-    )
-  ),
-  strengthen_impl_with_dominating_instantiations h1 h2
+  (σ ⊨ vc.implies P'.to_vc P.to_vc) →
+  (σ ⊨ (prop.implies (P ⋀ Q) S).to_vc) → σ ⊨ (prop.implies (P' ⋀ Q) S).to_vc :=
+  begin
+    assume h1,
+    apply strengthen_impl_with_dominating_instantiations,
+    apply valid_env.mpr,
+    from strengthen_and_with_dominating_instantiations h1
+  end
 
 lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
-      (P ⊢ e : Q) → ∀P': prop, (FV P' = FV P) → (∀σ, dominates_p σ P' P) → (P' ⊢ e: Q) :=
-  assume e_verified: (P ⊢ e : Q),
+      (P ⊩ e : Q) → ∀P': prop, (FV P' = FV P) → (∀σ, σ ⊨ vc.implies P'.to_vc P.to_vc) → (P' ⊩ e: Q) :=
+  assume e_verified: (P ⊩ e : Q),
   begin
     induction e_verified,
-    case exp.vcgen.tru x P e' Q x_not_free_in_P e'_verified ih { from (
+    case exp.dvcgen.tru x P e' Q x_not_free_in_P e'_verified ih { from (
       assume P': prop,
       assume free_P'_P: FV P' = FV P,
-      assume P'_dominates_p_P: (∀σ, dominates_p σ P' P),
+      assume P'_dominates_p_P: (∀σ, σ ⊨ vc.implies P'.to_vc P.to_vc),
 
       have h1: FV (P' ⋀ x ≡ value.true) = FV (P ⋀ x ≡ value.true),
       from free_in_prop.same_right free_P'_P,
-      have h2: (∀σ, dominates_p σ (P' ⋀ x ≡ value.true) (P ⋀ x ≡ value.true)),
+      have h2: (∀σ, σ ⊨ vc.implies (P' ⋀ x ≡ value.true).to_vc (P ⋀ x ≡ value.true).to_vc),
       from λσ, dominates_p.same_right (λ_, P'_dominates_p_P σ),
       have e'_verified': P' ⋀ x ≡ value.true ⊢ e': Q, from ih (P' ⋀ x ≡ value.true) h1 h2,
       have x_not_free_in_P': x ∉ FV P', from free_P'_P.symm ▸ x_not_free_in_P,
       show P' ⊢ lett x = true in e' : propctx.exis x (x ≡ value.true ⋀ Q),
-      from exp.vcgen.tru x_not_free_in_P' e'_verified'
+      from exp.dvcgen.tru x_not_free_in_P' e'_verified'
     )},
     case exp.vcgen.fals x P e' Q x_not_free_in_P e'_verified ih { from
       assume P': prop,
@@ -271,5 +224,3 @@ lemma strengthen_exp {P: prop} {Q: propctx} {e: exp}:
       show P' ⊢ exp.return x : (x ≣ •), from exp.vcgen.return x_free_in_P'
     }
   end
-
--/

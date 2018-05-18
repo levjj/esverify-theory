@@ -457,6 +457,29 @@ lemma env.without_equiv_with {σ: env} {x: var}: ∀y, y ∈ σ.without x → (�
     show σ.without x y = σ y, from eq.trans this σ_y_is_v.symm
   )
 
+lemma env.without_nonexisting {σ: env} {x: var}: x ∉ σ → (σ.without x = σ) :=
+  begin
+    assume h1,
+
+    induction σ with σ' z v' ih,
+
+    unfold env.without,
+
+    unfold env.without,
+    have h2: (z ≠ x), by begin
+      assume h3,
+      rw[h3] at h1,
+      have h4: x ∈ (σ'[x↦v']), from env.contains.same,
+      contradiction
+    end,
+    simp[h2],
+    congr,
+    apply ih,
+    by_contradiction h3,
+    have h4: x ∈ (σ'[z↦v']), from env.contains.rest h3,
+    contradiction
+  end
+
 lemma unchanged_of_subst_nonfree_term {t: term} {x: var} {v: value}:
     x ∉ FV t → (term.subst x v t = t) :=
   assume x_not_free: ¬ free_in_term x t,
@@ -5469,3 +5492,102 @@ lemma subst_distrib_erased {P: prop} {x: var} {v: value}:
     from P₁_ih.right
   }
 end
+
+lemma dom_eq_of_equiv {σ₁ σ₂: env}: (∀x: var, σ₁ x = σ₂ x) → (σ₁.dom = σ₂.dom) :=
+  begin
+    assume h1,
+    apply set.eq_of_subset_of_subset,
+    apply env.dom_subset_of_equivalent_env,
+    assume z,
+    assume _,
+    from h1 z,
+
+    apply env.dom_subset_of_equivalent_env,
+    assume z,
+    assume _,
+    from (h1 z).symm
+  end
+
+lemma vc.subst_env_unchanged {P: vc} {σ₁ σ₂: env}:
+      σ₁.dom ⊆ σ₂.dom → (vc.subst_env σ₁ (vc.subst_env σ₂ P) = vc.subst_env σ₂ P) :=
+  begin
+    assume h1,
+    induction σ₁ with σ₁' x v ih,
+
+    show (vc.subst_env env.empty (vc.subst_env σ₂ P) = vc.subst_env σ₂ P), by begin
+      unfold vc.subst_env
+    end,
+
+    show (vc.subst_env (σ₁'[x↦v]) (vc.subst_env σ₂ P) = vc.subst_env σ₂ P), by begin
+      have h2: x ∈ (σ₁'[x↦v]).dom, from env.contains.same,
+      have h3: x ∈ σ₂.dom, from set.mem_of_mem_of_subset h2 h1,
+      unfold vc.subst_env,
+      have h4: x ∉ FV (vc.subst_env σ₂ P), from vc.not_free_of_subst_env h3,
+      have h5: x ∉ FV (vc.subst_env σ₁' (vc.subst_env σ₂ P)), by begin
+        assume h6,
+        have h7, from vc.free_of_free_subst_env h6,
+        contradiction
+      end,
+      have h6: (vc.subst x v (vc.subst_env σ₁' (vc.subst_env σ₂ P)) = (vc.subst_env σ₁' (vc.subst_env σ₂ P))),
+      from unchanged_of_subst_nonfree_vc h5,
+      rw[h6],
+      have h7: env.dom σ₁' ⊆ env.dom σ₂, by begin
+        assume z,
+        assume h8,
+        have h9: z ∈ σ₁', from h8,
+        have h10: z ∈ (σ₁'[x↦v]), from env.contains.rest h9,
+        from set.mem_of_mem_of_subset h10 h1
+      end,
+      from ih h7
+    end
+  end
+
+lemma vc.subst_env_exact_equivalent_env {P: vc} {σ₁ σ₂: env}:
+  (∀z, σ₁ z = σ₂ z) → (vc.subst_env σ₁ P = vc.subst_env σ₂ P) :=
+  assume h1: (∀z, σ₁ z = σ₂ z),
+  have h2: vc.subst_env σ₁ (vc.subst_env σ₂ P) = (vc.subst_env σ₂ P),
+  from vc.subst_env_unchanged (set.subset_of_eq (dom_eq_of_equiv h1)),
+  have vc.subst_env σ₁ (vc.subst_env σ₂ P) = vc.subst_env σ₁ P,
+  from vc.subst_env_with_equivalent_env (λz _, (h1 z).symm),
+  show vc.subst_env σ₁ P = vc.subst_env σ₂ P, from eq.trans this.symm h2
+
+lemma vc.subst_env_with_without_equivalent {P: vc} {σ: env} {x: var} {v: value}:
+  (σ x = v) → (vc.subst_env ((σ.without x)[x↦v]) P = vc.subst_env σ P) :=
+  assume h1: σ x = v,
+  have (∀z, ((σ.without x)[x↦v]) z = σ z), by begin
+    assume z,
+    change (env.apply (env.without σ x[x↦v]) z = σ z),
+    unfold env.apply,
+    by_cases (x = z) with h2,
+    rw[h2],
+    simp,
+    have h3: z ∉ σ.without z, from env.not_contains_without,
+    have h4, from env.contains_apply_equiv.left.mpr h3,
+    have h5, from option.is_none.inv.mp h4,
+    rw[h2] at h1,
+    rw[h1],
+    apply ite.if_true,
+    from h5,
+
+    by_cases z ∈ σ with h6,
+
+    have h7: x ≠ z, from h2,
+    have h8, from env.contains_without.rinv ⟨h6, h7.symm⟩,
+    have h9: (env.apply (env.without σ x) z = σ z), from env.without_equiv_with z h8,
+    rw[h9],
+    apply ite.if_false,
+    by_contradiction h10,
+    have h11, from h10.left,
+    contradiction,
+
+    have h7, from env.contains_apply_equiv.left.mpr h6,
+    have h8: z ∉ (env.without σ x), from env.not_in_without h6,
+    have h9: (env.apply (env.without σ x) z = none), from env.contains_apply_equiv.left.mpr h8,
+    have h10: (env.apply (env.without σ x) z = σ z), from eq.trans h9 h7.symm,
+    rw[h10],
+    apply ite.if_false,
+    by_contradiction h10,
+    have h11, from h10.left,
+    contradiction,
+  end,
+  vc.subst_env_exact_equivalent_env this

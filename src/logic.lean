@@ -227,6 +227,18 @@ lemma valid_env.mpr {σ: env} {P Q: vc}: ((σ ⊨ P) → (σ ⊨ Q)) → σ ⊨ 
   have ⊨ vc.subst_env σ (P.not ⋁ Q), from this.symm ▸ h2,
   show σ ⊨ vc.implies P Q, from this
 
+lemma valid_env.nmt {σ: env} {P Q: vc}: (σ ⊨ vc.implies P.not Q.not) → (σ ⊨ vc.implies Q P) :=
+  begin
+    assume h1,
+    apply valid_env.mpr,
+    assume h2,
+    unfold vc.implies at h1,
+    cases valid_env.or.elim h1 with h3 h4,
+    from valid_env.not_not.mp h3,
+    have h5, from valid_env.not.mpr h4,
+    contradiction
+  end
+
 lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
       (σ ⊨ vc.implies P₁ P₂) → (σ ⊨ vc.implies P₂ P₃) → σ ⊨ vc.implies P₁ P₃ :=
   assume h1: σ ⊨ vc.implies P₁ P₂,
@@ -381,18 +393,16 @@ lemma to_vc_implies {P Q: prop}: (prop.implies P Q).to_vc = vc.implies P.to_vc Q
     congr
   end
 
-lemma valid.to_vc_implies {P Q: prop}: (⊨ (prop.implies P Q).to_vc) → ⊨ vc.implies P.to_vc Q.to_vc :=
+lemma valid.to_vc_implies {P Q: prop}: (⊨ (prop.implies P Q).to_vc) ↔ ⊨ vc.implies P.to_vc Q.to_vc :=
   begin
     have h1: ((prop.implies P Q).to_vc = vc.implies P.to_vc Q.to_vc), from to_vc_implies,
-    rw[h1],
-    from id
+    rw[h1]
   end
 
-lemma valid_env.to_vc_implies {P Q: prop} {σ: env}: (σ ⊨ (prop.implies P Q).to_vc) → σ ⊨ vc.implies P.to_vc Q.to_vc :=
+lemma valid_env.to_vc_implies {P Q: prop} {σ: env}: (σ ⊨ (prop.implies P Q).to_vc) ↔ σ ⊨ vc.implies P.to_vc Q.to_vc :=
   begin
     have h1: ((prop.implies P Q).to_vc = vc.implies P.to_vc Q.to_vc), from to_vc_implies,
-    rw[h1],
-    from id
+    rw[h1]
   end
 
 lemma simple_equality_valid {σ: env} {x: var} {v: value}:
@@ -591,7 +601,7 @@ lemma env_translation_valid {P: prop} {σ: env}: (⊩ σ: P) → σ ⊨ P.to_vc 
           ),
           have h8: ⊨ (prop.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop)
                                    (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx))).to_vc,
-          from valid.to_vc_implies h6,
+          from valid.to_vc_implies.mp h6,
           have prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.implies R.to_prop (prop.pre g gx))
              = prop.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) R.to_prop)
                             (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.pre g gx)),
@@ -782,7 +792,7 @@ lemma env_translation_valid {P: prop} {σ: env}: (⊩ σ: P) → σ ⊨ P.to_vc 
           ),
           have h8: ⊨ (prop.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx))
                                    (prop.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop))).to_vc,
-          from valid.to_vc_implies h7,
+          from valid.to_vc_implies.mp h7,
           have prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.implies (prop.post g gx) (Q₃ (term.app g gx) ⋀ S.to_prop))
              = prop.implies (prop.subst_env (σ₂[g↦vf][gx↦v]) (prop.post g gx))
                             (prop.subst_env (σ₂[g↦vf][gx↦v]) (Q₃ (term.app g gx) ⋀ S.to_prop)),
@@ -1224,3 +1234,147 @@ lemma dominates_p.and_right_intro_of_no_calls {P Q: prop} {σ: env}:
   from dominates_p.trans h2 (dominates_p.trans h3 h4)
 
 -/
+
+lemma valid_env.implies.and_intro {σ: env} {P P' Q Q': prop}:
+      (σ ⊨ vc.implies P.to_vc P'.to_vc) → ((σ ⊨ P.to_vc) → σ ⊨ vc.implies Q.to_vc Q'.to_vc) →
+      (σ ⊨ vc.implies (P ⋀ Q).to_vc (P' ⋀ Q').to_vc) :=
+  begin
+    assume h1,
+    assume h2,
+    apply valid_env.mpr,
+    assume h3,
+    have h4, from (valid_env.to_vc_and.elim h3).left,
+    have h5, from (valid_env.to_vc_and.elim h3).right,
+    have h6, from h2 h4,
+    apply valid_env.to_vc_and,
+    from valid_env.mp h1 h4,
+    from valid_env.mp h6 h5
+  end
+
+lemma valid_env.implies.and_symm {σ: env} {P Q: prop}: (σ ⊨ vc.implies (P ⋀ Q).to_vc (Q ⋀ P).to_vc) :=
+  begin
+    apply valid_env.mpr,
+    assume h1,
+    apply valid_env.to_vc_and,
+    from (valid_env.to_vc_and.elim h1).right,
+    from (valid_env.to_vc_and.elim h1).left
+  end
+
+lemma valid_env.implies.and_elim_left {σ: env} {P₁ P₂ P₃: prop}:
+      (σ ⊨ vc.implies P₁.to_vc (P₂ ⋀ P₃).to_vc) → (σ ⊨ vc.implies P₁.to_vc P₂.to_vc) :=
+  begin
+    assume h1,
+    apply valid_env.mpr,
+    assume h2,
+    have h3, from valid_env.mp h1 h2,
+    from (valid_env.to_vc_and.elim h3).left
+  end
+
+lemma valid_env.implies.and_assoc {σ: env} {P₁ P₂ P₃: prop}:
+      σ ⊨ vc.implies (P₁ ⋀ P₂ ⋀ P₃).to_vc ((P₁ ⋀ P₂) ⋀ P₃).to_vc :=
+  begin
+    apply valid_env.mpr,
+    assume h1,
+    have h2, from (valid_env.to_vc_and.elim h1).right,
+
+    apply valid_env.to_vc_and,
+    apply valid_env.to_vc_and,
+    from (valid_env.to_vc_and.elim h1).left,
+    from (valid_env.to_vc_and.elim h2).left,
+    from (valid_env.to_vc_and.elim h2).right
+  end
+
+lemma valid_env.implies.subst {σ: env} {x: var} {v: value} {P: prop}:
+      (σ x = v) → (σ ⊨ vc.implies (prop.subst x v P).to_vc P.to_vc) :=
+  begin
+    assume h1,
+    apply valid_env.mpr,
+    assume h2,
+    have h3: (vc.subst x v (prop.to_vc P) = prop.to_vc (prop.subst x v P)),
+    from subst_distrib_to_vc,
+    rw[h3.symm] at h2,
+    have h4: (vc.subst_env σ (vc.subst x v (prop.to_vc P)) = vc.subst_env σ (prop.to_vc P)),
+    from vc.subst_env_inner h1,
+    rw[h4] at h2,
+    from h2
+  end
+
+lemma valid_env.implies.exis {σ: env} {x: var} {v: value} {P: prop}:
+      σ ⊨ vc.implies P.to_vc (prop.exis x P).to_vc :=
+  begin
+    apply valid_env.nmt,
+    apply valid_env.mpr,
+    assume h1,
+    apply valid_env.not.mp,
+    by_contradiction h2,
+    unfold prop.to_vc at h1,
+    have h3, from valid_env.not_not.mp h1,
+    have h4: (vc.subst_env σ (vc.univ x (vc.not (prop.to_vc P)))
+           = vc.univ x (vc.subst_env (σ.without x) (vc.not (prop.to_vc P)))),
+    from vc.subst_env.univ,
+    rw[h4] at h3,
+
+    by_cases (x ∈ σ) with h4,
+    have h5, from env.contains_apply_equiv.right.mpr h4,
+    cases h5 with v h6,
+    have h7, from valid.univ.mpr h3 v,
+    have h8: (vc.substt x ↑v (vc.subst_env (env.without σ x) (vc.not (prop.to_vc P)))
+            = vc.subst x v (vc.subst_env (env.without σ x) (vc.not (prop.to_vc P)))),
+    from vc.substt_value_eq_subst,
+    rw[h8] at h7,
+    have h9: (vc.subst x v (vc.subst_env (env.without σ x) (vc.not (prop.to_vc P)))
+     = vc.subst_env ((env.without σ x)[x↦v]) (vc.not (prop.to_vc P))),
+    by unfold vc.subst_env,
+    rw[h9] at h7,
+    have h10: (vc.subst_env ((env.without σ x)[x↦v]) (vc.not (prop.to_vc P)) = vc.subst_env σ (vc.not (prop.to_vc P))),
+    from vc.subst_env_with_without_equivalent h6,
+    rw[h10] at h7,
+    have h11, from valid_env.not.mpr h7,
+    contradiction,
+
+    have h5: (env.without σ x = σ), from env.without_nonexisting h4,
+    rw[h5] at h3,
+    by_cases (free_in_vc x P.to_vc) with h6,
+
+    have h7: x ∈ FV P.to_vc, from h6,
+    have h8: x ∈ FV (vc.subst_env σ P.to_vc),
+    from vc.free_of_subst_env h7 h4,
+    have h9, from valid.univ.free ⟨h8, h2⟩,
+    have h10, from valid.univ.mpr h3 value.true,
+    have h11, from valid.univ.mpr h9 value.true,
+    have h12: (vc.subst_env σ (vc.substt x value.true (vc.not (prop.to_vc P)))
+             = vc.substt x value.true (vc.subst_env σ (vc.not (prop.to_vc P)))),
+    from vc.substt_env.order (λx, free_in_term.value.inv) h4,
+    rw[h12.symm] at h10,
+    have h13: (vc.subst_env σ (vc.substt x value.true (prop.to_vc P))
+             = vc.substt x value.true (vc.subst_env σ (prop.to_vc P))),
+    from vc.substt_env.order (λx, free_in_term.value.inv) h4,
+    rw[h13.symm] at h11,
+    unfold vc.substt at h10,
+    have h14, from valid_env.not.mpr h10,
+    contradiction,
+
+    have h7, from valid.univ.mpr h3 value.true,
+    have h8: x ∉ FV (vc.not P.to_vc), by begin
+      assume h9,
+      have h10, from free_in_vc.not.inv h9,
+      contradiction
+    end,
+    have h9: x ∉ FV (vc.subst_env σ (vc.not (prop.to_vc P))), by begin
+      assume h10,
+      have h11, from vc.free_of_free_subst_env h10,
+      contradiction
+    end,
+    have h10: (vc.substt x ↑value.true (vc.subst_env σ (vc.not (prop.to_vc P)))
+            = (vc.subst_env σ (vc.not (prop.to_vc P)))),
+    from unchanged_of_substt_nonfree_vc h9,
+    rw[h10] at h7,
+    have h11, from valid_env.not.mpr h7,
+    contradiction
+  end
+
+lemma valid_env.implies.self {σ: env} {P: vc}: σ ⊨ vc.implies P P :=
+  begin
+    apply valid_env.mpr,
+    from id
+  end

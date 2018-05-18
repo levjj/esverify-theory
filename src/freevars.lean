@@ -1686,6 +1686,138 @@ instance {x: var} {t: term}: decidable (free_in_term x t) :=
     end
   end
 
+instance {x: var} {P: prop}: decidable (free_in_prop x P) :=
+  begin
+    induction P,
+    case prop.term t {
+      by_cases (free_in_term x t) with h1,
+      from is_true (free_in_prop.term h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_prop.term.inv h2,
+      contradiction
+    },
+    case prop.not P₁ ih {
+      by_cases (free_in_prop x P₁) with h1,
+      from is_true (free_in_prop.not h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_prop.not.inv h2,
+      contradiction
+    },
+    case prop.and P₁ P₂ P₁_ih P₂_ih {
+      by_cases (free_in_prop x P₁) with h1,
+      from is_true (free_in_prop.and₁ h1),
+
+      by_cases (free_in_prop x P₂) with h2,
+      from is_true (free_in_prop.and₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.and.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case prop.or P₁ P₂ P₁_ih P₂_ih {
+      by_cases (free_in_prop x P₁) with h1,
+      from is_true (free_in_prop.or₁ h1),
+
+      by_cases (free_in_prop x P₂) with h2,
+      from is_true (free_in_prop.or₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.or.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case prop.pre t₁ t₂ {
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_prop.pre₁ h1),
+
+      by_cases (free_in_term x t₂) with h2,
+      from is_true (free_in_prop.pre₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.pre.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case prop.pre₁ op t {
+      by_cases (free_in_term x t) with h1,
+      from is_true (free_in_prop.preop h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_prop.pre₁.inv h2,
+      contradiction
+    },
+    case prop.pre₂ op t₁ t₂ {
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_prop.preop₁ h1),
+
+      by_cases (free_in_term x t₂) with h2,
+      from is_true (free_in_prop.preop₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.pre₂.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case prop.call t {
+      by_cases (free_in_term x t) with h1,
+      from is_true (free_in_prop.call h1),
+      apply is_false,
+      assume h2,
+      have h3, from free_in_prop.call.inv h2,
+      contradiction
+    },
+    case prop.post t₁ t₂ {
+      by_cases (free_in_term x t₁) with h1,
+      from is_true (free_in_prop.post₁ h1),
+
+      by_cases (free_in_term x t₂) with h2,
+      from is_true (free_in_prop.post₂ h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.post.inv h3,
+      cases h4 with h5 h6,
+      contradiction,
+      contradiction
+    },
+    case prop.forallc y P' P'_ih {
+      by_cases (x = y) with h1,
+      rw[h1],
+      apply is_false,
+      assume h2,
+      have h3, from free_in_prop.forallc.inv h2,
+      from h3.left rfl,
+
+      by_cases (free_in_prop x P') with h2,
+      from is_true (free_in_prop.forallc h1 h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.forallc.inv h3,
+      from h2 h4.right
+    },
+    case prop.exis y P' P'_ih {
+      by_cases (x = y) with h1,
+      rw[h1],
+      apply is_false,
+      assume h2,
+      have h3, from free_in_prop.exis.inv h2,
+      from h3.left rfl,
+
+      by_cases (free_in_prop x P') with h2,
+      from is_true (free_in_prop.exis h1 h2),
+      apply is_false,
+      assume h3,
+      have h4, from free_in_prop.exis.inv h3,
+      from h2 h4.right
+    }
+  end
+
 instance {x: var} {P: vc}: decidable (free_in_vc x P) :=
   begin
     induction P,
