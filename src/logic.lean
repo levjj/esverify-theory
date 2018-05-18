@@ -249,6 +249,9 @@ lemma valid_env.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
     show σ ⊨ P₃, from valid_env.mp h2 this
   )
 
+lemma vc.implies.trans {σ: env} {P₁ P₂ P₃: vc}:
+      (σ ⊨ vc.implies P₁ P₂) → (σ ⊨ vc.implies P₂ P₃) → σ ⊨ vc.implies P₁ P₃ := valid_env.implies.trans
+
 lemma valid_env.univ.mp {σ: env} {x: var} {P: vc}: (∀v, σ ⊨ vc.subst x v P) → σ ⊨ vc.univ x P :=
   assume h1: ∀v, σ ⊨ vc.subst x v P,
   have h2: ⊨ vc.univ x (vc.subst_env (σ.without x) P), from valid.univ.mp (
@@ -976,7 +979,7 @@ lemma dominates_p_equiv_subst {σ₁ σ₂: env} {P: prop}:
 
     show dominates_p σ₂ (prop.subst_env env.empty P) P, by begin
       unfold prop.subst_env,
-      from dominates_p.self
+      from vc.implies.self
     end,
 
     show dominates_p σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
@@ -987,14 +990,14 @@ lemma dominates_p_equiv_subst {σ₁ σ₂: env} {P: prop}:
         have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
         have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
         from unchanged_of_subst_nonfree_prop h3,
-        have h5: dominates_p σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from dominates_p.self,
+        have h5: dominates_p σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from vc.implies.self,
         show dominates_p σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
 
         have h2, from env_equiv x env.contains.same,
         have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
         have h4: (σ₂ x = v), from eq.trans h2.symm h3,
         show dominates_p σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
-        from dominates_p.subst h4
+        from vc.implies.subst h4
       end,
       have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
         assume y,
@@ -1010,7 +1013,7 @@ lemma dominates_p_equiv_subst {σ₁ σ₂: env} {P: prop}:
         from eq.trans h11.symm h5
       end,
       have h4, from ih h3,
-      from dominates_p.trans h2 h4
+      from vc.implies.trans h2 h4
     end,
   end
 
@@ -1023,7 +1026,7 @@ lemma dominates_n_equiv_subst {σ₁ σ₂: env} {P: prop}:
 
     show dominates_n σ₂ (prop.subst_env env.empty P) P, by begin
       unfold prop.subst_env,
-      from dominates_n.self
+      from vc.implies.self
     end,
 
     show dominates_n σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
@@ -1034,14 +1037,14 @@ lemma dominates_n_equiv_subst {σ₁ σ₂: env} {P: prop}:
         have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
         have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
         from unchanged_of_subst_nonfree_prop h3,
-        have h5: dominates_n σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from dominates_n.self,
+        have h5: dominates_n σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from vc.implies.self,
         show dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
 
         have h2, from env_equiv x env.contains.same,
         have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
         have h4: (σ₂ x = v), from eq.trans h2.symm h3,
         show dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
-        from dominates_n.subst h4
+        from vc.implies.subst h4
       end,
       have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
         assume y,
@@ -1057,7 +1060,7 @@ lemma dominates_n_equiv_subst {σ₁ σ₂: env} {P: prop}:
         from eq.trans h11.symm h5
       end,
       have h4, from ih h3,
-      from dominates_n.trans h2 h4
+      from vc.implies.trans h2 h4
     end,
   end
 
@@ -1075,7 +1078,7 @@ lemma valid_env.subst_non_free_of_valid_env {σ: env} {x: var} {v: value} {P: vc
   have ⊨ vc.subst_env (σ[x↦v]) P, from this.symm ▸ h2,
   show σ[x↦v] ⊨ P, from this
 
-lemma dominates_n.quantifier {σ: env} {x: var} {t₁ t₂: term} {P Q: prop} : 
+lemma vc.implies.quantifier {σ: env} {x: var} {t₁ t₂: term} {P Q: prop} : 
       (∀v: value, dominates_n (σ.without x[x↦v]) P Q) →
       dominates_n σ (prop.forallc x t₁ P) (prop.forallc x t₂ Q) :=
   assume h0: ∀v: value, dominates_n (σ.without x[x↦v]) P Q,
@@ -1109,7 +1112,7 @@ lemma dominates_n.quantifier {σ: env} {x: var} {t₁ t₂: term} {P Q: prop} :
       have ⊨ vc.subst_env ((σ.without x)[x↦v]) P.instantiated_n,
       from (@instantiated_n_distrib_subst_env P ((σ.without x)[x↦v])).symm ▸ this,
       have h4: ⊨ vc.subst_env ((σ.without x)[x↦v]) Q.instantiated_n,
-      from dominates_n.elim (h0 v) this,
+      from vc.implies.elim (h0 v) this,
       have vc.subst_env ((σ.without x)[x↦v]) Q.instantiated_n
          = vc.subst x v (vc.subst_env (σ.without x) Q.instantiated_n),
       by unfold vc.subst_env,
@@ -1147,9 +1150,9 @@ lemma dominates_n.quantifier {σ: env} {x: var} {t₁ t₂: term} {P Q: prop} :
     show «false», from prop.has_quantifier_n.forallc.inv this
   ),
   show dominates_n σ (prop.forallc x t₁ P) (prop.forallc x t₂ Q),
-  from dominates_n.no_quantifiers h_impl h_calls h_quantifiers
+  from vc.implies.no_quantifiers h_impl h_calls h_quantifiers
 
-lemma dominates_p.true {σ: env} {P: prop}:
+lemma vc.implies.true {σ: env} {P: prop}:
       dominates_p σ P value.true :=
 
   have h1: σ ⊨ value.true, from valid_env.true,
@@ -1173,9 +1176,9 @@ lemma dominates_p.true {σ: env} {P: prop}:
     assume : q ∈ quantifiers_p value.true,
     show «false», from prop.has_quantifier_p.term.inv this
   ),
-  show dominates_p σ P value.true, from dominates_p.no_quantifiers h_impl h_calls h_quantifiers
+  show dominates_p σ P value.true, from vc.implies.no_quantifiers h_impl h_calls h_quantifiers
 
-lemma dominates_n.true {σ: env} {P: prop}:
+lemma vc.implies.true {σ: env} {P: prop}:
       dominates_n σ P value.true :=
 
   have h1: σ ⊨ value.true, from valid_env.true,
@@ -1199,43 +1202,43 @@ lemma dominates_n.true {σ: env} {P: prop}:
     assume : q ∈ quantifiers_n value.true,
     show «false», from prop.has_quantifier_n.term.inv this
   ),
-  show dominates_n σ P value.true, from dominates_n.no_quantifiers h_impl h_calls h_quantifiers
+  show dominates_n σ P value.true, from vc.implies.no_quantifiers h_impl h_calls h_quantifiers
 
-lemma dominates_p.and_intro_of_no_calls {P Q: prop} {σ: env}:
+lemma vc.implies.and_intro_of_no_calls {P Q: prop} {σ: env}:
       (closed_subst σ P) → (σ ⊨ P.instantiated_n) → (calls_p P = ∅) → (calls_n P = ∅) →
       dominates_p σ Q (P ⋀ Q) :=
   assume h1: closed_subst σ P,
   assume h2: σ ⊨ P.instantiated_n,
   assume h3: calls_p P = ∅,
   assume h4: calls_n P = ∅,
-  have h5: dominates_p σ Q (Q ⋀ Q), from dominates_p.and_dup,
-  have h6: dominates_p σ (Q ⋀ Q) (value.true ⋀ Q), from dominates_p.same_right (λ_, dominates_p.true),
+  have h5: dominates_p σ Q (Q ⋀ Q), from vc.implies.and_dup,
+  have h6: dominates_p σ (Q ⋀ Q) (value.true ⋀ Q), from vc.implies.same_right (λ_, vc.implies.true),
   have h7: dominates_p σ (value.true ⋀ Q) (P ⋀ Q),
-  from dominates_p.same_right (λ_, dominates_p.no_calls h1 h2 h3 h4),
+  from vc.implies.same_right (λ_, vc.implies.no_calls h1 h2 h3 h4),
   show dominates_p σ Q (P ⋀ Q),
-  from dominates_p.trans h5 (dominates_p.trans h6 h7)
+  from vc.implies.trans h5 (vc.implies.trans h6 h7)
 
-lemma dominates_p.and_right_intro_of_no_calls {P Q: prop} {σ: env}:
+lemma vc.implies.and_right_intro_of_no_calls {P Q: prop} {σ: env}:
       ((σ ⊨ P.instantiated_p) → (closed_subst σ Q ∧ (σ ⊨ Q.instantiated_n) ∧ (calls_p Q = ∅) ∧ (calls_n Q = ∅))) →
       dominates_p σ P (P ⋀ Q) :=
   assume h1: ((σ ⊨ P.instantiated_p) → (closed_subst σ Q ∧ (σ ⊨ Q.instantiated_n) ∧ (calls_p Q = ∅) ∧ (calls_n Q = ∅))),
-  have h2: dominates_p σ P (P ⋀ P), from dominates_p.and_dup,
-  have h3: dominates_p σ (P ⋀ P) (P ⋀ value.true), from dominates_p.same_left (λ_, dominates_p.true),
+  have h2: dominates_p σ P (P ⋀ P), from vc.implies.and_dup,
+  have h3: dominates_p σ (P ⋀ P) (P ⋀ value.true), from vc.implies.same_left (λ_, vc.implies.true),
   have h4: dominates_p σ (P ⋀ value.true) (P ⋀ Q),
-  from dominates_p.same_left (
+  from vc.implies.same_left (
     assume : σ ⊨ P.instantiated_p,
     have h5: closed_subst σ Q, from (h1 this).left,
     have h6: σ ⊨ Q.instantiated_n, from (h1 this).right.left,
     have h7: calls_p Q = ∅, from (h1 this).right.right.left,
     have h8: calls_n Q = ∅, from (h1 this).right.right.right,
-    dominates_p.no_calls h5 h6 h7 h8
+    vc.implies.no_calls h5 h6 h7 h8
   ),
   show dominates_p σ P (P ⋀ Q),
-  from dominates_p.trans h2 (dominates_p.trans h3 h4)
+  from vc.implies.trans h2 (vc.implies.trans h3 h4)
 
 -/
 
-lemma valid_env.implies.and_intro {σ: env} {P P' Q Q': prop}:
+lemma vc.implies.and_intro {σ: env} {P P' Q Q': prop}:
       (σ ⊨ vc.implies P.to_vc P'.to_vc) → ((σ ⊨ P.to_vc) → σ ⊨ vc.implies Q.to_vc Q'.to_vc) →
       (σ ⊨ vc.implies (P ⋀ Q).to_vc (P' ⋀ Q').to_vc) :=
   begin
@@ -1251,7 +1254,7 @@ lemma valid_env.implies.and_intro {σ: env} {P P' Q Q': prop}:
     from valid_env.mp h6 h5
   end
 
-lemma valid_env.implies.and_symm {σ: env} {P Q: prop}: (σ ⊨ vc.implies (P ⋀ Q).to_vc (Q ⋀ P).to_vc) :=
+lemma vc.implies.and_symm {σ: env} {P Q: prop}: (σ ⊨ vc.implies (P ⋀ Q).to_vc (Q ⋀ P).to_vc) :=
   begin
     apply valid_env.mpr,
     assume h1,
@@ -1260,7 +1263,7 @@ lemma valid_env.implies.and_symm {σ: env} {P Q: prop}: (σ ⊨ vc.implies (P �
     from (valid_env.to_vc_and.elim h1).left
   end
 
-lemma valid_env.implies.and_elim_left {σ: env} {P₁ P₂ P₃: prop}:
+lemma vc.implies.and_elim_left {σ: env} {P₁ P₂ P₃: prop}:
       (σ ⊨ vc.implies P₁.to_vc (P₂ ⋀ P₃).to_vc) → (σ ⊨ vc.implies P₁.to_vc P₂.to_vc) :=
   begin
     assume h1,
@@ -1270,7 +1273,7 @@ lemma valid_env.implies.and_elim_left {σ: env} {P₁ P₂ P₃: prop}:
     from (valid_env.to_vc_and.elim h3).left
   end
 
-lemma valid_env.implies.and_assoc {σ: env} {P₁ P₂ P₃: prop}:
+lemma vc.implies.and_assoc {σ: env} {P₁ P₂ P₃: prop}:
       σ ⊨ vc.implies (P₁ ⋀ P₂ ⋀ P₃).to_vc ((P₁ ⋀ P₂) ⋀ P₃).to_vc :=
   begin
     apply valid_env.mpr,
@@ -1284,7 +1287,7 @@ lemma valid_env.implies.and_assoc {σ: env} {P₁ P₂ P₃: prop}:
     from (valid_env.to_vc_and.elim h2).right
   end
 
-lemma valid_env.implies.subst {σ: env} {x: var} {v: value} {P: prop}:
+lemma vc.implies.subst {σ: env} {x: var} {v: value} {P: prop}:
       (σ x = v) → (σ ⊨ vc.implies (prop.subst x v P).to_vc P.to_vc) :=
   begin
     assume h1,
@@ -1299,7 +1302,7 @@ lemma valid_env.implies.subst {σ: env} {x: var} {v: value} {P: prop}:
     from h2
   end
 
-lemma valid_env.implies.exis {σ: env} {x: var} {v: value} {P: prop}:
+lemma vc.implies.exis {σ: env} {x: var} {v: value} {P: prop}:
       σ ⊨ vc.implies P.to_vc (prop.exis x P).to_vc :=
   begin
     apply valid_env.nmt,
@@ -1373,8 +1376,79 @@ lemma valid_env.implies.exis {σ: env} {x: var} {v: value} {P: prop}:
     contradiction
   end
 
-lemma valid_env.implies.self {σ: env} {P: vc}: σ ⊨ vc.implies P P :=
+lemma vc.implies.self {σ: env} {P: vc}: σ ⊨ vc.implies P P :=
   begin
     apply valid_env.mpr,
     from id
   end
+
+lemma vc.implies.same_right {σ: env} {P P' Q: prop}:
+  ((σ ⊨ Q.to_vc) → σ ⊨ vc.implies P.to_vc P'.to_vc) → (σ ⊨ vc.implies (P ⋀ Q).to_vc (P' ⋀ Q).to_vc) :=
+  begin
+    assume h1: (σ ⊨ Q.to_vc) → σ ⊨ vc.implies P.to_vc P'.to_vc,
+    apply valid_env.mpr,
+    assume h2: σ ⊨ (P ⋀ Q).to_vc,
+    apply valid_env.to_vc_and,
+    have h3, from (valid_env.to_vc_and.elim h2).left,
+    from valid_env.mp (h1 (valid_env.to_vc_and.elim h2).right) h3,
+    from (valid_env.to_vc_and.elim h2).right
+  end
+
+lemma vc.implies.and_assoc.symm {P₁ P₂ P₃: prop} {σ: env}:
+      σ ⊨ vc.implies ((P₁ ⋀ P₂) ⋀ P₃).to_vc (P₁ ⋀ P₂ ⋀ P₃).to_vc :=
+  have h1: σ ⊨ vc.implies ((P₁ ⋀ P₂) ⋀ P₃).to_vc (P₃ ⋀ P₁ ⋀ P₂).to_vc, from vc.implies.and_symm,
+  have h2: σ ⊨ vc.implies (P₃ ⋀ P₁ ⋀ P₂).to_vc ((P₃ ⋀ P₁) ⋀ P₂).to_vc, from vc.implies.and_assoc,
+  have h3: σ ⊨ vc.implies ((P₃ ⋀ P₁) ⋀ P₂).to_vc (P₂ ⋀ P₃ ⋀ P₁).to_vc, from vc.implies.and_symm,
+  have h4: σ ⊨ vc.implies (P₂ ⋀ P₃ ⋀ P₁).to_vc ((P₂ ⋀ P₃) ⋀ P₁).to_vc, from vc.implies.and_assoc,
+  have h5: σ ⊨ vc.implies ((P₂ ⋀ P₃) ⋀ P₁).to_vc (P₁ ⋀ P₂ ⋀ P₃).to_vc , from vc.implies.and_symm,
+  show σ ⊨ vc.implies ((P₁ ⋀ P₂) ⋀ P₃).to_vc (P₁ ⋀ P₂ ⋀ P₃).to_vc,
+  from vc.implies.trans h1 (vc.implies.trans h2 (vc.implies.trans h3 (vc.implies.trans h4 h5)))
+
+lemma vc.implies.shuffle {P Q R S: prop} {σ: env}:
+      σ ⊨ vc.implies (P ⋀ Q ⋀ R ⋀ S).to_vc ((P ⋀ Q ⋀ R) ⋀ S).to_vc :=
+  have h1: σ ⊨ vc.implies (P ⋀ Q ⋀ R ⋀ S).to_vc ((Q ⋀ R ⋀ S) ⋀ P).to_vc, from vc.implies.and_symm,
+  have h2: σ ⊨ vc.implies ((Q ⋀ R ⋀ S) ⋀ P).to_vc (((Q ⋀ R) ⋀ S) ⋀ P).to_vc,
+  from vc.implies.same_right (λ_, vc.implies.and_assoc),
+  have h3: σ ⊨ vc.implies  (((Q ⋀ R) ⋀ S) ⋀ P).to_vc ((Q ⋀ R) ⋀ S ⋀ P).to_vc, from vc.implies.and_assoc.symm,
+  have h4: σ ⊨ vc.implies ((Q ⋀ R) ⋀ S ⋀ P).to_vc ((S ⋀ P) ⋀ Q ⋀ R).to_vc, from vc.implies.and_symm,
+  have h5: σ ⊨ vc.implies ((S ⋀ P) ⋀ Q ⋀ R).to_vc (S ⋀ P ⋀ Q ⋀ R).to_vc, from vc.implies.and_assoc.symm,
+  have h6: σ ⊨ vc.implies (S ⋀ P ⋀ Q ⋀ R).to_vc ((P ⋀ Q ⋀ R) ⋀ S).to_vc, from vc.implies.and_symm,
+  show σ ⊨ vc.implies  (P ⋀ Q ⋀ R ⋀ S).to_vc ((P ⋀ Q ⋀ R) ⋀ S).to_vc,
+  from vc.implies.trans h1 (vc.implies.trans h2 (vc.implies.trans h3 (vc.implies.trans h4 (vc.implies.trans h5 h6))))
+
+lemma vc.implies.same_left {σ: env} {P Q Q': prop}:
+      ((σ ⊨ P.to_vc) → σ ⊨ vc.implies Q.to_vc Q'.to_vc) → σ ⊨ vc.implies (P ⋀ Q).to_vc (P ⋀ Q').to_vc :=
+  assume h1: (σ ⊨ P.to_vc) → σ ⊨ vc.implies Q.to_vc Q'.to_vc,
+  have h2: σ ⊨ vc.implies (P ⋀ Q).to_vc (Q ⋀ P).to_vc, from vc.implies.and_symm,
+  have h3: σ ⊨ vc.implies (Q ⋀ P).to_vc (Q' ⋀ P).to_vc, from vc.implies.same_right h1,
+  have h4: σ ⊨ vc.implies (Q' ⋀ P).to_vc (P ⋀ Q').to_vc, from vc.implies.and_symm,
+  show σ ⊨ vc.implies (P ⋀ Q).to_vc (P ⋀ Q').to_vc,
+  from vc.implies.trans h2 (vc.implies.trans h3 h4)
+
+lemma vc.implies.and_elim_right {σ: env} {P₁ P₂ P₃: prop}:
+      (σ ⊨ vc.implies P₁.to_vc (P₂ ⋀ P₃).to_vc) → σ ⊨ vc.implies P₁.to_vc P₃.to_vc :=
+  assume h1: σ ⊨ vc.implies P₁.to_vc (P₂ ⋀ P₃).to_vc,
+  have h2: σ ⊨ vc.implies (P₂ ⋀ P₃).to_vc (P₃ ⋀ P₂).to_vc, from vc.implies.and_symm,
+  have h3: σ ⊨ vc.implies P₁.to_vc (P₃ ⋀ P₂).to_vc, from vc.implies.trans h1 h2,
+  show σ ⊨ vc.implies P₁.to_vc P₃.to_vc, from vc.implies.and_elim_left h3
+
+lemma vc.implies.left_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₁.to_vc) → σ ⊨ vc.implies P₂.to_vc P₃.to_vc) → σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₃.to_vc :=
+  assume h1: (σ ⊨ P₁.to_vc) → σ ⊨ vc.implies P₂.to_vc P₃.to_vc,
+  have h2: σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc (P₁ ⋀ P₃).to_vc, from vc.implies.same_left h1,
+  show σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₃.to_vc, from vc.implies.and_elim_right h2
+
+lemma vc.implies.right_elim {P₁ P₂ P₃: prop} {σ: env}:
+      ((σ ⊨ P₂.to_vc) → σ ⊨ vc.implies P₁.to_vc P₃.to_vc) → σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₃.to_vc :=
+  assume h1: (σ ⊨ P₂.to_vc) → σ ⊨ vc.implies P₁.to_vc P₃.to_vc,
+  have h2: σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc (P₃ ⋀ P₂).to_vc, from vc.implies.same_right h1,
+  show σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₃.to_vc, from vc.implies.and_elim_left h2
+
+lemma vc.implies.of_and_left {P₁ P₂: prop} {σ: env}: σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₁.to_vc :=
+  have σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc (P₁ ⋀ P₂).to_vc, from vc.implies.self,
+  show σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₁.to_vc, from vc.implies.and_elim_left this
+
+lemma vc.implies.of_and_right {P₁ P₂: prop} {σ: env}: σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₂.to_vc :=
+  have h1: σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc (P₂ ⋀ P₁).to_vc, from vc.implies.and_symm,
+  have h2: σ ⊨ vc.implies (P₂ ⋀ P₁).to_vc P₂.to_vc, from vc.implies.of_and_left,
+  show σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₂.to_vc, from vc.implies.trans h1 h2

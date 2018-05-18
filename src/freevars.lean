@@ -2367,3 +2367,19 @@ lemma to_vc_closed_of_closed {P: prop}: closed P → closed P.to_vc :=
   assume : x ∈ FV P.to_vc,
   have x ∈ FV P, from set.mem_of_mem_of_subset this free_in_prop_of_free_in_to_vc,
   show «false», from P_closed x this
+
+lemma free_in_prop.implies₁ {x: var} {P Q: prop}: free_in_prop x P → free_in_prop x (prop.implies P Q) :=
+  begin
+    assume h1,
+    unfold prop.implies,
+    apply free_in_prop.or₁,
+    from free_in_prop.not h1
+  end
+
+lemma free_in_prop.implies₂ {x: var} {P Q: prop}: free_in_prop x Q → free_in_prop x (prop.implies P Q) :=
+  begin
+    assume h1,
+    unfold prop.implies,
+    apply free_in_prop.or₂,
+    from h1
+  end
