@@ -436,6 +436,18 @@ lemma valid_env.to_vc_and.elim {P Q: prop} {σ: env}: (σ ⊨ (P ⋀ Q).to_vc) �
     from valid_env.and.elim h2
   end
 
+lemma valid_env.to_vc_or_elim {P Q: prop} {σ: env}: (σ ⊨ (P ⋁ Q).to_vc) → (σ ⊨ P.to_vc ⋁ Q.to_vc) :=
+  begin
+    assume h1: σ ⊨ (P ⋁ Q).to_vc,
+    have h2: σ ⊨ (prop.or P Q).to_vc, from h1,
+    unfold prop.to_vc at h2,
+    cases valid_env.or.elim h2 with h3 h4,
+    apply valid_env.or₁,
+    from h3,
+    apply valid_env.or₂,
+    from h4
+  end
+
 lemma val_of_free_in_env {P: prop} {σ: env} {x: var}: (⊩ σ : P) → x ∈ FV P → ∃v, σ x = some v :=
   assume env_verified: ⊩ σ: P,
   assume x_free_in_P: x ∈ FV P,

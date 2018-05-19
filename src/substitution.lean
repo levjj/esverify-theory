@@ -5599,3 +5599,12 @@ lemma eq_value_of_equiv_subst {σ₁ σ₂: env} {x: var} {v: value}:
   have x ∈ σ₁, from env.contains_apply_equiv.right.mp (exists.intro v x_is_v),
   have σ₁ x = σ₂ x, from env_equiv x this,
   show σ₂ x = v, from this ▸ x_is_v
+
+lemma to_vc_closed_subst_of_closed {σ: env} {P: prop}: closed_subst σ P → closed_subst σ P.to_vc :=
+  begin
+    assume h1,
+    assume x,
+    assume h2,
+    have h3, from free_in_prop_of_free_in_to_vc h2,
+    from h1 h3
+  end

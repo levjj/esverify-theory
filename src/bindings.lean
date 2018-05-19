@@ -954,24 +954,22 @@ lemma env_translation_closed_subst {P: prop} {σ: env}: (⊩ σ : P) → closed_
   assume : z ∈ FV P,
   show z ∈ σ.dom, from (free_iff_contains σ_verified).symm ▸ this
 
-/-
-
 lemma env.apply_of_vcgen {σ: env} {x: var} {v: value} {P: prop}:
-      (⊢ (σ[x↦v]) : P) → ((σ[x↦v]) x = v) :=
+      (⊩ (σ[x↦v]) : P) → ((σ[x↦v]) x = v) :=
   begin
     intro h1,
     have h2: (x ∉ σ), by begin
       cases h1,
-      case env.vcgen.tru P x_not_in_σ σ_verified {
+      case env.dvcgen.tru P x_not_in_σ σ_verified {
         from x_not_in_σ
       },
-      case env.vcgen.fls P x_not_in_σ σ_verified {
+      case env.dvcgen.fls P x_not_in_σ σ_verified {
         from x_not_in_σ
       },
-      case env.vcgen.num n P x_not_in_σ σ_verified {
+      case env.dvcgen.num n P x_not_in_σ σ_verified {
         from x_not_in_σ
       },
-      case env.vcgen.func σ₃ f fx R S e H Q₃ Q₄ Q₂ x_not_in_σ₂ f_not_in_σ₃ fx_not_in_σ₃
+      case env.dvcgen.func σ₃ f fx R S e Q₃ Q₄ Q₂ x_not_in_σ₂ f_not_in_σ₃ fx_not_in_σ₃
                           f_neq_fx σ₂_verified σ₃_verified x_free_in_R fv_R fv_S e_verified func_vc {
         from x_not_in_σ₂
       }
@@ -980,56 +978,51 @@ lemma env.apply_of_vcgen {σ: env} {x: var} {v: value} {P: prop}:
   end
 
 lemma env.rest_verified {P: prop} {σ: env} {x: var} {v: value}:
-      (⊢ (σ[x↦v]) : P) → ∃Q, ⊢ σ : Q :=
-  assume σ_verified: ⊢ (σ[x↦v]) : P,
+      (⊩ (σ[x↦v]) : P) → ∃Q, ⊩ σ : Q :=
+  assume σ_verified: ⊩ (σ[x↦v]) : P,
   begin
     cases σ_verified,
-    case env.vcgen.tru Q _ σ_verified {
+    case env.dvcgen.tru Q _ σ_verified {
       from exists.intro Q σ_verified
     },
-    case env.vcgen.fls Q _ σ_verified {
+    case env.dvcgen.fls Q _ σ_verified {
       from exists.intro Q σ_verified
     },
-    case env.vcgen.num n Q _ σ_verified {
+    case env.dvcgen.num n Q _ σ_verified {
       from exists.intro Q σ_verified
     },
-    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
+    case env.dvcgen.func σ₂ f fx R S e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
          fx_not_in_σ₂ f_neq_fx σ₁_verified {
       from exists.intro Q σ₁_verified
     }
   end
--/
-
-/-
 
 lemma env_free_rest {P: prop} {σ: env} {x: var} {v: value}:
-      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ FV Q ⊆ FV P) :=
-  assume σ_verified: ⊢ (σ[x↦v]) : P,
+      (⊩ (σ[x↦v]) : P) → (∃Q, (⊩ σ : Q) ∧ FV Q ⊆ FV P) :=
+  assume σ_verified: ⊩ (σ[x↦v]) : P,
   begin
     cases σ_verified,
-    case env.vcgen.tru Q _ σ_verified ih { from
+    case env.dvcgen.tru Q _ σ_verified ih { from
       have FV Q ⊆ FV (prop.and Q (x ≡ value.true)), from free_in_prop.and_left_subset,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.true)),
+      show ∃(Q_1 : prop), (⊩ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.true)),
       from exists.intro Q ⟨σ_verified, this⟩
     },
-    case env.vcgen.fls Q _ σ_verified { from
+    case env.dvcgen.fls Q _ σ_verified { from
       have FV Q ⊆ FV (prop.and Q (x ≡ value.false)), from free_in_prop.and_left_subset,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.false)),
+      show ∃(Q_1 : prop), (⊩ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.false)),
       from exists.intro Q ⟨σ_verified, this⟩
     },
-    case env.vcgen.num n Q _ σ_verified { from
+    case env.dvcgen.num n Q _ σ_verified { from
       have FV Q ⊆ FV (prop.and Q (x ≡ value.num n)), from free_in_prop.and_left_subset,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.num n)),
+      show ∃(Q_1 : prop), (⊩ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.num n)),
       from exists.intro Q ⟨σ_verified, this⟩
     },
-    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
+    case env.dvcgen.func σ₂ f fx R S e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
          fx_not_in_σ₂ f_neq_fx σ₁_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
-      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
+      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e σ₂])
                                   (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
-      have FV Q ⊆ FV (prop.and Q (x ≡ value.func f fx R S e H σ₂ ⋀ funcp)), from free_in_prop.and_left_subset,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.func f fx R S e H σ₂ ⋀ funcp)),
+      have FV Q ⊆ FV (prop.and Q (x ≡ value.func f fx R S e σ₂ ⋀ funcp)), from free_in_prop.and_left_subset,
+      show ∃(Q_1 : prop), (⊩ σ : Q_1) ∧ FV Q_1 ⊆ FV (prop.and Q (x ≡ value.func f fx R S e σ₂ ⋀ funcp)),
       from exists.intro Q ⟨σ₁_verified, this⟩
     }
   end
-
--/
