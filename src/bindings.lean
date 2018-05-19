@@ -998,74 +998,9 @@ lemma env.rest_verified {P: prop} {σ: env} {x: var} {v: value}:
       from exists.intro Q σ₁_verified
     }
   end
+-/
 
-lemma env_dominates_p_rest {P: prop} {σ: env} {x: var} {v: value}:
-      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ ∀σ', dominates_p σ' P Q) :=
-  assume σ_verified: ⊢ (σ[x↦v]) : P,
-  begin
-    cases σ_verified,
-    case env.vcgen.tru Q _ σ_verified ih { from
-      have ∀σ', dominates_p σ' (prop.and Q (x ≡ value.true)) Q,
-      from λσ', dominates_p.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q (x ≡ value.true)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.fls Q _ σ_verified { from
-      have ∀σ', dominates_p σ' (prop.and Q (x ≡ value.false)) Q,
-      from λσ', dominates_p.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q (x ≡ value.false)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.num n Q _ σ_verified { from
-      have ∀σ', dominates_p σ' (prop.and Q (x ≡ value.num n)) Q,
-      from λσ', dominates_p.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q (x ≡ value.num n)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
-         fx_not_in_σ₂ f_neq_fx σ₁_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
-      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
-                                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
-      have ∀σ', dominates_p σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) Q,
-      from λσ', dominates_p.of_and_left,
-      show ∃Q_1, (⊢ σ : Q_1) ∧ ∀σ', dominates_p σ' (prop.and Q ((x ≡ (value.func f fx R S e H σ₂)) ⋀ funcp)) Q_1,
-      from exists.intro Q ⟨σ₁_verified, this⟩
-    }
-  end
-
-lemma env_dominates_n_rest {P: prop} {σ: env} {x: var} {v: value}:
-      (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ ∀σ', dominates_n σ' P Q) :=
-  assume σ_verified: ⊢ (σ[x↦v]) : P,
-  begin
-    cases σ_verified,
-    case env.vcgen.tru Q _ σ_verified ih { from
-      have ∀σ', dominates_n σ' (prop.and Q (x ≡ value.true)) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q (x ≡ value.true)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.fls Q _ σ_verified { from
-      have ∀σ', dominates_n σ' (prop.and Q (x ≡ value.false)) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q (x ≡ value.false)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.num n Q _ σ_verified { from
-      have ∀σ', dominates_n σ' (prop.and Q (x ≡ value.num n)) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃(Q_1 : prop), (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q (x ≡ value.num n)) Q_1,
-      from exists.intro Q ⟨σ_verified, this⟩
-    },
-    case env.vcgen.func σ₂ f fx R S H e Q Q₂ Q₃ x_not_in_σ f_not_in_σ₂
-         fx_not_in_σ₂ f_neq_fx σ₁_verified σ₂_verified fx_in_R fv_R fv_S e_verified func_vc { from
-      let funcp := prop.subst_env (σ₂[f↦value.func f fx R S e H σ₂])
-                                  (prop.func f fx R (Q₃ (term.app f fx) ⋀ S)) in
-      have ∀σ', dominates_n σ' (Q ⋀ x ≡ value.func f fx R S e H σ₂ ⋀ funcp) Q,
-      from λσ', dominates_n.of_and_left,
-      show ∃Q_1, (⊢ σ : Q_1) ∧ ∀σ', dominates_n σ' (prop.and Q ((x ≡ (value.func f fx R S e H σ₂)) ⋀ funcp)) Q_1,
-      from exists.intro Q ⟨σ₁_verified, this⟩
-    }
-  end
+/-
 
 lemma env_free_rest {P: prop} {σ: env} {x: var} {v: value}:
       (⊢ (σ[x↦v]) : P) → (∃Q, (⊢ σ : Q) ∧ FV Q ⊆ FV P) :=
