@@ -145,6 +145,23 @@ lemma valid_env.eq.true {σ: env} {t: term}: σ ⊨ t ↔ σ ⊨ (value.true ≡
     show ⊨ vc.subst_env σ t, from this.symm ▸ h3
   )
 
+lemma valid.eq.terms {v₁ v₂: value}: (⊨ v₁ ≡ v₂) → (v₁ = v₂) :=
+  begin
+    assume h1,
+    have h2, from valid.eq.true.mp h1,
+    have h3, from valid.binop.mpr h2,
+    from binop.eq.inv h3
+  end
+
+lemma valid.not_false: ⊨ vc.not value.false :=
+  begin
+    apply valid.not.term.mp,
+    apply valid.eq.true.mpr,
+    apply valid.unop.mp,
+    unfold unop.apply,
+    congr
+  end
+
 lemma valid_env.not_not {σ: env} {P: vc}: (σ ⊨ P.not.not) ↔ σ ⊨ P :=
   iff.intro (
     assume h1: σ ⊨ P.not.not,
@@ -273,9 +290,7 @@ lemma env.contains_of_valid_env_term {σ: env} {x: var} {t: term}:
   show x ∈ σ, from t_closed x_free_in_t
 
 lemma valid_env.subst_of_eq {σ: env} {x: var} {v: value}:
-      closed_subst σ (vc.term (x ≡ v)) → (σ ⊨ x ≡ v) → (σ x = v) :=
-  assume h0: closed_subst σ (vc.term (x ≡ v)),
-  have h0a: closed_subst σ (x ≡ v), from vc.closed_subst.term.inv h0,
+      (σ ⊨ x ≡ v) → (σ x = v) :=
   assume h1: σ ⊨ vc.term (x ≡ v),
   have h2: ⊨ vc.subst_env σ (vc.term (x ≡ v)), from h1,
   have vc.subst_env σ (vc.term (x ≡ v)) = vc.term (term.subst_env σ (x ≡ v)),
@@ -286,7 +301,58 @@ lemma valid_env.subst_of_eq {σ: env} {x: var} {v: value}:
   have h4: ⊨ (term.subst_env σ x ≡ term.subst_env σ v), from this ▸ h3,
   have term.subst_env σ v = v, from term.subst_env.value,
   have h5: ⊨ (term.subst_env σ x ≡ v), from this ▸ h4,
-  have x ∈ σ, from env.contains_of_valid_env_term (free_in_term.binop₁ (free_in_term.var x)) h0a,
+  have x ∈ σ, by begin
+    by_contradiction h6,
+    have h7: x ∈ FV (x ≡ v), from free_in_term.binop₁ (free_in_term.var x),
+    have h8, from free_in_vc.term h7,
+    have h9, from vc.free_of_subst_env h8 h6,
+    have h10, from valid.univ.free ⟨h9, h2⟩,
+    have h11: (∀v': value, v ≠ v' → «false»), by begin
+      assume v',
+      assume h11,
+
+      have h12, from valid.univ.mpr h10 v',
+      have h13: (vc.substt x v' (vc.subst_env σ ↑(↑x ≡ ↑v))
+              = vc.subst x v' (vc.subst_env σ ↑(↑x ≡ ↑v))),
+      from vc.substt_value_eq_subst,
+      rw[h13] at h12,
+      have h14: (vc.subst_env σ (vc.subst x v' ↑(↑x ≡ ↑v))
+              = vc.subst x v' (vc.subst_env σ ↑(↑x ≡ ↑v))),
+      from vc.subst_env.order (or.inl h6),
+      rw[h14.symm] at h12,
+      have h15: σ ⊨ vc.subst x v' (vc.term (↑x ≡ ↑v)), from h12,
+      unfold vc.subst at h15,
+      unfold term.subst at h15,
+      have h16: σ ⊨ ↑(term.subst x v' (term.var x) ≡ term.subst x v' (term.value v)),
+      from h15,
+      unfold term.subst at h16,
+      simp at h16,
+      have h17: closed (vc.term (↑v' ≡ ↑v)), by begin
+        assume z,
+        assume h18,
+        have h19, from free_in_vc.term.inv h18,
+        cases (free_in_term.binop.inv h19) with h20 h21,
+        have h22: ¬ free_in_term z ↑v', from free_in_term.value.inv,
+        contradiction,
+        have h22: ¬ free_in_term z ↑v, from free_in_term.value.inv,
+        contradiction
+      end,
+      have h18: (vc.subst_env σ (vc.term (↑v' ≡ ↑v)) = vc.term (↑v' ≡ ↑v)),
+      from unchanged_of_subst_env_nonfree_vc h17 σ,
+      have h19: ⊨ vc.subst_env σ (vc.term (↑v' ≡ ↑v)), from h16,
+      rw[h18] at h19,
+      have h20, from (valid.eq.terms h19).symm,
+      contradiction
+    end,
+    
+    by_cases (v = value.true) with h12,
+
+    have h13: value.true ≠ value.false, by { assume h14, contradiction },
+    from h11 value.false (h12.symm ▸ h13),
+
+    have h13: value.true ≠ v, by { assume h14, have h15, from h14.symm, contradiction },
+    from h11 value.true h13.symm,
+  end,
   have ∃v', σ x = some v', from env.contains_apply_equiv.right.mpr this,
   let ⟨v', h6⟩ := this in
   have term.subst_env σ x = v', from (term.subst_env.var.right v').mp h6,
@@ -1017,52 +1083,15 @@ lemma dominates_p_equiv_subst {σ₁ σ₂: env} {P: prop}:
     end,
   end
 
-lemma dominates_n_equiv_subst {σ₁ σ₂: env} {P: prop}:
-  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → dominates_n σ₂ (prop.subst_env σ₁ P) P :=
+-/
+
+lemma vc.implies.self {σ: env} {P: vc}: σ ⊨ vc.implies P P :=
   begin
-    assume env_equiv,
-    
-    induction σ₁ with σ' x v ih,
-
-    show dominates_n σ₂ (prop.subst_env env.empty P) P, by begin
-      unfold prop.subst_env,
-      from vc.implies.self
-    end,
-
-    show dominates_n σ₂ (prop.subst_env (σ'[x↦v]) P) P, by begin
-      unfold prop.subst_env,
-      have h2: dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), by begin
-        by_cases (x ∈ σ') with h,
-
-        have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
-        have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
-        from unchanged_of_subst_nonfree_prop h3,
-        have h5: dominates_n σ₂ (prop.subst_env σ' P) (prop.subst_env σ' P), from vc.implies.self,
-        show dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P), from h4.symm ▸ h5,
-
-        have h2, from env_equiv x env.contains.same,
-        have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
-        have h4: (σ₂ x = v), from eq.trans h2.symm h3,
-        show dominates_n σ₂ (prop.subst x v (prop.subst_env σ' P)) (prop.subst_env σ' P),
-        from vc.implies.subst h4
-      end,
-      have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
-        assume y,
-        assume h3,
-        have h4: y ∈ (σ'[x↦v]), from env.contains.rest h3,
-        have h5, from env_equiv y h4,
-        have h6: (∃ (v : value), env.apply σ' y = some v), from env.contains_apply_equiv.right.mpr h3,
-        have h7, from option.is_some_iff_exists.mpr h6,
-        have h8, from option.some_iff_not_none.mp h7,
-        have h9: (x ≠ y ∨ ¬ (option.is_none (env.apply σ' y))), from or.inr h8,
-        have h10: ¬ (x = y ∧ (option.is_none (env.apply σ' y))), from not_and_distrib.mpr h9,
-        have h11: (env.apply (σ'[x↦v]) y = (σ' y)), by { unfold env.apply, simp[h10], refl },
-        from eq.trans h11.symm h5
-      end,
-      have h4, from ih h3,
-      from vc.implies.trans h2 h4
-    end,
+    apply valid_env.mpr,
+    from id
   end
+
+/-
 
 lemma valid_env.subst_non_free_of_valid_env {σ: env} {x: var} {v: value} {P: vc}:
       (σ ⊨ P) → x ∉ FV P → (σ[x↦v] ⊨ P) :=
@@ -1204,39 +1233,29 @@ lemma vc.implies.true {σ: env} {P: prop}:
   ),
   show dominates_n σ P value.true, from vc.implies.no_quantifiers h_impl h_calls h_quantifiers
 
-lemma vc.implies.and_intro_of_no_calls {P Q: prop} {σ: env}:
-      (closed_subst σ P) → (σ ⊨ P.instantiated_n) → (calls_p P = ∅) → (calls_n P = ∅) →
-      dominates_p σ Q (P ⋀ Q) :=
-  assume h1: closed_subst σ P,
-  assume h2: σ ⊨ P.instantiated_n,
-  assume h3: calls_p P = ∅,
-  assume h4: calls_n P = ∅,
-  have h5: dominates_p σ Q (Q ⋀ Q), from vc.implies.and_dup,
-  have h6: dominates_p σ (Q ⋀ Q) (value.true ⋀ Q), from vc.implies.same_right (λ_, vc.implies.true),
-  have h7: dominates_p σ (value.true ⋀ Q) (P ⋀ Q),
-  from vc.implies.same_right (λ_, vc.implies.no_calls h1 h2 h3 h4),
-  show dominates_p σ Q (P ⋀ Q),
-  from vc.implies.trans h5 (vc.implies.trans h6 h7)
-
-lemma vc.implies.and_right_intro_of_no_calls {P Q: prop} {σ: env}:
-      ((σ ⊨ P.instantiated_p) → (closed_subst σ Q ∧ (σ ⊨ Q.instantiated_n) ∧ (calls_p Q = ∅) ∧ (calls_n Q = ∅))) →
-      dominates_p σ P (P ⋀ Q) :=
-  assume h1: ((σ ⊨ P.instantiated_p) → (closed_subst σ Q ∧ (σ ⊨ Q.instantiated_n) ∧ (calls_p Q = ∅) ∧ (calls_n Q = ∅))),
-  have h2: dominates_p σ P (P ⋀ P), from vc.implies.and_dup,
-  have h3: dominates_p σ (P ⋀ P) (P ⋀ value.true), from vc.implies.same_left (λ_, vc.implies.true),
-  have h4: dominates_p σ (P ⋀ value.true) (P ⋀ Q),
-  from vc.implies.same_left (
-    assume : σ ⊨ P.instantiated_p,
-    have h5: closed_subst σ Q, from (h1 this).left,
-    have h6: σ ⊨ Q.instantiated_n, from (h1 this).right.left,
-    have h7: calls_p Q = ∅, from (h1 this).right.right.left,
-    have h8: calls_n Q = ∅, from (h1 this).right.right.right,
-    vc.implies.no_calls h5 h6 h7 h8
-  ),
-  show dominates_p σ P (P ⋀ Q),
-  from vc.implies.trans h2 (vc.implies.trans h3 h4)
-
 -/
+
+lemma vc.implies.and_left_intro {P Q: prop} {σ: env}:
+      ((σ ⊨ Q.to_vc) → σ ⊨ P.to_vc) → σ ⊨ vc.implies Q.to_vc (P ⋀ Q).to_vc :=
+  begin
+    assume h1,
+    apply valid_env.mpr,
+    assume h2,
+    apply valid_env.to_vc_and,
+    from h1 h2,
+    from h2
+  end
+
+lemma vc.implies.and_right_intro {P Q: prop} {σ: env}:
+      ((σ ⊨ P.to_vc) → σ ⊨ Q.to_vc) → σ ⊨ vc.implies P.to_vc (P ⋀ Q).to_vc :=
+  begin
+    assume h1,
+    apply valid_env.mpr,
+    assume h2,
+    apply valid_env.to_vc_and,
+    from h2,
+    from h1 h2
+  end
 
 lemma vc.implies.and_intro {σ: env} {P P' Q Q': prop}:
       (σ ⊨ vc.implies P.to_vc P'.to_vc) → ((σ ⊨ P.to_vc) → σ ⊨ vc.implies Q.to_vc Q'.to_vc) →
@@ -1302,7 +1321,64 @@ lemma vc.implies.subst {σ: env} {x: var} {v: value} {P: prop}:
     from h2
   end
 
-lemma vc.implies.exis {σ: env} {x: var} {v: value} {P: prop}:
+lemma valid_with_additional_var {P: vc} {x: var} {v: value} {σ: env}:
+      (σ ⊨ P) → ((σ[x↦v]) ⊨ P) :=
+  begin
+    assume h1,
+
+    by_cases (x ∈ σ) with h4,
+    unfold vc.subst_env,
+    have h7: x ∉ FV (vc.subst_env σ P), from vc.not_free_of_subst_env h4,
+    have h8: (vc.subst x v (vc.subst_env σ P) = vc.subst_env σ P),
+    from unchanged_of_subst_nonfree_vc h7,
+    rw[←h8] at h1,
+    from h1,
+
+    by_cases (free_in_vc x P) with h5,
+
+    have h8: x ∈ FV (vc.subst_env σ P),
+    from vc.free_of_subst_env h5 h4,
+    have h9, from valid.univ.free ⟨h8, h1⟩,
+    have h10, from valid.univ.mpr h9 v,
+
+    have h11: (vc.substt x ↑v (vc.subst_env σ P) = vc.subst x v (vc.subst_env σ P)),
+    from vc.substt_value_eq_subst,
+    rw[h11] at h10,
+    unfold vc.subst_env,
+    from h10,
+
+    have h9: x ∉ FV (vc.subst_env σ P), by begin
+      assume h10,
+      have h11, from vc.free_of_free_subst_env h10,
+      contradiction
+    end,
+    have h10: (vc.substt x v (vc.subst_env σ P) = vc.subst_env σ P),
+    from unchanged_of_substt_nonfree_vc h9,
+    unfold vc.subst_env,
+    have h11: (vc.substt x ↑v (vc.subst_env σ P) = vc.subst x v (vc.subst_env σ P)),
+    from vc.substt_value_eq_subst,
+    have h12: (vc.subst_env σ P = vc.subst x v (vc.subst_env σ P)), from eq.trans h10.symm h11,
+    rw[←h12],
+    from h1
+  end
+
+lemma valid_with_additional_vars {P: vc} {σ: env}: (⊨ P) → (σ ⊨ P) :=
+  begin
+    assume h1,
+    
+    induction σ with σ' x v ih,
+
+    show env.empty ⊨ P, by begin
+      unfold vc.subst_env,
+      from h1
+    end,
+
+    show (σ'[x↦v]) ⊨ P, by begin
+      from valid_with_additional_var ih
+    end
+  end
+
+lemma vc.implies.exis {σ: env} {x: var} {P: prop}:
       σ ⊨ vc.implies P.to_vc (prop.exis x P).to_vc :=
   begin
     apply valid_env.nmt,
@@ -1376,12 +1452,6 @@ lemma vc.implies.exis {σ: env} {x: var} {v: value} {P: prop}:
     contradiction
   end
 
-lemma vc.implies.self {σ: env} {P: vc}: σ ⊨ vc.implies P P :=
-  begin
-    apply valid_env.mpr,
-    from id
-  end
-
 lemma vc.implies.same_right {σ: env} {P P' Q: prop}:
   ((σ ⊨ Q.to_vc) → σ ⊨ vc.implies P.to_vc P'.to_vc) → (σ ⊨ vc.implies (P ⋀ Q).to_vc (P' ⋀ Q).to_vc) :=
   begin
@@ -1452,3 +1522,63 @@ lemma vc.implies.of_and_right {P₁ P₂: prop} {σ: env}: σ ⊨ vc.implies (P�
   have h1: σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc (P₂ ⋀ P₁).to_vc, from vc.implies.and_symm,
   have h2: σ ⊨ vc.implies (P₂ ⋀ P₁).to_vc P₂.to_vc, from vc.implies.of_and_left,
   show σ ⊨ vc.implies (P₁ ⋀ P₂).to_vc P₂.to_vc, from vc.implies.trans h1 h2
+
+lemma vc.implies.equiv_subst {σ₁ σ₂: env} {P: prop}:
+  (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → σ₂ ⊨ vc.implies (prop.subst_env σ₁ P).to_vc P.to_vc :=
+  begin
+    assume env_equiv,
+    
+    induction σ₁ with σ' x v ih,
+
+    show σ₂ ⊨ vc.implies (prop.to_vc (prop.subst_env env.empty P)) (prop.to_vc P), by begin
+      unfold prop.subst_env,
+      from vc.implies.self
+    end,
+
+    unfold prop.subst_env,
+    have h2: σ₂ ⊨ vc.implies (prop.subst x v (prop.subst_env σ' P)).to_vc (prop.subst_env σ' P).to_vc, by begin
+      by_cases (x ∈ σ') with h,
+
+      have h3: x ∉ FV (prop.subst_env σ' P), from prop.not_free_of_subst_env h,
+      have h4: (prop.subst x v (prop.subst_env σ' P) = prop.subst_env σ' P),
+      from unchanged_of_subst_nonfree_prop h3,
+      have h5: σ₂ ⊨ vc.implies (prop.subst_env σ' P).to_vc (prop.subst_env σ' P).to_vc, from vc.implies.self,
+      from h4.symm ▸ h5,
+
+      have h2, from env_equiv x env.contains.same,
+      have h3: ((σ'[x↦v]) x = v), from env.apply_of_contains h,
+      have h4: (σ₂ x = v), from eq.trans h2.symm h3,
+      show σ₂ ⊨ vc.implies (prop.subst x v (prop.subst_env σ' P)).to_vc (prop.subst_env σ' P).to_vc,
+      from vc.implies.subst h4
+    end,
+    have h3: (∀ (y : var), y ∈ σ' → (σ' y = σ₂ y)), by begin
+      assume y,
+      assume h3,
+      have h4: y ∈ (σ'[x↦v]), from env.contains.rest h3,
+      have h5, from env_equiv y h4,
+      have h6: (∃ (v : value), env.apply σ' y = some v), from env.contains_apply_equiv.right.mpr h3,
+      have h7, from option.is_some_iff_exists.mpr h6,
+      have h8, from option.some_iff_not_none.mp h7,
+      have h9: (x ≠ y ∨ ¬ (option.is_none (env.apply σ' y))), from or.inr h8,
+      have h10: ¬ (x = y ∧ (option.is_none (env.apply σ' y))), from not_and_distrib.mpr h9,
+      have h11: (env.apply (σ'[x↦v]) y = (σ' y)), by { unfold env.apply, simp[h10], refl },
+      from eq.trans h11.symm h5
+    end,
+    have h4, from ih h3,
+    from vc.implies.trans h2 h4
+  end
+
+lemma valid_env.equiv_env {σ₁ σ₂: env} {P: prop}: (∀y, y ∈ σ₁ → (σ₁ y = σ₂ y)) → (σ₁ ⊨ P.to_vc) → σ₂ ⊨ P.to_vc :=
+  begin
+    assume h1,
+    have h2: σ₂ ⊨ vc.implies (prop.subst_env σ₁ P).to_vc P.to_vc, from vc.implies.equiv_subst h1,
+    have h3, from valid_env.mp h2,
+    assume h4,
+    have h5: (σ₂ ⊨ prop.to_vc (prop.subst_env σ₁ P)), by begin
+      have h6: (vc.subst_env σ₁ (prop.to_vc P) = prop.to_vc (prop.subst_env σ₁ P)),
+      from subst_env_distrib_to_vc,
+      rw[h6] at h4,
+      from valid_with_additional_vars h4
+    end,
+    from h3 h5
+  end

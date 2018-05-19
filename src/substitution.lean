@@ -5591,3 +5591,11 @@ lemma vc.subst_env_with_without_equivalent {P: vc} {σ: env} {x: var} {v: value}
     contradiction,
   end,
   vc.subst_env_exact_equivalent_env this
+
+lemma eq_value_of_equiv_subst {σ₁ σ₂: env} {x: var} {v: value}:
+      (∀z, z ∈ σ₁ → (σ₁ z = σ₂ z)) → (σ₁ x = v) → (σ₂ x = v) :=
+  assume env_equiv: ∀z, z ∈ σ₁ → (σ₁ z = σ₂ z),
+  assume x_is_v: σ₁ x = v,
+  have x ∈ σ₁, from env.contains_apply_equiv.right.mp (exists.intro v x_is_v),
+  have σ₁ x = σ₂ x, from env_equiv x this,
+  show σ₂ x = v, from this ▸ x_is_v
