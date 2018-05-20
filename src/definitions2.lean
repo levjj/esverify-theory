@@ -9,7 +9,6 @@ import .definitions1 .qiaux
 -- first part is in definitions1.lean
 -- the following definitions need some additional lemmas from qiaux.lean to prove termination
 
-
 -- lift_all(P) performs repeated lifting of quantifiers in positive
 -- positions until there is no more quantifier to be lifted
 def prop.lift_all: prop → prop
@@ -258,54 +257,51 @@ def binop.apply: binop → value → value → option value
 inductive step : stack → stack → Prop
 notation s₁ `⟶` s₂:100 := step s₁ s₂
 
-| ctx {s s': stack} {R: spec} {σ: env} {y f x: var} {e: exp}:
+| ctx {s s': stack} {σ: env} {y f x: var} {e: exp}:
     (s ⟶ s') →
-    (s · [R, σ, letapp y = f[x] in e] ⟶ (s' · [R, σ, letapp y = f[x] in e]))
+    (s · [σ, letapp y = f[x] in e] ⟶ (s' · [σ, letapp y = f[x] in e]))
 
-| tru {R: spec} {σ: env} {x: var} {e: exp}:
-    (R, σ, lett x = true in e) ⟶ (R, σ[x↦value.true], e)
+| tru {σ: env} {x: var} {e: exp}:
+    (σ, lett x = true in e) ⟶ (σ[x↦value.true], e)
 
-| fals {R: spec} {σ: env} {x: var} {e: exp}:
-    (R, σ, letf x = false in e) ⟶ (R, σ[x↦value.false], e)
+| fals {σ: env} {x: var} {e: exp}:
+    (σ, letf x = false in e) ⟶ (σ[x↦value.false], e)
 
-| num {R: spec} {σ: env} {x: var} {e: exp} {n: ℤ}:
-    (R, σ, letn x = n in e) ⟶ (R, σ[x↦value.num n], e)
+| num {σ: env} {x: var} {e: exp} {n: ℤ}:
+    (σ, letn x = n in e) ⟶ (σ[x↦value.num n], e)
 
 | closure {σ: env} {R' R S: spec} {f x: var} {e₁ e₂: exp}:
-    (R', σ, letf f[x] req R ens S {e₁} in e₂) ⟶ 
-    (R', σ[f↦value.func f x R S e₁ σ], e₂)
+    (σ, letf f[x] req R ens S {e₁} in e₂) ⟶ (σ[f↦value.func f x R S e₁ σ], e₂)
 
-| unop {R: spec} {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
+| unop {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
     (σ x = v₁) →
     (unop.apply op v₁ = v) →
-    ((R, σ, letop y = op [x] in e) ⟶ (R, σ[y↦v], e))
+    ((σ, letop y = op [x] in e) ⟶ (σ[y↦v], e))
 
-| binop {R: spec} {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
+| binop {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
     (σ x = v₁) →
     (σ y = v₂) →
     (binop.apply op v₁ v₂ = v) →
-    ((R, σ, letop2 z = op [x, y] in e) ⟶ (R, σ[z↦v], e))
+    ((σ, letop2 z = op [x, y] in e) ⟶ (σ[z↦v], e))
 
-| app {σ σ': env} {R' R S: spec} {f g x y z: var} {e e': exp} {v: value}:
+| app {σ σ': env} {R S: spec} {f g x y z: var} {e e': exp} {v: value}:
     (σ f = value.func g z R S e σ') →
     (σ x = v) →
-    ((R', σ, letapp y = f[x] in e') ⟶
-    ((R, σ'[g↦value.func g z R S e σ'][z↦v], e) · [R', σ, letapp y = f[x] in e']))
+    ((σ, letapp y = f[x] in e') ⟶ ((σ'[g↦value.func g z R S e σ'][z↦v], e) · [σ, letapp y = f[x] in e']))
 
-| return {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R₁ R₂ R S: spec} {e e': exp} {v vₓ: value}:
+| return {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R S: spec} {e e': exp} {v vₓ: value}:
     (σ₁ z = v) →
     (σ₂ f = value.func g gx R S e σ₃) →
     (σ₂ x = vₓ) →
-    ((R₁, σ₁, exp.return z) · [R₂, σ₂, letapp y = f[x] in e'] ⟶
-    (R₂, σ₂[y↦v], e'))
+    ((σ₁, exp.return z) · [σ₂, letapp y = f[x] in e'] ⟶ (σ₂[y↦v], e'))
 
-| ite_true {R: spec} {σ: env} {e₁ e₂: exp} {x: var}:
+| ite_true {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.true) →
-    ((R, σ, exp.ite x e₁ e₂) ⟶ (R, σ, e₁))
+    ((σ, exp.ite x e₁ e₂) ⟶ (σ, e₁))
 
-| ite_false {R: spec} {σ: env} {e₁ e₂: exp} {x: var}:
+| ite_false {σ: env} {e₁ e₂: exp} {x: var}:
     (σ x = value.false) →
-    ((R, σ, exp.ite x e₁ e₂) ⟶ (R, σ, e₂))
+    ((σ, exp.ite x e₁ e₂) ⟶ (σ, e₂))
 
 notation s₁ `⟶` s₂:100 := step s₁ s₂
 
@@ -316,6 +312,9 @@ notation s `⟶*` s':100 := trans_step s s'
 | trans {s s' s'': stack} : (s ⟶* s') → (s' ⟶ s'') → (s ⟶* s'')
 
 notation s `⟶*` s':100 := trans_step s s'
+
+def is_value (s: stack) :=
+  ∃(σ: env) (x: var) (v: value), s = (σ, exp.return x) ∧ (σ x = v)
 
 --  #######################################
 --  ### VALIDTY OF LOGICAL PROPOSITIONS ###
@@ -648,12 +647,9 @@ notation `⊩` σ `:` Q : 10 := env.dvcgen σ Q
 
 notation `⊩` σ `:` Q : 10 := env.dvcgen σ Q
 
-
-
 --  #################################################################
 --  ### AXIOMS ABOUT FUNCTION EXPRESSIONS, PRE and POSTCONDITIONS ###
 --  #################################################################
-
 
 -- The following equality axiom is non-standard and makes validity undecidable.
 -- It is only used in the preservation proof of e-return and in no other lemmas.
@@ -661,8 +657,8 @@ notation `⊩` σ `:` Q : 10 := env.dvcgen σ Q
 -- However, given a complete evaluation derivation of a function call, we can add the
 -- equality `f(x)=y` as new axiom for closed values f, x, y and the resulting set
 -- of axioms is still sound due to deterministic evaluation.
-axiom valid.app {vₓ v: value} {σ σ': env} {f x y: var} {R R' S: spec} {e: exp}:
-  (R, σ[f↦value.func f x R S e σ][x↦vₓ], e) ⟶* (R', σ', exp.return y) →
+axiom valid.app {vₓ v: value} {σ σ': env} {f x y: var} {R S: spec} {e: exp}:
+  (σ[f↦value.func f x R S e σ][x↦vₓ], e) ⟶* (σ', exp.return y) →
   (σ' y = some v)
   →
   ⊨ v ≡ term.app (value.func f x R S e σ) vₓ

@@ -64,10 +64,10 @@ with env: Type
 | empty : env
 | cons  : env → var → value → env
 
--- s ∈ Stacks := (R, σ, e) | s · (R, σ, let y = f(x) in e)
+-- s ∈ Stacks := (σ, e) | s · (σ, let y = f(x) in e)
 inductive stack
-| top  : spec → env → exp → stack
-| cons : stack → spec → env → var → var → var → exp → stack
+| top  : env → exp → stack
+| cons : stack → env → var → var → var → exp → stack
 
 -- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
 --                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P

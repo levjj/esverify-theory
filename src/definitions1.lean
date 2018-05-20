@@ -78,10 +78,10 @@ notation `letapp` y `=`:1 f `[`:1 x `]`:1 `in` e := exp.app y f x e
 notation e `[` x `↦` v `]` := env.cons e x v
 
 -- (σ, e) : stack
-instance : has_coe (spec × env × exp) stack := ⟨λe, stack.top e.1 e.2.1 e.2.2⟩
+instance : has_coe (env × exp) stack := ⟨λe, stack.top e.1 e.2⟩
 
 -- κ · [σ, let y = f [ x ] in e]
-notation st `·` `[` R `,` env `,` `letapp` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st R env y f x e
+notation st `·` `[` env `,` `letapp` y `=`:1 f `[` x `]` `in` e `]` := stack.cons st env y f x e
 
 -- env lookup as function application
 
@@ -203,12 +203,6 @@ def propctx.apply: propctx → term → prop
 | (propctx.exis x P) t      := prop.exis x (P.apply t)
 
 instance : has_coe_to_fun propctx := ⟨λ _, term → prop, propctx.apply⟩
-
--- stack precondition projection
-
-def stack.pre: stack → spec
-| (stack.top R _ _) := R
-| (stack.cons _ R _ _ _ _ _) := R
 
 --  #############################
 --  ### VARIABLE SUBSTITUTION ###

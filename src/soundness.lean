@@ -1,7 +1,6 @@
-/-
-import .definitions2 .progress .preservation
+import .definitions3 .progress .preservation
 
-lemma trivial_freevars: FV (prop.term value.true ⋀ prop.term value.true) = FV (prop.term value.true) :=
+lemma true_true_freevars: FV (prop.term value.true ⋀ prop.term value.true) = FV (prop.term value.true) :=
   have h1: FV (prop.term value.true ⋀ prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
     assume x: var,
     assume : x ∈ FV (prop.term value.true ⋀ prop.term value.true),
@@ -24,6 +23,7 @@ lemma trivial_freevars: FV (prop.term value.true ⋀ prop.term value.true) = FV 
   ),
   show FV (prop.term value.true ⋀ prop.term value.true) = FV (prop.term value.true), from eq.trans h1 h2.symm
 
+/-
 lemma trivial_precondition:
   ∀σ, σ ⊨ vc.implies (prop.instantiated_p (value.true ⋀ value.true)) (prop.instantiated_p (value.true)) :=
   assume σ: env,
@@ -56,56 +56,68 @@ lemma trivial_calls_p: calls_p (prop.term value.true ⋀ prop.term value.true) =
     show «false», from prop.has_call.term.inv this
   ),
   show calls_p (prop.term value.true ⋀ prop.term value.true) = calls_p (prop.term value.true), from eq.trans h1 h2.symm
+-/
 
-lemma trivial_dominates_n {σ: env}: dominates_n σ (prop.term value.true ⋀ prop.term value.true) (prop.term value.true) :=
-  let P:prop := prop.term value.true ⋀ prop.term value.true in
-  let P':prop := prop.term value.true in
-
-  have h_impl: σ ⊨ vc.implies P.instantiated_p P'.instantiated_p, from trivial_precondition σ,
-
-  have calls_p_subst σ P = (calltrigger.subst σ) '' calls_p (prop.term value.true ⋀ prop.term value.true), from rfl,
-  have h1: calls_p_subst σ P = (calltrigger.subst σ) '' calls_p (prop.term value.true), from trivial_calls_p ▸ this,
-  have h2: calls_p_subst σ P' = (calltrigger.subst σ) '' calls_p (prop.term value.true), from rfl,
-  have h_calls_p: calls_p_subst σ P = calls_p_subst σ P', from eq.trans h1 h2.symm,
-
-  have h_quantifiers_p:
-    (∀(t': term) (x: var) (Q': prop) (h: callquantifier.mk t' x Q' ∈ quantifiers_p P'),
-                          have Q'.size < P'.size, from quantifiers_smaller_than_prop.left h,
-    ∃(t: term) (Q: prop), callquantifier.mk t x Q ∈ quantifiers_p P ∧
-                          (∀v: value, dominates_n' Q' Q (σ[x↦v]))), from (
-    assume (t': term) (x:var) (Q': prop),
-    assume h3: callquantifier.mk t' x Q' ∈ quantifiers_p P',
-    have h4: callquantifier.mk t' x Q' ∉ quantifiers_p P', from prop.has_quantifier_p.term.inv,
-    absurd h3 h4
-  ),
-
-  show dominates_n σ P P', from dominates_n_of h_impl h_calls_p h_quantifiers_p
-
-lemma soundness {s s': stack}: (s ⟶* s') → (⊢ₛ s) → (is_value s' ∨ ∃s'', s' ⟶ s'') :=
-  assume steps_to_s': s ⟶* s',
+lemma true_true_implies_true {σ: env}:
+      σ ⊨ vc.implies (prop.term value.true ⋀ prop.term value.true).to_vc (prop.term value.true).to_vc :=
   begin
-    induction steps_to_s',
-    case trans_step.rfl s₁ {
-      assume s₁_verified ,
-      show is_value s₁ ∨ ∃s', s₁ ⟶ s', from progress s₁ s₁_verified
-    },
-    case trans_step.trans s₁ s₂ s₃ s₁_steps_to_s₂ s₂_steps_to_s₃ ih {
-      assume s₁_verified,
-      have : (⊢ₛ s₂), from preservation s₁_verified s₁_steps_to_s₂,
-      show is_value s₃ ∨ ∃s', s₃ ⟶ s', from ih this
-    }
+    apply valid_env.mpr,
+    assume h1,
+    unfold prop.to_vc,
+    from valid_env.true
   end
 
-theorem soundness_source_programs {e: exp} {s: stack} {Q: propctx}:
-  (value.true ⊢ e: Q) → ((spec.term value.true, history.empty, env.empty, e) ⟶* s) → (is_value s ∨ ∃s', s ⟶ s') :=
+lemma true_spec_freevars: FV (spec.to_prop (spec.term value.true)) ⊆ FV (prop.term value.true) :=
+  begin
+    assume x,
+    assume h1,
+    unfold spec.to_prop at h1,
+    have h2, from free_in_prop.term.inv h1,
+    have h3: ¬ free_in_term x ↑value.true, from free_in_term.value.inv,
+    contradiction
+  end
 
-  assume initial_verified: value.true ⊢ e: Q,
-  assume steps_to_s: (spec.term value.true, history.empty, env.empty, e) ⟶* s,
-  have (prop.term value.true ⋀ prop.term value.true) ⊢ e: Q,
-  from strengthen_exp initial_verified (prop.term value.true ⋀ prop.term value.true)
-       trivial_freevars (λσ, trivial_dominates_n),
-  have ⊢ₛ (spec.term value.true, history.empty, env.empty, e),
-  from stack.vcgen.top env.vcgen.empty this,
-  show is_value s ∨ ∃s', s ⟶ s', from soundness steps_to_s this
+lemma true_spec_valid: env.empty ⊨ prop.to_vc (spec.to_prop (spec.term ↑value.true)) :=
+  begin
+    unfold vc.subst_env,
+    unfold spec.to_prop,
+    unfold prop.to_vc,
+    from valid.tru
+  end
 
--/
+lemma dsoundness {s s': dstack} {Q: propctx}: (s ⟹* s') → (⊩ₛ s: Q) → (is_dvalue s' ∨ ∃s'', s' ⟹ s'') :=
+  begin
+    have : ∀{s s': dstack} {Q: propctx}, (s ⟹* s') → (⊩ₛ s: Q) → (∃Q': propctx, ⊩ₛ s' : Q'), by begin
+      assume s s' Q steps_to_s',
+      induction steps_to_s',
+      case trans_dstep.rfl s₁ {
+        assume s₁_verified,
+        existsi Q,
+        from s₁_verified
+      },
+      case trans_dstep.trans s₁ s₂ s₃ s₁_steps_to_s₂ s₂_steps_to_s₃ ih {
+        assume s₁_verified,
+        cases ih s₁_verified with Q₂ h1,
+        cases preservation h1 s₃ s₂_steps_to_s₃ with Q₃ h2,
+        from exists.intro Q₃ h2.left
+      }
+    end,
+    assume h1 h2,
+    cases this h1 h2 with Q' h3,
+    from progress h3
+  end
+
+lemma soundness_source_programs {e: exp} {s: stack} {Q: propctx}:
+  (value.true ⊢ e: Q) → ((env.empty, e) ⟶* s) → (is_value s ∨ ∃s', s ⟶ s') :=
+  assume : value.true ⊢ e: Q,
+  have value.true ⊩ e: Q, from exp.vcgen.extension this,
+  have value.true ⋀ value.true ⊩ e : Q,
+  from strengthen_exp this (value.true ⋀ value.true) true_true_freevars (λσ, true_true_implies_true),
+  have h1: ⊩ₛ (spec.term value.true, env.empty, e) : value.true ⋀ Q,
+  from stack.dvcgen.top env.dvcgen.empty true_spec_freevars true_spec_valid this,
+  assume : (env.empty, e) ⟶* s,
+  have ∃d', ((spec.term value.true, env.empty, e) ⟹* d') ∧ stack_equiv_dstack s d',
+  from dstep_of_step_trans this (spec.term value.true, env.empty, e) stack_equiv_dstack.top,
+  let ⟨d', h2⟩ := this in
+  have is_dvalue d' ∨ ∃d'', d' ⟹ d'', from dsoundness h2.left h1,
+  show is_value s ∨ ∃s', s ⟶ s', from value_or_step_of_dvalue_or_dstep h2.right this

@@ -484,26 +484,6 @@ lemma sizeof_env_value {σ: env} {x: var} {v: value}:
     from zero_lt_one
   end
 
-lemma sizeof_substack {s: stack} {R: spec} {σ: env} {f x y: var} {e: exp}:
-      s.sizeof < (stack.cons s R σ f x y e).sizeof :=
-  begin
-    unfold stack.sizeof,
-    change sizeof s < 1 + sizeof s + sizeof R + sizeof σ + sizeof f + sizeof x + sizeof y + sizeof e,
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_assoc],
-    rw[add_comm],
-    rw[add_assoc],
-    apply lt_add_of_pos_right,
-    rw[add_comm],
-    rw[add_comm],
-    apply lt_add_of_le_of_pos nonneg_of_nat,
-    from zero_lt_one
-  end
-
 lemma sizeof_prop_not {P: prop}:
       P.sizeof < P.not.sizeof :=
   begin

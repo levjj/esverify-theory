@@ -2,6 +2,40 @@
 
 import .definitions2
 
+-- s ∈ DStacks := (R, σ, e) | s · (R, σ, let y = f(x) in e)
+inductive dstack
+| top  : spec → env → exp → dstack
+| cons : dstack → spec → env → var → var → var → exp → dstack
+
+-- (R, σ, e) : dstack
+instance : has_coe (spec × env × exp) dstack := ⟨λe, dstack.top e.1 e.2.1 e.2.2⟩
+
+-- stack precondition projection
+
+def dstack.pre: dstack → spec
+| (dstack.top R _ _) := R
+| (dstack.cons _ R _ _ _ _ _) := R
+
+lemma sizeof_substack {s: dstack} {R: spec} {σ: env} {f x y: var} {e: exp}:
+      s.sizeof < (dstack.cons s R σ f x y e).sizeof :=
+  begin
+    unfold dstack.sizeof,
+    change sizeof s < 1 + sizeof s + sizeof R + sizeof σ + sizeof f + sizeof x + sizeof y + sizeof e,
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_assoc],
+    rw[add_comm],
+    rw[add_assoc],
+    apply lt_add_of_pos_right,
+    rw[add_comm],
+    rw[add_comm],
+    apply lt_add_of_le_of_pos nonneg_of_nat,
+    from zero_lt_one
+  end
+
 -- top-level calls and quantifiers in positive and negative positions
 mutual inductive prop.has_call_p, prop.has_call_n
 
@@ -96,9 +130,75 @@ inductive vc.uses_var (x: var) : vc → Prop
 | univ {y: var} {P: vc}                 : vc.uses_var P → vc.uses_var (vc.univ y P)
 | quantified {P: vc}                    : vc.uses_var (vc.univ x P)
 
+-- evaluation relation that includes the current function precondition for each stack frame
+
+inductive dstep : dstack → dstack → Prop
+notation s₁ `⟹` s₂:100 := dstep s₁ s₂
+
+| ctx {s s': dstack} {R: spec} {σ: env} {y f x: var} {e: exp}:
+    (s ⟹ s') →
+    (dstack.cons s R σ y f x e ⟹ dstack.cons s' R σ y f x e)
+
+| tru {R: spec} {σ: env} {x: var} {e: exp}:
+    (R, σ, lett x = true in e) ⟹ (R, σ[x↦value.true], e)
+
+| fals {R: spec} {σ: env} {x: var} {e: exp}:
+    (R, σ, letf x = false in e) ⟹ (R, σ[x↦value.false], e)
+
+| num {R: spec} {σ: env} {x: var} {e: exp} {n: ℤ}:
+    (R, σ, letn x = n in e) ⟹ (R, σ[x↦value.num n], e)
+
+| closure {σ: env} {R' R S: spec} {f x: var} {e₁ e₂: exp}:
+    (R', σ, letf f[x] req R ens S {e₁} in e₂) ⟹ 
+    (R', σ[f↦value.func f x R S e₁ σ], e₂)
+
+| unop {R: spec} {op: unop} {σ: env} {x y: var} {e: exp} {v₁ v: value}:
+    (σ x = v₁) →
+    (unop.apply op v₁ = v) →
+    ((R, σ, letop y = op [x] in e) ⟹ (R, σ[y↦v], e))
+
+| binop {R: spec} {op: binop} {σ: env} {x y z: var} {e: exp} {v₁ v₂ v: value}:
+    (σ x = v₁) →
+    (σ y = v₂) →
+    (binop.apply op v₁ v₂ = v) →
+    ((R, σ, letop2 z = op [x, y] in e) ⟹ (R, σ[z↦v], e))
+
+| app {σ σ': env} {R' R S: spec} {f g x y z: var} {e e': exp} {v: value}:
+    (σ f = value.func g z R S e σ') →
+    (σ x = v) →
+    ((R', σ, letapp y = f[x] in e') ⟹
+    (dstack.cons (R, (σ'[g↦value.func g z R S e σ'][z↦v]), e) R' σ y f x e'))
+
+| return {σ₁ σ₂ σ₃: env} {f g gx x y z: var} {R₁ R₂ R S: spec} {e e': exp} {v vₓ: value}:
+    (σ₁ z = v) →
+    (σ₂ f = value.func g gx R S e σ₃) →
+    (σ₂ x = vₓ) →
+    (dstack.cons (R₁, σ₁, exp.return z) R₂ σ₂ y f x e' ⟹ (R₂, σ₂[y↦v], e'))
+
+| ite_true {R: spec} {σ: env} {e₁ e₂: exp} {x: var}:
+    (σ x = value.true) →
+    ((R, σ, exp.ite x e₁ e₂) ⟹ (R, σ, e₁))
+
+| ite_false {R: spec} {σ: env} {e₁ e₂: exp} {x: var}:
+    (σ x = value.false) →
+    ((R, σ, exp.ite x e₁ e₂) ⟹ (R, σ, e₂))
+
+notation s₁ `⟹` s₂:100 := dstep s₁ s₂
+
+-- transitive closure
+inductive trans_dstep : dstack → dstack → Prop
+notation s `⟹*` s':100 := trans_dstep s s'
+| rfl {s: dstack}          : s ⟹* s
+| trans {s s' s'': dstack} : (s ⟹* s') → (s' ⟹ s'') → (s ⟹* s'')
+
+notation s `⟹*` s':100 := trans_dstep s s'
+
+def is_dvalue (s: dstack) :=
+  ∃(R: spec) (σ: env) (x: var) (v: value), s = (R, σ, exp.return x) ∧ (σ x = v)
+
 -- runtime verification of stacks
 
-inductive stack.dvcgen : stack → propctx → Prop
+inductive stack.dvcgen : dstack → propctx → Prop
 notation `⊩ₛ` s `:` Q : 10 := stack.dvcgen s Q
 
 | top {R: spec} {P: prop} {σ: env} {e: exp} {Q: propctx}:
@@ -108,7 +208,7 @@ notation `⊩ₛ` s `:` Q : 10 := stack.dvcgen s Q
     (R ⋀ P ⊩ e : Q) →
     (⊩ₛ (R, σ, e) : P ⋀ Q)
 
-| cons {P₁ P₂ P₃: prop} {s: stack} {σ₁ σ₂: env}
+| cons {P₁ P₂ P₃: prop} {s: dstack} {σ₁ σ₂: env}
        {f fx g x y: var} {R₁ R₂ S₂: spec} {e₁ e₂: exp} {v: value} {Q₁ Q₂ Q₂': propctx}:
     (⊩ₛ s : Q₂') →
     y ∉ σ₁ →
@@ -124,8 +224,15 @@ notation `⊩ₛ` s `:` Q : 10 := stack.dvcgen s Q
     (∀σ' t, (σ' ⊨ (Q₂' t).to_vc) → σ' ⊨ (P₃ ⋀ (Q₂ t)).to_vc) →
     (∀v: value, FV (P₃ ⋀ (Q₂ v)) ⊆ FV (Q₂' v)) →
     ⦃ prop.implies (R₁ ⋀ P₁ ⋀ prop.call x) (term.unop unop.isFunc g ⋀ prop.pre g x) ⦄ →
-    ((R₂, σ₂[f↦value.func f fx R₂ S₂ e₂ σ₂][fx↦v], e₂) ⟶* s) →
-    (⊩ₛ (s · [R₁, σ₁, letapp y = g[x] in e₁]) : P₁ ⋀
+    ((R₂, σ₂[f↦value.func f fx R₂ S₂ e₂ σ₂][fx↦v], e₂) ⟹* s) →
+    (⊩ₛ dstack.cons s R₁ σ₁ y g x e₁ : P₁ ⋀
           propctx.exis y (prop.call x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₁))
 
 notation `⊩ₛ` s `:` Q : 10 := stack.dvcgen s Q
+
+inductive stack_equiv_dstack : stack → dstack → Prop
+| top {R: spec} {σ: env} {e: exp} :
+  stack_equiv_dstack (stack.top σ e) (dstack.top R σ e)
+| cons {s': stack} {d': dstack} {R: spec} {σ: env} {f x y: var} {e: exp}:
+  stack_equiv_dstack s' d' →
+  stack_equiv_dstack (stack.cons s' σ f x y e) (dstack.cons d' R σ f x y e)

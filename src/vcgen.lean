@@ -377,7 +377,7 @@ lemma env.dvcgen.inj {P: prop} {σ: env}: (⊩ σ : P) → ∀Q, (⊩ σ : Q) �
     refl
   end
 
-lemma stack.dvcgen.inj {s: stack} {Q₁: propctx}: (⊩ₛ s : Q₁) → ∀Q₂, (⊩ₛ s : Q₂) → (Q₁ = Q₂) :=
+lemma stack.dvcgen.inj {s: dstack} {Q₁: propctx}: (⊩ₛ s : Q₁) → ∀Q₂, (⊩ₛ s : Q₂) → (Q₁ = Q₂) :=
   assume h1: ⊩ₛ s : Q₁,
   have ∀s' Q₂, (s = s') → (⊩ₛ s' : Q₂) → (Q₁ = Q₂), by begin
     cases h1,

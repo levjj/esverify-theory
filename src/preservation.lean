@@ -524,21 +524,21 @@ lemma free_dominates_helper_eq_free {R: spec} {P P₁ P₂: prop} {Q: propctx} {
 
 lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx}:
       (⊩ σ : P) → FV (spec.to_prop R) ⊆ FV P → (σ ⊨ R.to_prop.to_vc) → (R ⋀ P ⊩ e : Q) →
-      ((R, σ, e) ⟶ (R, σ', e')) →
+      ((R, σ, e) ⟹ (R, σ', e')) →
       ∃Q', (⊩ₛ (R, σ', e') : Q') ∧ (∀σ' t, σ' ⊨ vc.implies (Q' t).to_vc ((↑P ⋀ Q) t).to_vc) ∧
                                    (∀v: value, FV ((↑P ⋀ Q) v) ⊆ FV (Q' v)) :=
   assume σ_verified: ⊩ σ : P,
   assume fv_R: FV (spec.to_prop R) ⊆ FV P,
   assume R_valid: (σ ⊨ R.to_prop.to_vc),
   assume e_verified: R ⋀ P ⊩ e : Q,
-  assume e_steps: ((R, σ, e) ⟶ (R, σ', e')),
+  assume e_steps: ((R, σ, e) ⟹ (R, σ', e')),
   begin
     cases e_verified,
 
     case exp.dvcgen.tru x e' Q x_not_free e'_verified {
       cases e_steps,
       
-      case step.tru { from
+      case dstep.tru { from
         have x ∉ σ, from (
           assume : x ∈ σ,
           have x ∈ σ.dom, from this,
@@ -590,7 +590,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
 
       cases e_steps,
       
-      case step.fals { from
+      case dstep.fals { from
         have x ∉ σ, from (
           assume : x ∈ σ,
           have x ∈ σ.dom, from this,
@@ -642,7 +642,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
 
       cases e_steps,
       
-      case step.num { from
+      case dstep.num { from
         have x ∉ σ, from (
           assume : x ∈ σ,
           have x ∈ σ.dom, from this,
@@ -694,7 +694,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
 
       cases e_steps,
       
-      case step.closure { from
+      case dstep.closure { from
         have f_not_in_σ: f ∉ σ, from (
           assume : f ∈ σ,
           have f ∈ σ.dom, from this,
@@ -1097,7 +1097,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
     },
     case exp.dvcgen.unop op x y e' Q x_free_in_P y_not_free e'_verified vc_valid {
       cases e_steps,
-      case step.unop vx vy x_is_vx vy_is_op { from
+      case dstep.unop vx vy x_is_vx vy_is_op { from
         have y_not_in_σ: y ∉ σ, from (
           assume : y ∈ σ,
           have y ∈ σ.dom, from this,
@@ -1288,7 +1288,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
     },
     case exp.dvcgen.binop op x y z e' Q x_free_in_P y_free_in_P z_not_free e'_verified vc_valid {
       cases e_steps,
-      case step.binop vx vy vz x_is_vx y_is_vy vz_is_op { from
+      case dstep.binop vx vy vz x_is_vx y_is_vy vz_is_op { from
         have z_not_in_σ: z ∉ σ, from (
           assume : z ∈ σ,
           have z ∈ σ.dom, from this,
@@ -1513,7 +1513,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
     case exp.dvcgen.ite x e₂ e₁ Q₁ Q₂ x_free_in_P e₁_verified e₂_verified vc_valid {
       cases e_steps,
 
-      case step.ite_true x_is_true { from
+      case dstep.ite_true x_is_true { from
 
         have h1: FV (↑R ⋀ P) = FV ((↑R ⋀ P) ⋀ x), from set.eq_of_subset_of_subset (
           assume z: var,
@@ -1734,7 +1734,7 @@ lemma exp.preservation {R: spec} {σ σ': env} {P: prop} {e e': exp} {Q: propctx
         exists.intro (↑P ⋀ Q₁) ⟨h3, ⟨h4, h5⟩⟩
       },
 
-      case step.ite_false x_is_false { from
+      case dstep.ite_false x_is_false { from
 
         have h1: FV (↑R ⋀ P) = FV ((↑R ⋀ P) ⋀ prop.not x), from set.eq_of_subset_of_subset (
           assume z: var,
@@ -2260,15 +2260,15 @@ lemma inlined_dominates_n_spec {σ σ₁: env} {P: prop} {Q: propctx} {f x: var}
 
 -/
 
-theorem preservation {s: stack} {Q: propctx}:
-   (⊩ₛ s : Q) → ∀s', (s ⟶ s') →
+theorem preservation {s: dstack} {Q: propctx}:
+   (⊩ₛ s : Q) → ∀s', (s ⟹ s') →
    ∃Q', (⊩ₛ s' : Q') ∧ (∀σ' t, σ' ⊨ vc.implies (Q' t).to_vc (Q t).to_vc) ∧ (∀v: value, FV (Q v) ⊆ FV (Q' v)) :=
   assume s_verified:  ⊩ₛ s : Q,
   begin
     induction s_verified,
     case stack.dvcgen.top σ e R P Q σ_verified fv_R R_valid e_verified {
       assume s',
-      assume s_steps: ((R, σ, e) ⟶ s'),
+      assume s_steps: ((R, σ, e) ⟹ s'),
 
       have R_closed: closed_subst σ R.to_prop, from (
         assume z: var,
@@ -2278,25 +2278,25 @@ theorem preservation {s: stack} {Q: propctx}:
       ),
 
       cases s_steps,
-      case step.tru x e {
+      case dstep.tru x e {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.fals x e {
+      case dstep.fals x e {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.num n e x {
+      case dstep.num n e x {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.closure R' S' f x e₁ e₂ {
+      case dstep.closure R' S' f x e₁ e₂ {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.unop op x y e {
+      case dstep.unop op x y e {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.binop op x y z e {
+      case dstep.binop op x y z e {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.app f x y σ₂ g R₂ S₂ gx e₁ e₂ vₓ f_is_func x_is_vₓ {
+      case dstep.app f x y σ₂ g R₂ S₂ gx e₁ e₂ vₓ f_is_func x_is_vₓ {
         cases e_verified,
         case exp.dvcgen.app Q f_free x_free y_not_free e₂_verified func_vc { from
 
@@ -2687,8 +2687,8 @@ theorem preservation {s: stack} {Q: propctx}:
           ),
 
           have h9: (R₂, σ₂[g↦value.func g gx R₂ S₂ e₁ σ₂][gx↦vₓ], e₁)
-              ⟶* (R₂, σ₂[g↦value.func g gx R₂ S₂ e₁ σ₂][gx↦vₓ], e₁),
-          from trans_step.rfl,
+              ⟹* (R₂, σ₂[g↦value.func g gx R₂ S₂ e₁ σ₂][gx↦vₓ], e₁),
+          from trans_dstep.rfl,
 
           have h10: ∀σ' t, (σ' ⊨ ((↑P₃ ⋀ Q₃) t).to_vc) → σ' ⊨ ((Q₂' ⋀ P₃') ⋀ Q₃ t).to_vc, from (
             assume σ': env,
@@ -2708,7 +2708,7 @@ theorem preservation {s: stack} {Q: propctx}:
             show FV ((Q₂'⋀ P₃') ⋀ Q₃ v) ⊆ FV ((↑P₃ ⋀ Q₃) v), from h11.symm ▸ this
           ),
 
-          have h12: ⊩ₛ ((R₂, σ₂[g↦value.func g gx R₂ S₂ e₁ σ₂][gx↦vₓ], e₁) · [R, σ, letapp y = f[x] in e₂])
+          have h12: ⊩ₛ dstack.cons (R₂, σ₂[g↦value.func g gx R₂ S₂ e₁ σ₂][gx↦vₓ], e₁) R σ y f x e₂
                     :  P ⋀ propctx.exis y (prop.call x ⋀ prop.post f x ⋀ y ≡ term.app f x ⋀ Q),
           from stack.dvcgen.cons h5 h6 σ_verified ha2.right.right.right.right.right.left ha5 fv_R R_valid
                                 f_is_func x_is_vₓ h7 
@@ -2728,10 +2728,10 @@ theorem preservation {s: stack} {Q: propctx}:
           exists.intro ( P ⋀ propctx.exis y (prop.call x ⋀ prop.post f x ⋀ y ≡ term.app f x ⋀ Q)) ⟨h12, ⟨h13, h14⟩⟩
         }
       },
-      case step.ite_true x e₁ e₂ {
+      case dstep.ite_true x e₁ e₂ {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       },
-      case step.ite_false x e₁ e₂ {
+      case dstep.ite_false x e₁ e₂ {
         from exp.preservation σ_verified fv_R R_valid e_verified s_steps
       }
     },
@@ -2739,15 +2739,15 @@ theorem preservation {s: stack} {Q: propctx}:
                           σ'_verified σ''_verified fv_R' R'_valid g_is_func x_is_v cont e'_verified Q₂'_dom Q₂'_fv
                           pre_vc steps ih {
       assume s''',
-      assume s_steps: ((s' · [R', σ, letapp y = g[x] in e]) ⟶ s'''),
+      assume s_steps: (dstack.cons s' R' σ y g x e ⟹ s'''),
       cases s_steps,
-      case step.ctx s'' s'_steps { from
+      case dstep.ctx s'' s'_steps { from
         have (∃ (Q' : propctx), (⊩ₛ s'' : Q') ∧ (∀σ' t, σ' ⊨ vc.implies (Q' t).to_vc (Q₂' t).to_vc) ∧
                                                 (∀v: value, FV (Q₂' v) ⊆ FV (Q' v))),
         from ih s'' s'_steps,
         let ⟨Q', ⟨h1, ⟨h2, h3⟩⟩⟩ := this in
-        have new_steps: ((R, σ'[f↦value.func f fx R S e' σ'][fx↦vₓ], e') ⟶* s''),
-        from trans_step.trans steps s'_steps,
+        have new_steps: ((R, σ'[f↦value.func f fx R S e' σ'][fx↦vₓ], e') ⟹* s''),
+        from trans_dstep.trans steps s'_steps,
 
         have h4: ∀ (σ' : env) (t : term), (σ' ⊨ (Q' t).to_vc) → σ' ⊨ (P'' ⋀ Q₂ t).to_vc, from (
           assume σ'': env,
@@ -2763,7 +2763,7 @@ theorem preservation {s: stack} {Q: propctx}:
           have h8: FV (P'' ⋀ Q₂ v) ⊆ FV (Q₂' v), from Q₂'_fv v,
           show FV (P'' ⋀ Q₂ v) ⊆ FV (Q' v), from set.subset.trans h8 h7
         ),
-        have h6: ⊩ₛ (s'' · [R', σ, letapp y = g[x] in e])
+        have h6: ⊩ₛ dstack.cons s'' R' σ y g x e
                  :  P ⋀ propctx.exis y (prop.call x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₃),
         from stack.dvcgen.cons h1 y_not_in_σ σ_verified σ'_verified σ''_verified fv_R' R'_valid
                               g_is_func x_is_v cont e'_verified h4 h5 pre_vc new_steps,
@@ -2779,7 +2779,7 @@ theorem preservation {s: stack} {Q: propctx}:
           (FV ((↑P ⋀ propctx.exis y (↑(prop.call x) ⋀ ↑(prop.post g x) ⋀ ↑(y ≡ term.app g x) ⋀ Q₃)) v)),
         exists.intro ( P ⋀ propctx.exis y (prop.call x ⋀ prop.post g x ⋀ y ≡ term.app g x ⋀ Q₃)) ⟨h6, ⟨h7, h8⟩⟩
       },
-      case step.return σ₁ σ₂ f₁ x₁ y₁ R'₁ R₁ S₁ e₁ vy₁ vx₁ y_is_vy₁ g_is_func₁ x_is_vx₁ { from
+      case dstep.return σ₁ σ₂ f₁ x₁ y₁ R'₁ R₁ S₁ e₁ vy₁ vx₁ y_is_vy₁ g_is_func₁ x_is_vx₁ { from
         have ∃P₁ Q₁, (⊩ σ₁: P₁) ∧ (FV R'₁.to_prop ⊆ FV P₁) ∧ (σ₁ ⊨ R'₁.to_prop.to_vc) ∧
                                                                (R'₁ ⋀ P₁ ⊩ exp.return y₁ : Q₁),
         from stack.dvcgen.top.inv s'_verified,
@@ -3114,9 +3114,12 @@ theorem preservation {s: stack} {Q: propctx}:
               from eq.trans h37 (this ▸ h38),
 
               have h40: σ₁ ⊨ y₁ ≡ term.app f fx, from (
-                have h73: (R₁, σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ σ₂][x₁↦vx₁], e₁)
-                ⟶* (R'₁, σ₁, exp.return y₁),
+                have (R₁, σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ σ₂][x₁↦vx₁], e₁)
+                ⟹* (R'₁, σ₁, exp.return y₁),
                 from h65.symm ▸ h66.symm ▸ h67.symm ▸ h68.symm ▸ h69.symm ▸ h70.symm ▸ h71.symm ▸ steps, 
+
+                have h73: (σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ σ₂][x₁↦vx₁], e₁) ⟶* (σ₁, exp.return y₁),
+                from step_of_dstep this, 
 
                 have ⊨ vy₁ ≡ term.app (value.func f₁ x₁ R₁ S₁ e₁ σ₂) vx₁,
                 from valid.app h73 y_is_vy₁,
@@ -3616,9 +3619,11 @@ theorem preservation {s: stack} {Q: propctx}:
           ),
 
           have h79: σ₃ ⊨ y ≡ term.app g x, from (
-            have h73: (R₁, σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ σ₂][x₁↦vx₁], e₁)
-            ⟶* (R'₁, σ₁, exp.return y₁),
+            have (R₁, σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ σ₂][x₁↦vx₁], e₁)
+            ⟹* (R'₁, σ₁, exp.return y₁),
             from h65.symm ▸ h66.symm ▸ h67.symm ▸ h68.symm ▸ h69.symm ▸ h70.symm ▸ h71.symm ▸ steps, 
+            have h73: (σ₂[f₁↦value.func f₁ x₁ R₁ S₁ e₁ σ₂][x₁↦vx₁], e₁) ⟶* (σ₁, exp.return y₁),
+            from step_of_dstep this,
 
             have ⊨ vy₁ ≡ term.app (value.func f₁ x₁ R₁ S₁ e₁ σ₂) vx₁,
             from valid.app h73 y_is_vy₁,
