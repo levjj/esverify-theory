@@ -2,12 +2,31 @@
 
 import .definitions2 .freevars .substitution .evaluation .bindings
 
+lemma valid.not_false: ⊨ vc.not value.false :=
+  begin
+    have : ⊨ value.false ⋁ vc.not value.false, from valid.em,
+    cases valid.or.elim this with h1 h1,
+    have h2, from valid.eq.true.mp h1,
+    have h3, from valid.eq.true.mp h2,
+    have h4, from valid.binop.mpr h3,
+    unfold binop.apply at h4,
+    unfold binop.apply at h4,
+    have h5: ¬ (value.true = value.false), by begin
+      assume h5,
+      contradiction
+    end,
+    simp[h5] at h4,
+    have h6, from option.some.inj h4,
+    contradiction,
+    from h1
+  end
+
 lemma valid.false.elim {P: vc}: ⊨ vc.implies value.false P :=
   have h1: ⊨ value.true, from valid.tru,
   have unop.apply unop.not value.false = value.true, by unfold unop.apply,
   have ⊨ value.true ≡ term.unop unop.not value.false, from valid.unop.mp this,
   have ⊨ term.unop unop.not value.false, from valid.eq.true.mpr this,
-  have ⊨ vc.not value.false, from valid.not.term.mp this,
+  have ⊨ vc.not value.false, from valid.not_false,
   have ⊨ vc.not value.false ⋁ P, from valid.or.left this,
   show ⊨ vc.implies value.false P, from this
 
@@ -151,15 +170,6 @@ lemma valid.eq.terms {v₁ v₂: value}: (⊨ v₁ ≡ v₂) → (v₁ = v₂) :
     have h2, from valid.eq.true.mp h1,
     have h3, from valid.binop.mpr h2,
     from binop.eq.inv h3
-  end
-
-lemma valid.not_false: ⊨ vc.not value.false :=
-  begin
-    apply valid.not.term.mp,
-    apply valid.eq.true.mpr,
-    apply valid.unop.mp,
-    unfold unop.apply,
-    congr
   end
 
 lemma valid_env.not_not {σ: env} {P: vc}: (σ ⊨ P.not.not) ↔ σ ⊨ P :=

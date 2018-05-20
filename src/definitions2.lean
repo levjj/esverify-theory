@@ -351,11 +351,6 @@ axiom valid.or.elim {P Q: vc}:
   →
   (⊨ P) ∨ (⊨ Q)
 
-axiom valid.not.term {t: term}:
-  (⊨ term.unop unop.not t)
-  ↔
-  ⊨ vc.not t
-
 -- no contradictions
 axiom valid.contradiction {P: vc}:
   ¬ (⊨ P ⋀ P.not)
