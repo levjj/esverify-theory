@@ -5,7 +5,7 @@ and proves properties such as verification safety and type translation correctne
 
 The definitions and proofs are written in [LEAN](http://leanprover.github.io/).
 
-## Important Definitions and Axioms
+## Important Files
 
 [`src/syntax.lean`](src/syntax.lean)
 
@@ -28,6 +28,8 @@ The definitions and proofs are written in [LEAN](http://leanprover.github.io/).
 - Quantifier Instantiation Soundness Theorem
 - Verification Safety/Soundness Theorem
 
+*All other files contains lemmas and helper definitions but no axioms.*
+
 ## Proved Theorems
 
 **Quantifier Instantiation**
@@ -35,8 +37,7 @@ The definitions and proofs are written in [LEAN](http://leanprover.github.io/).
 Verification conditions are processed with a deterministic quantifier instantiation algorithm
 in order to ensure that checking of verification conditions is deterministic and decidable.
 
-The file [`src/theorems.lean`](src/theorems.lean) proves that
-any proposition `P` that is valid with instantiations `⟪ P ⟫`
+The following theorem states that any proposition `P` that is valid with instantiations `⟪ P ⟫`
 is also a valid proposition without quantifier instantiation `⦃ P ⦄`:
 
 ```
@@ -49,17 +50,18 @@ uses function calls in the source program as triggers.)
 
 **Verification Safety**
 
-The file [`src/theorems.lean`](src/theorems.lean) proves that a verified source program `e` does not
-get stuck, i.e. its evaluation always results either in a value or in a runtime stack `s` that can be
-further evaluated. The proof internally uses lemmas for progress and preservation.
+The following theorem states that a verified source program `e` does not get stuck,
+i.e. its evaluation always results either in a value or in a runtime stack `s` that can be further evaluated.
+The proof internally uses lemmas for progress and preservation.
 
 ```
 (value.true ⊢ e: Q) → ((env.empty, e) ⟶* s) → (is_value s ∨ ∃s', s ⟶ s')
 ```
+*These theorems can be found in the file [src/theorems.lean](src/theorems.lean).*
 
 ## Checking the proof
 
-Assuming LEAN is installed, the proofs can be checked by building the entire project:
+Assuming [LEAN](http://leanprover.github.io/) is installed, the proofs can be checked by building the entire project:
 
 ```
 $ leanpkg build
