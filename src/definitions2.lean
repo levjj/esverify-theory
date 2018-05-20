@@ -660,15 +660,10 @@ axiom valid.app {vₓ v: value} {σ σ': env} {f x y: var} {R S: spec} {e: exp}:
 
 -- can write pre and post to extract pre- and postcondition of function values
 
-axiom valid.pre.mp {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
+axiom valid.pre {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
   (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ R.to_prop.to_vc)
-  →
+  ↔
   ⊨ vc.pre (value.func f x R S e σ) vₓ
-
-axiom valid.pre.mpr {vₓ: value} {σ: env} {f x: var} {R S: spec} {e: exp}:
-  (⊨ vc.pre (value.func f x R S e σ) vₓ)
-  →
-  (σ[f↦value.func f x R S e σ][x↦vₓ] ⊨ R.to_prop.to_vc)
 
 axiom valid.post.mp {vₓ: value} {σ: env} {Q: prop} {Q₂: propctx} {f x: var} {R S: spec} {e: exp}:
   (⊩ σ : Q) →
