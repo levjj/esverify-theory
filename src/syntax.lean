@@ -69,8 +69,8 @@ inductive stack
 | top  : env → exp → stack
 | cons : stack → env → var → var → var → exp → stack
 
--- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A)
---                     | post(A, A) | call(A, A) | ∀x. {call(A, x)} ⇒ P | ∃x. P
+-- P,Q ∈ Propositions := A | ¬ P | P ∧ Q | P ∨ Q | pre(A, A) | pre(⊗, A) | pre(⊕, A, A) |
+--                       post(A, A) | call(A) | ∀x. {call(x)} ⇒ P | ∃x. P
 inductive prop
 | term    : term → prop
 | not     : prop → prop
@@ -93,9 +93,9 @@ inductive termctx
 | binop : binop → termctx → termctx → termctx
 | app   : termctx → termctx → termctx
 
--- P[•], Q[•] ∈ PropositionsContexts := A[•] | ¬ P[•] | P[•] ∧ Q[•] | P[•] ∨ Q[•]
---             | pre(A[•], A[•]) | pre(⊗, A[•]) | pre(⊕, A[•], A[•]) | post(A[•], A[•])
---             | call(A[•], A[•]) | ∀x. {call(A[•], x)} ⇒ P[•] | ∃x. P[•]
+-- P[•], Q[•] ∈ PropositionsContexts := A[•] | ¬ P[•] | P[•] ∧ Q[•] | P[•] ∨ Q[•] |
+--               pre(A[•], A[•]) | pre(⊗, A[•]) | pre(⊕, A[•], A[•]) | post(A[•], A[•]) |
+--               call(A[•]) | ∀x. {call(x)} ⇒ P[•] | ∃x. P[•]
 inductive propctx
 | term    : termctx → propctx
 | not     : propctx → propctx
@@ -111,9 +111,6 @@ inductive propctx
 
 -- call(x) ∈ CallTriggers
 structure calltrigger := (x: term)
-
--- (∀x {call(x)} ⇒ P) ∈ CallQuantifiers
-structure callquantifier := (x: var) (P: prop)
 
 -- P,Q ∈ VerificationCondition := ...
 inductive vc: Type

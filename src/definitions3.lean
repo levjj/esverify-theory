@@ -1,6 +1,9 @@
--- definitions that are used by the lemmas but not referenced by the soundness theorem
+-- definitions that are used by the lemmas but not referenced by the a theorem
 
 import .definitions2
+
+-- (∀x {call(x)} ⇒ P) ∈ CallQuantifiers
+structure callquantifier := (x: var) (P: prop)
 
 -- s ∈ DStacks := (R, σ, e) | s · (R, σ, let y = f(x) in e)
 inductive dstack

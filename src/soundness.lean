@@ -23,41 +23,6 @@ lemma true_true_freevars: FV (prop.term value.true ⋀ prop.term value.true) = F
   ),
   show FV (prop.term value.true ⋀ prop.term value.true) = FV (prop.term value.true), from eq.trans h1 h2.symm
 
-/-
-lemma trivial_precondition:
-  ∀σ, σ ⊨ vc.implies (prop.instantiated_p (value.true ⋀ value.true)) (prop.instantiated_p (value.true)) :=
-  assume σ: env,
-  show σ ⊨ vc.implies (prop.instantiated_p (value.true ⋀ value.true)) (prop.instantiated_p (value.true)),
-  from valid_env.mpr (
-    assume _,
-    have h: σ ⊨ value.true, from valid_env.true,
-    have prop.erased_n (prop.term value.true) = vc.term value.true, by unfold prop.erased_n,
-    have σ ⊨ (prop.erased_n (value.true)), from this.symm ▸ h,
-    have σ ⊨ (prop.instantiated_n (value.true)), from valid_env.instantiated_n_of_erased_n this,
-    show σ ⊨ (prop.instantiated_p (value.true)), from valid_env.instantiated_p_of_instantiated_n this
-  )
-
-lemma trivial_calls_p: calls_p (prop.term value.true ⋀ prop.term value.true) = calls_p (prop.term value.true) :=
-  have h1: calls_p (prop.term value.true ⋀ prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
-    assume c: calltrigger,
-    assume : c ∈ calls_p (prop.term value.true ⋀ prop.term value.true),
-    have c ∈ calls_p (prop.term value.true) ∨ c ∈ calls_p (prop.term value.true), from prop.has_call.and.inv this,
-    or.elim this (
-      assume : c ∈ calls_p (prop.term value.true),
-      show «false», from prop.has_call.term.inv this
-    ) (
-      assume : c ∈ calls_p (prop.term value.true),
-      show «false», from prop.has_call.term.inv this
-    )
-  ),
-  have h2: calls_p (prop.term value.true) = ∅, from set.eq_empty_of_forall_not_mem (
-    assume c: calltrigger,
-    assume : c ∈ calls_p (prop.term value.true),
-    show «false», from prop.has_call.term.inv this
-  ),
-  show calls_p (prop.term value.true ⋀ prop.term value.true) = calls_p (prop.term value.true), from eq.trans h1 h2.symm
--/
-
 lemma true_true_implies_true {σ: env}:
       σ ⊨ vc.implies (prop.term value.true ⋀ prop.term value.true).to_vc (prop.term value.true).to_vc :=
   begin
