@@ -1,0 +1,383 @@
+\documentclass[10pt]{article}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{bussproofs}
+\usepackage{mathpazo}
+\usepackage[hidelinks]{hyperref}
+\usepackage[margin=1in]{geometry}
+\newcommand{\emptya}{\parbox[c][0.575\baselineskip]{1em}{}}
+\newenvironment{bpt}{\leavevmode\hbox\bgroup}{\DisplayProof\egroup}
+\newcommand{\lab}[1]{\textsc{\small #1}}
+\newcommand{\fres}[3][f]{\text{spec}~#1 (x)~\text{req}~#2~\text{ens}~#3}
+\newcommand{\lfre}[5][f]{\text{let}~#1 (x)~\text{req}~#2~\text{ens}~#3 =#4 ~ \text{in}~ #5}
+\newcommand{\fval}[5][f]{\langle \text{function}~#1 (x)~\text{req}~#2~\text{ens}~#3~\{#4\}, #5 \rangle}
+\newcommand{\tcap}[2][-2ex]{\hfill\raisebox{#1}[0ex][0ex]{\fbox{$#2$}}\\[-2\baselineskip]}
+\renewcommand{\t}[1]{~\text{\textnormal{#1}}~}
+\newcommand{\forallc}[1]{\forall x. \{call(x)\} \Rightarrow #1}
+\newcommand{\lookup}[2][\sigma]{#1(#2)}
+\newcommand{\llt}[3][e]{\text{let}~#2 = #3~\text{in}~#1}
+\makeatletter
+\newsavebox{\@brx}
+\newcommand{\llangle}[1][]{\savebox{\@brx}{\(\m@th{#1\langle}\)}%
+  \mathopen{\copy\@brx\kern-0.5\wd\@brx\usebox{\@brx}}}
+\newcommand{\rrangle}[1][]{\savebox{\@brx}{\(\m@th{#1\rangle}\)}%
+  \mathclose{\copy\@brx\kern-0.5\wd\@brx\usebox{\@brx}}}
+\makeatother
+\theoremstyle{definition}
+\newtheorem{axiom}{Axiom}
+\newtheorem{notation}{Notation}
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\begin{document}
+
+\title{ESVerify Theory: Definitions, Axioms and Theorems}
+\date{}
+\author{}
+\maketitle
+
+\vspace{-5em}
+\section{Logic}
+
+\[ \arraycolsep=1.6pt\def\arraystretch{1.3}
+\begin{array}{rclcl}
+  P &\in& \text{Propositions} &~::=~& t ~|~ \neg P ~|~ P \wedge P ~|~ P \vee P ~|~
+                                       pre_1(\otimes,t) ~|~ pre_2(\oplus,t,t) ~|~ pre(t,t) ~|~ \\
+      &                 & & & post(t,t) ~|~ call(t) ~|~ \forallc{P} ~|~ \exists x. P \\
+  t &\in& \text{Terms} &~::=~& v ~|~ x ~|~ \otimes t ~|~ t \oplus t ~|~ t(t) \\
+  \otimes &\in& \text{UnaryOperators} &~::=~& \neg ~|~ isInt ~|~ isBool ~|~ isFunc \\
+  \oplus &\in& \text{BinaryOperators} &~::=~& + ~|~ - ~|~ \times ~|~ / ~|~ \wedge ~|~ \vee ~|~ = ~|~ < \\
+  v &\in& \text{Values} &~::=~& \text{true} ~|~ \text{false} ~|~ n ~|~ \fval{R}{S}{e}{\sigma} \\
+  \sigma &\in& \text{Environments} &~::=~& \emptyset ~|~ \sigma[x \mapsto v] \\
+  f,x,y,z &\in& \text{Variables} \\
+      n &\in& \mathbb{N}
+\end{array} \]
+
+\noindent The meaning of unary and binary operators is specified by the partial function $\delta$,
+e.g. $\delta(+, 2, 3) = 5$. \\
+\noindent Validity of logical propositions is axiomatized as follows.
+
+$\tcap[-9ex]{\vdash P}$
+
+\begin{notation}[Implication] 
+  $P \Rightarrow Q \hspace{1em} \equiv \hspace{1em} \neg P \vee Q$.
+\end{notation}
+
+\begin{axiom}[L-True] 
+  $\vdash \text{true}$.
+\end{axiom}
+
+\begin{axiom}[L-And] 
+  Iff $(\vdash P)$ and $(\vdash Q)$ then $(\vdash P \wedge Q)$.
+\end{axiom}
+
+\begin{axiom}[L-Or-Left] 
+  If $(\vdash P)$ then $\vdash P \vee Q$.
+\end{axiom}
+
+\begin{axiom}[L-Or-Right] 
+  If $(\vdash Q)$ then $\vdash P \vee Q$.
+\end{axiom}
+
+\begin{axiom}[L-Or-Elim] 
+  If $(\vdash P \vee Q)$ then $\vdash P$ or $\vdash Q$.
+\end{axiom}
+
+\begin{axiom}[L-No-Contradictions]
+  $(\vdash P \wedge \neg P)$ is not true.
+\end{axiom}
+
+\begin{axiom}[L-Excluded-Middle]
+  $(\vdash P \vee \neg P)$.
+\end{axiom}
+  
+\begin{axiom}[L-Terms]
+  Iff $(\vdash t)$ then $(\vdash t = true)$.
+\end{axiom}
+  
+\begin{axiom}[L-Forall]
+  If $(\vdash P[x\mapsto v])$ for all values $v$, then $\vdash \forall x. P$.
+\end{axiom}
+
+\begin{axiom}[L-Implicit-Universally-Quantified]
+  If $x$ is free in $P$ and $(\vdash P)$ then $\vdash \forall x. P$.
+\end{axiom}
+
+\begin{axiom}[L-Forall-Elim]
+  If $\vdash \forall x. P$ then $\vdash P[x\mapsto t]$ for all terms $t$.
+\end{axiom}
+
+\begin{axiom}[L-Unary-Op]
+  Iff $\delta(\otimes, v_x) = v$ then $\vdash v = \otimes v_x$.
+\end{axiom}
+
+\begin{axiom}[L-Binary-Op]
+  Iff $\delta(\oplus, v_x, v_y) = v$ then $\vdash v = v_x \oplus v_y$.
+\end{axiom}
+
+\begin{axiom}[L-Unary-Op-Pre]
+  Iff $(\otimes, v_x) \in dom(\delta)$ then $\vdash pre_1(\otimes, v_x)$.
+\end{axiom}
+
+\begin{axiom}[L-Binary-Op-Pre]
+  Iff $(\otimes, v_x, v_y) \in dom(\delta)$ then $\vdash pre_2(\otimes, v_x, v_y)$.
+\end{axiom}
+
+\begin{axiom}[L-Binary-Op-Pre]
+  Iff $(\otimes, v_x, v_y) \in dom(\delta)$ then $\vdash pre_2(\otimes, v_x, v_y)$.
+\end{axiom}
+
+\begin{definition}[Lookup] 
+  $\sigma(x)$ looks up $x$ is the environment $\sigma$.
+\end{definition}
+
+\begin{definition}[Substitution] 
+  $\sigma(t)$ and $\sigma(P)$ substitute free variables in $t$ and $P$ with values from $\sigma$.
+\end{definition}
+
+\begin{notation}[Models] 
+  $\sigma \models P \hspace{1em} \equiv \hspace{1em} \vdash \sigma(P)$.
+  $\tcap[-1ex]{\sigma \vdash P}$
+\end{notation}
+
+\section{Quantifier Instantiation Algorithm}
+
+\noindent The following quantifier instantiation algorithm manipulates propositions. The resulting
+propositions are quantifier-free and checked with an SMT solver.
+
+\[
+\arraycolsep=1.6pt\def\arraystretch{1.3}
+\begin{array}{llllr}
+  P^+[\circ] ::=& \multicolumn{4}{l}{\circ ~|~ \neg P^-[\circ] ~|~ P^+[\circ] \wedge P ~|~ P \wedge P^+[\circ] ~|~ P^+[\circ] \vee P ~|~ P \vee P^+[\circ]} \\
+  P^-[\circ] ::=& \multicolumn{4}{l}{\neg P^+[\circ] ~|~ P^-[\circ] \wedge P ~|~ P \wedge P^-[\circ] ~|~ P^-[\circ] \vee P ~|~ P \vee P^-[\circ]} \\[1em]
+  calls^{+} \left( P \right ) ~:= & \multicolumn{4}{l}{\left \{~call(t)~|~P = P^+[ call(t)]~\right \}} \\
+  calls^{-} \left( P \right ) ~:= & \multicolumn{4}{l}{\left \{~call(t)~|~P = P^-[ call(t)]~\right \}} \\[1em]
+  lift^{+} \left( P \right)~:= & \text{match}~P \t{with} \\ & \multicolumn{2}{l}{P^-[\exists x. P']}
+                           & \rightarrow lift^{+} \left( P^-[P'[x \mapsto y]] \right)
+                           & (y~\text{fresh}) \\
+                           &                        \multicolumn{2}{l}{P^+[\forallc{P'}]}
+                           & \rightarrow lift^{+} \left( P^+[call(y) \Rightarrow P'[x \mapsto y]] \right)
+                           & (y~\text{fresh}) \\
+                           &                         \multicolumn{2}{l}{\text{otherwise}}
+                           & \rightarrow P \\[1em]
+  \multicolumn{5}{l}{erase^{-} \left( P \right) ~:= P \Bigg [P^- \Big [ (\forallc{P'}) \Big] \mapsto P^- \Big[\text{true}\Big], P^- \Big [ call(t) \Big] \mapsto P^- \Big[\text{true}\Big] \Bigg]} \\[2em]
+  \multicolumn{5}{l}{instOnce^{-} \left( P \right) ~:=} \\
+  \multicolumn{5}{l}{\hspace{2em} P \left [
+      P^- \Bigg[ (\forallc{P'}) \Bigg] \mapsto P^- \left [ (\forallc{P'})~\wedge \displaystyle\bigwedge_{call(t) \in calls^{-} ( P )} P'[x \mapsto t] \right ]
+  \right]} \\[2em]
+  inst^{-} \left( P, 0 \right) ~:= & \multicolumn{4}{l}{erase^{-}(lift^{+}(P))} \\
+  inst^{-} \left( P, n \right) ~:= & \multicolumn{3}{l}{inst^{-}(instOnce^{-} \left( lift^{+} ( P ) \right), n - 1)} & (n > 0) \\[1em]
+  \langle P \rangle ~:= & \multicolumn{4}{l}{\text{let}~n = \text{maximum level of quantifier nesting of}~lift^{+} ( P )} \\
+  & \multicolumn{4}{l}{\text{in}~\neg Sat \left ( \neg inst^{-} \left ( P, n \right) \right)}
+\end{array} 
+\tcap[32ex]{\langle P \rangle}
+\] \\[1em]
+
+\begin{definition}[Satisfiability] 
+  $Sat(P)$ denotes that the SMT solver found a model that satisfies $P$.
+\end{definition}
+
+\begin{axiom}[SMT-Solver Checking]
+    If $\neg Sat(\neg P)$ then $\vdash P$.
+\end{axiom}
+
+\begin{theorem}[Quantifier Instantiation Soundness]
+  If $\langle P \rangle$ then $\vdash P$.
+\end{theorem}
+
+\begin{proof}
+  See formalized LEAN proof in \url{https://github.com/levjj/esverify-theory}.
+\end{proof}
+
+\newpage
+
+\section{Operational Semantics}
+
+Programs are assumed to be in A Normal Form. The dynamic semantics of programs are specified as a
+small-step evaluation relation over stack configurations to avoid substitution in expressions.
+
+\[ \arraycolsep=1.6pt\def\arraystretch{1.5}
+\begin{array}{rclcl}
+  e &\in& \text{Expressions} &~::=~& 
+ \llt{x}{\text{true}} ~|~\llt{x}{\text{false}} ~|~ \llt{x}{n} ~|~ \\
+ & & & & \lfre{R}{S}{e}{e} ~|~ \llt{y}{\otimes x} ~|~ \llt{z}{x \oplus y} ~| \\
+    &   &                    &     & \llt{y}{f(x)} ~| \t{if} (x)~e \t{else} e ~| \t{return} x \\
+  R,S &\in& \text{Specs} &~::=~& t ~|~ \neg R ~|~ R \wedge R ~|~ R \vee R ~|~ \fres[t]{R}{S} \\
+  \kappa &\in& \text{Configurations} &~::=~&~(\sigma, e) ~|~ \kappa \cdot (\sigma, \llt{y}{f(x)}) \\
+\end{array} \] $\tcap[0ex]{\kappa \hookrightarrow \kappa}$ \\[1em]
+\[ \arraycolsep=1.6pt\def\arraystretch{1.5}
+\begin{array}{rcllr}
+  (\sigma, \llt{y}{\text{true}}) &\hookrightarrow& (\sigma[x \mapsto \text{true}], e) & &~~ \lab{[e-true]} \\
+  (\sigma, \llt{y}{\text{false}}) &\hookrightarrow& (\sigma[x \mapsto \text{false}], e) & &~~ \lab{[e-false]} \\
+  (\sigma, \llt{y}{n}) &\hookrightarrow& (\sigma[x \mapsto n], e) & &~~ \lab{[e-num]} \\
+  (\sigma, \lfre{R}{S}{e_1}{e_2}) &\hookrightarrow &
+             \multicolumn{2}{l}{ (\sigma[f \mapsto \fval{R}{S}{e_1}{\sigma}], e_2)} &~~ \lab{[e-closure]} \\
+  (\sigma, \llt{y}{\otimes x}) &\hookrightarrow& (\sigma[y \mapsto v], e) & \t{where} v = \delta(\otimes, \lookup{x}) &~~ \lab{[e-unop]} \\
+  (\sigma, \llt{z}{x \oplus y}) &\hookrightarrow& (\sigma[z \mapsto v], e) &
+            \t{where} v = \delta(\oplus, \lookup{x}, \lookup{y}) &~~ \lab{[e-binop]} \\
+  (\sigma, \llt[e]{z}{f(y)}) &\hookrightarrow &
+         \multicolumn{2}{l}{ (\sigma_f[g \mapsto \lookup{f}, x \mapsto \lookup{y}], e_f)
+                                 \cdot (\sigma, \llt[e]{z}{f(y)} )} &~~ \lab{[e-call]} \\[-1ex]
+                          &  \text{where}   & \multicolumn{3}{l}{\lookup{f} = \fval[g]{R}{S}{e_f}{\sigma_f}} \\
+  (\sigma, \text{return}~z) \cdot (\sigma_2, \llt[e_2]{y}{f(x)}) &\hookrightarrow&
+           (\sigma_2[y \mapsto \sigma(z)], e_2) & &~~ \lab{[e-return]} \\
+  (\sigma, \text{if}~(x)~e_1 \t{else} e_2) &\hookrightarrow& (\sigma, e_1) & \t{if} \lookup{x} = \text{true} &~~ \lab{[e-if-t]} \\
+  (\sigma, \text{if}~(x)~e_1 \t{else} e_2) &\hookrightarrow& (\sigma, e_2) & \t{if} \lookup{x} = \text{false} &~~ \lab{[e-if-f]} \\
+  \kappa \cdot (\sigma, \llt{y}{f(x)}) &\hookrightarrow& \kappa' \cdot (\sigma, \llt{y}{f(x)}) \hspace{1ex} &
+     \t{if}~\kappa \hookrightarrow \kappa' &~~ \lab{[e-ctx]} \\
+\end{array} \] \\
+
+\tcap[-2ex]{\kappa \hookrightarrow^{*} \kappa}
+\begin{center}
+\begin{bpt}
+  \AxiomC{\emptya}
+  \UnaryInfC{$\kappa \hookrightarrow^{*} \kappa$}
+\end{bpt}
+\begin{bpt}
+  \AxiomC{$\kappa \hookrightarrow^{*} \kappa'$}
+  \AxiomC{$\kappa' \hookrightarrow \kappa''$}
+  \BinaryInfC{$\kappa \hookrightarrow^{*} \kappa''$}
+\end{bpt}
+\end{center}
+
+\vspace{2em}
+
+\begin{definition}[Value] 
+  If $isValue(\kappa)$ then there exists $\sigma$ and $x$ such that $\kappa = (\sigma, \text{return}~x)$
+  and $x \in \sigma$.
+\end{definition}
+
+\newpage
+
+\section{Program Verification}
+
+\[ \arraycolsep=1.6pt\def\arraystretch{1.3}
+\begin{array}{rclcl}
+  Q[\bullet] &\in& \text{PropositionContexts} &~::=~& P ~|~ \tau[\bullet] ~|~ \neg Q[\bullet] ~|~ Q[\bullet] \wedge Q[\bullet] ~|~
+          Q[\bullet] \vee Q[\bullet] ~|~
+                                       pre_1(\otimes,\tau[\bullet]) ~|~ \\
+      & & & & pre_2(\oplus,\tau[\bullet],\tau[\bullet]) ~|~ pre(\tau[\bullet],\tau[\bullet]) ~|~ post(\tau[\bullet],\tau[\bullet]) ~|~ call(\tau[\bullet]) ~|~\\
+      &                 & & &  \forallc{Q[\bullet]} ~|~ \exists x. Q[\bullet] \\
+  \tau[\bullet] &\in& \text{TermContexts} &~::=~& \bullet ~|~ t ~|~ \otimes \tau[\bullet] ~|~ \tau[\bullet] \oplus \tau[\bullet] ~|~ \tau[\bullet](\tau[\bullet]) \\
+\end{array} \]
+
+\vspace{1em} \tcap{P \vdash e : Q}
+\begin{gather*}
+  \begin{bpt}
+    \AxiomC{$x \not \in FV(P)$}
+    \AxiomC{$P \wedge x = \text{true} \vdash e : Q$}
+    \RightLabel{\lab{vc-tru}}
+    \BinaryInfC{$P \vdash \llt{x}{\text{true}} : \exists x.~x = \text{true} \wedge Q$}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$x \not \in FV(P)$}
+    \AxiomC{$P \wedge x = \text{false} \vdash e : Q$}
+    \RightLabel{\lab{vc-fls}}
+    \BinaryInfC{$P \vdash \llt{x}{\text{false}} : \exists x.~x = \text{false} \wedge Q$}
+  \end{bpt}
+  \begin{bpt}
+    \AxiomC{$x \not \in FV(P)$}
+    \AxiomC{$P \wedge x = n \vdash e : Q$}
+    \RightLabel{\lab{vc-num}}
+    \BinaryInfC{$P \vdash \llt{x}{n} : \exists x.~x = n \wedge Q$}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$\begin{matrix}
+    f \not \in FV(P) \hspace{1em}
+    x \not \in FV(P)\hspace{1em}
+    f \neq x \hspace{1em}
+    x \in FV(R) \\
+    FV(R) \subseteq FV(P) \cup \{ f, x \} \hspace{1em}
+    FV(S) \subseteq FV(P) \cup \{ f, x \} \\
+    P \wedge \fres{R}{S} \wedge R \vdash e_1 : Q_1 \hspace{1em}
+    P \wedge \fres{R}{(Q_1 [f(x)] \wedge S)} \vdash e_2 : Q_2 \\
+    \left \langle P \wedge \fres{R}{S} \wedge R \wedge Q[f(x)] \Rightarrow S \right \rangle
+    \end{matrix}$}
+    \RightLabel{\lab{vc-func}}
+    \UnaryInfC{$P \vdash \lfre{R}{S}{e_1}{e_2} : \exists f.~\fres{R}{(Q_1 [f(x)] \wedge S)} \wedge Q_2$}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$\begin{matrix}
+             x \in FV(P) \hspace{1em}
+             y \not \in FV(P) \hspace{1em}
+             P \wedge y = \otimes x \vdash e : Q \hspace{1em}
+            \left \langle P \Rightarrow pre(\otimes, x) \right \rangle \end{matrix}$}
+    \RightLabel{\lab{vc-unop}}
+    \UnaryInfC{$P \vdash \llt{y}{\otimes x} : \exists y.~y = \otimes x \wedge Q$}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$\begin{matrix}
+            x \in FV(P) \hspace{1em}
+            y \in FV(P) \hspace{1em}
+            z \not \in FV(P) \hspace{1em}
+            P \wedge z = x \oplus y \vdash e : Q \hspace{1em}
+            \langle P \Rightarrow pre(\oplus, x, y) \rangle
+            \end{matrix}$}
+    \RightLabel{\lab{vc-binop}}
+    \UnaryInfC{$P \vdash \llt{z}{x \oplus y} : \exists z.~z = x \oplus y \wedge Q$}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$\begin{matrix}
+            f \in FV(P) \hspace{1em}
+            x \in FV(P) \hspace{1em}
+            y \not \in FV(P) \\
+            P \wedge call(x) \wedge post(x) \wedge y = f(x) \vdash e : Q \hspace{1em}
+            \langle P \wedge call(x) \Rightarrow isFunc(f) \wedge pre(f, x) \rangle
+            \end{matrix}$}
+    \RightLabel{\lab{vc-app}}
+    \UnaryInfC{$P \vdash \llt{y}{f(x)} : \exists y.~call(x) \wedge post(f, x) \wedge y = f(x) \wedge Q$}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$\begin{matrix}
+            x \in FV(P) \hspace{1em}
+            P \wedge x \vdash e_1 : Q_1 \hspace{1em}
+            P \wedge \neg x \vdash e_2 : Q_2 \hspace{1em}
+            \langle P \Rightarrow isBool(f) \rangle
+            \end{matrix}$}
+    \RightLabel{\lab{vc-ite}}
+    \UnaryInfC{$P \vdash \text{if}~(x)~e_1 \t{else} e_2 : (x \Rightarrow Q_1) \wedge (\neg x \Rightarrow Q_2) $}
+  \end{bpt} \\[1em]
+  \begin{bpt}
+    \AxiomC{$x \in FV(P)$}
+    \RightLabel{\lab{vc-return}}
+    \UnaryInfC{$P \vdash \text{return}~x : x = \bullet$}
+  \end{bpt}
+\end{gather*}
+
+\begin{notation}[Function Specs] ~ \\
+  $\fres[t]{R}{S} ~\equiv~ isFunc(t) \wedge \forallc{((R \Rightarrow pre(t,x)) \wedge (post(t, x) \Rightarrow S))}$
+\end{notation}
+
+\begin{axiom}[L-Function-Application]
+  If $(\sigma[f\mapsto \fval{R}{S}{e}{\sigma},x\mapsto v_x], e \longrightarrow^{*} \sigma', y)$
+  and $\sigma'(y) = v$ then $\vdash \fval{R}{S}{e}{\sigma} (v_x) = v$.
+\end{axiom}
+
+\begin{axiom}[L-Function-Precondition]
+  Iff $\sigma[f\mapsto \fval{R}{S}{e}{\sigma},x\mapsto v_x] \models R$
+  then $\vdash pre(\fval{R}{S}{e}{\sigma}, v_x)$.
+\end{axiom}
+
+\begin{axiom}[L-Function-Postcondition]
+  If $\vdash \sigma : Q_1$ and $Q_1 \wedge \fres{R}{S} \wedge R \vdash e : Q_2[\bullet]$
+  and $\sigma[f\mapsto \fval{R}{S}{e}{\sigma},x\mapsto v_x] \models Q_2[f(x)] \wedge S$
+  then $\vdash post(\fval{R}{S}{e}{\sigma}, v_x)$.
+\end{axiom}
+
+\begin{axiom}[L-Function-Postcondition-Inv]
+  If $\vdash \sigma : Q_1$ and $Q_1 \wedge \fres{R}{S} \wedge R \vdash e : Q_2[\bullet]$
+  and $\vdash post(\fval{R}{S}{e}{\sigma}, v_x)$ then
+  $\sigma[f\mapsto \fval{R}{S}{e}{\sigma},x\mapsto v_x] \models Q_2[f(x)] \wedge S$
+\end{axiom}
+
+\begin{theorem}[Verification Safety]
+  If $true \vdash e : Q$ and $(\emptyset, e) \hookrightarrow^{*} \kappa$ then $isValue(\kappa)$ or
+  % there exists a $\kappa'$ with $\kappa \hookrightarrow \kappa'$.
+  $\kappa \hookrightarrow \kappa'$ for some $\kappa'$.
+\end{theorem}
+
+\begin{proof}
+  See formalized LEAN proof in \url{https://github.com/levjj/esverify-theory}.
+\end{proof}
+
+\end{document}

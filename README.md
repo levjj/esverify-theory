@@ -5,6 +5,9 @@ and proves properties such as verification safety and type translation correctne
 
 The definitions and proofs are written in [LEAN](http://leanprover.github.io/).
 
+In addition to the proof scripts, there is also a
+[LaTeX formatted version](doc/esverify-theory.pdf) of the definitions, axioms and theorems.
+
 ## Important Files
 
 [`src/syntax.lean`](src/syntax.lean)
@@ -28,7 +31,11 @@ The definitions and proofs are written in [LEAN](http://leanprover.github.io/).
 - Quantifier Instantiation Soundness Theorem
 - Verification Safety/Soundness Theorem
 
-*All other files contains lemmas and helper definitions but no axioms.*
+[`doc/esverify-theory.pdf`](doc/esverify-theory.pdf)
+
+- LaTeX-formatted summary of the definitions, axioms and theorems.
+
+*All other `.lean` files contain lemmas and helper definitions but no axioms.*
 
 ## Proved Theorems
 
