@@ -116,15 +116,11 @@ $\tcap[-9ex]{\vdash P}$
 \end{axiom}
 
 \begin{axiom}[L-Unary-Op-Pre]
-  Iff $(\otimes, v_x) \in dom(\delta)$ then $\vdash pre_1(\otimes, v_x)$.
+  If $\vdash pre_1(\otimes, v_x)$ then $(\otimes, v_x) \in dom(\delta)$.
 \end{axiom}
 
 \begin{axiom}[L-Binary-Op-Pre]
-  Iff $(\otimes, v_x, v_y) \in dom(\delta)$ then $\vdash pre_2(\otimes, v_x, v_y)$.
-\end{axiom}
-
-\begin{axiom}[L-Binary-Op-Pre]
-  Iff $(\otimes, v_x, v_y) \in dom(\delta)$ then $\vdash pre_2(\otimes, v_x, v_y)$.
+  If $\vdash pre_2(\oplus, v_x, v_y)$ then $(\oplus, v_x, v_y) \in dom(\delta)$.
 \end{axiom}
 
 \begin{definition}[Lookup] 

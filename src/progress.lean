@@ -56,7 +56,7 @@ lemma exp.progress {R: spec} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have ⊨ vc.pre₁ op (term.subst_env σ x), from this ▸ h2,
       have x_from_env: term.subst_env σ x = v, from (term.subst_env.var.right v).mp env_has_x,
       have ⊨ vc.pre₁ op v, from x_from_env ▸ this,
-      have option.is_some (unop.apply op v), from valid.pre₁.mpr this,
+      have option.is_some (unop.apply op v), from valid.pre₁ this,
       have (∃v', unop.apply op v = some v'), from option.is_some_iff_exists.mp this,
       let ⟨v', op_v_is_v'⟩ := this in
       have s ⟹ (R, σ[y↦v'], e'), from dstep.unop env_has_x op_v_is_v',
@@ -90,7 +90,7 @@ lemma exp.progress {R: spec} {P: prop} {Q: propctx} {e: exp} {σ: env}:
       have h4: ⊨ vc.pre₂ op vx (term.subst_env σ y), from this ▸ h3,
       have term.subst_env σ y = vy, from (term.subst_env.var.right vy).mp env_has_y,
       have ⊨ vc.pre₂ op vx vy, from this ▸ h4,
-      have option.is_some (binop.apply op vx vy), from valid.pre₂.mpr this,
+      have option.is_some (binop.apply op vx vy), from valid.pre₂ this,
       have (∃v', binop.apply op vx vy = some v'), from option.is_some_iff_exists.mp this,
       let ⟨v', op_v_is_v'⟩ := this in
       have s ⟹ (R, σ[z↦v'], e'), from dstep.binop env_has_x env_has_y op_v_is_v',

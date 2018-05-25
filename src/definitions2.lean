@@ -397,14 +397,14 @@ axiom valid.binop {op: binop} {v₁ v₂ v: value}:
 -- can write pre₁ and pre₂ to check domain of operators
 
 axiom valid.pre₁ {vₓ: value} {op: unop}:
+  (⊨ vc.pre₁ op vₓ)
+  →
   option.is_some (unop.apply op vₓ)
-  ↔
-  ⊨ vc.pre₁ op vₓ
 
 axiom valid.pre₂ {v₁ v₂: value} {op: binop}:
+  (⊨ vc.pre₂ op v₁ v₂)
+  →
   option.is_some (binop.apply op v₁ v₂)
-  ↔
-  ⊨ vc.pre₂ op v₁ v₂
 
 --  #####################################
 --  ### VERIFICATION RELATION (VCGEN) ###
