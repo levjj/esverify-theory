@@ -3,7 +3,7 @@
 This repository contains a formal definition of [esverify](https://esverify.org/)
 and proves properties such as verification safety and type translation correctness.
 
-The definitions and proofs are written in [LEAN](http://leanprover.github.io/).
+The definitions and proofs are written in [Lean](http://leanprover.github.io/).
 
 In addition to the proof scripts, there is also a
 [LaTeX formatted version](doc/esverify-theory.pdf) of the definitions, axioms and theorems.
@@ -68,13 +68,20 @@ The proof internally uses lemmas for progress and preservation.
 
 ## Checking the proof
 
-Assuming [LEAN](http://leanprover.github.io/) is installed, the proofs can be checked by building the entire project:
+These theorems can be checked with
+[Lean v3.3.0](https://github.com/leanprover/lean/releases/tag/v3.3.0).
+
+**Important: The files in this repository are not compatible with Lean 3.4.**
+
+The following command installs the math library,
+builds the project and checks all theorems:
 
 ```
 $ leanpkg build
 ```
 
-Alternatively, is it possible to specifically check certain files, e.g.
+If the [math library](https://github.com/leanprover/mathlib) is already installed,
+the theorems can also be checked with:
 
 ```
 $ lean src/theorems.lean
